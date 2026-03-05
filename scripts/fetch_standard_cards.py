@@ -1,62 +1,81 @@
 #!/usr/bin/env python3
 """
-MTG Standard Card Data Fetcher
-Fetches all Standard-legal cards from Scryfall API and exports AI-relevant data
+MTG Standard Card Data Fetcher (Bulk Data Optimized)
+Uses Scryfall's bulk data API for efficient, complete card data retrieval
 """
 
 import requests
 import json
-import time
 from datetime import datetime
 from typing import List, Dict
 
 class StandardCardFetcher:
-    """Fetch and process Standard-legal MTG cards from Scryfall"""
+    """Fetch and process Standard-legal MTG cards from Scryfall bulk data"""
     
     def __init__(self):
-        self.api_base = "https://api.scryfall.com"
+        self.bulk_data_url = "https://api.scryfall.com/bulk-data"
         self.cards = []
         
-    def fetch_standard_cards(self) -> List[Dict]:
-        """Fetch all Standard-legal cards using Scryfall bulk data"""
-        print("Fetching Standard card list from Scryfall...")
+    def get_bulk_data_download_url(self) -> str:
+        """Get the download URL for default cards bulk data"""
+        print("Fetching bulk data information from Scryfall...")
         
-        # Use Scryfall search API for Standard legality
-        search_url = f"{self.api_base}/cards/search"
-        params = {
-            "q": "legal:standard",
-            "format": "json",
-            "unique": "prints"  # Get all printings for set info
-        }
+        try:
+            response = requests.get(self.bulk_data_url)
+            response.raise_for_status()
+            bulk_data = response.json()
+            
+            # Find the "Default Cards" bulk data type
+            # This contains one entry per card (not per printing)
+            for item in bulk_data.get('data', []):
+                if item.get('type') == 'default_cards':
+                    download_uri = item.get('download_uri')
+                    size_mb = item.get('size') / (1024 * 1024)
+                    print(f"Found bulk data: {item.get('name')}")
+                    print(f"Size: {size_mb:.2f} MB")
+                    print(f"Last updated: {item.get('updated_at')}")
+                    return download_uri
+            
+            print("ERROR: Could not find default_cards bulk data")
+            return None
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching bulk data info: {e}")
+            return None
+    
+    def download_bulk_data(self, download_url: str) -> List[Dict]:
+        """Download and parse bulk card data"""
+        print(f"Downloading bulk card data...")
+        print("This may take 30-60 seconds for ~100MB of data...")
         
-        all_cards = []
-        has_more = True
-        page = 1
+        try:
+            response = requests.get(download_url, stream=True)
+            response.raise_for_status()
+            
+            # Parse the large JSON file
+            cards = response.json()
+            print(f"Downloaded {len(cards)} cards")
+            return cards
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Error downloading bulk data: {e}")
+            return []
+        except json.JSONDecodeError as e:
+            print(f"Error parsing JSON: {e}")
+            return []
+    
+    def filter_standard_legal(self, all_cards: List[Dict]) -> List[Dict]:
+        """Filter to only Standard-legal cards"""
+        print("Filtering for Standard legality...")
         
-        while has_more:
-            print(f"Fetching page {page}...")
-            try:
-                response = requests.get(search_url, params=params)
-                response.raise_for_status()
-                data = response.json()
-                
-                all_cards.extend(data.get('data', []))
-                
-                if data.get('has_more', False):
-                    search_url = data.get('next_page')
-                    params = {}  # Next page URL has params built in
-                    has_more = True
-                    page += 1
-                    time.sleep(0.1)  # Rate limiting
-                else:
-                    has_more = False
-                    
-            except requests.exceptions.RequestException as e:
-                print(f"Error fetching data: {e}")
-                break
+        standard_cards = []
+        for card in all_cards:
+            legalities = card.get('legalities', {})
+            if legalities.get('standard') == 'legal':
+                standard_cards.append(card)
         
-        print(f"Total cards fetched: {len(all_cards)}")
-        return all_cards
+        print(f"Found {len(standard_cards)} Standard-legal cards")
+        return standard_cards
     
     def extract_relevant_data(self, card: Dict) -> Dict:
         """Extract only AI-relevant card data"""
@@ -120,34 +139,26 @@ class StandardCardFetcher:
         print("Processing card data...")
         processed = []
         
-        # Use dict to deduplicate by name (keep latest printing)
-        card_dict = {}
-        
         for card in raw_cards:
             # Skip tokens, art cards, etc.
             if card.get('layout') in ['token', 'emblem', 'art_series']:
                 continue
+            
+            # Skip digital-only cards if you want paper-legal only
+            # if card.get('digital', False):
+            #     continue
                 
             card_name = card.get('name')
             if not card_name:
                 continue
             
             relevant_data = self.extract_relevant_data(card)
-            
-            # Keep the most recent printing (higher collector number usually = newer)
-            if card_name not in card_dict:
-                card_dict[card_name] = relevant_data
-            else:
-                # Prefer newer set or lower collector number for consistency
-                existing_set = card_dict[card_name].get('set', '')
-                new_set = relevant_data.get('set', '')
-                if new_set >= existing_set:  # Alphabetically later set = newer
-                    card_dict[card_name] = relevant_data
+            processed.append(relevant_data)
         
-        processed = list(card_dict.values())
+        # Sort alphabetically by name
         processed.sort(key=lambda x: x['name'])
         
-        print(f"Processed {len(processed)} unique cards")
+        print(f"Processed {len(processed)} cards")
         return processed
     
     def export_json(self, cards: List[Dict], filename: str = "standard_cards.json"):
@@ -157,7 +168,8 @@ class StandardCardFetcher:
                 'format': 'Standard',
                 'last_updated': datetime.utcnow().isoformat(),
                 'total_cards': len(cards),
-                'source': 'Scryfall API'
+                'source': 'Scryfall Bulk Data API',
+                'data_type': 'default_cards'
             },
             'cards': cards
         }
@@ -165,7 +177,8 @@ class StandardCardFetcher:
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(output, f, indent=2, ensure_ascii=False)
         
-        print(f"Exported JSON: {filename}")
+        file_size_mb = len(json.dumps(output)) / (1024 * 1024)
+        print(f"Exported JSON: {filename} ({file_size_mb:.2f} MB)")
         return filename
     
     def export_text(self, cards: List[Dict], filename: str = "standard_cards.txt"):
@@ -174,6 +187,7 @@ class StandardCardFetcher:
             f.write(f"MTG Standard Legal Cards\n")
             f.write(f"Last Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n")
             f.write(f"Total Cards: {len(cards)}\n")
+            f.write(f"Source: Scryfall Bulk Data API\n")
             f.write("="*80 + "\n\n")
             
             for card in cards:
@@ -226,6 +240,7 @@ class StandardCardFetcher:
                 row['keywords'] = ','.join(row.get('keywords', []))
                 # Remove card_faces for CSV simplicity
                 row.pop('card_faces', None)
+                row.pop('standard_legal', None)
                 writer.writerow(row)
         
         print(f"Exported CSV: {filename}")
@@ -234,29 +249,58 @@ class StandardCardFetcher:
     def run(self):
         """Main execution method"""
         print("="*80)
-        print("MTG Standard Card Data Fetcher")
+        print("MTG Standard Card Data Fetcher (Bulk Data API)")
         print("="*80)
+        print()
         
-        # Fetch cards
-        raw_cards = self.fetch_standard_cards()
-        
-        if not raw_cards:
-            print("ERROR: No cards fetched. Exiting.")
+        # Get bulk data download URL
+        download_url = self.get_bulk_data_download_url()
+        if not download_url:
+            print("ERROR: Could not retrieve bulk data URL. Exiting.")
             return
         
+        print()
+        
+        # Download all cards
+        all_cards = self.download_bulk_data(download_url)
+        if not all_cards:
+            print("ERROR: No cards downloaded. Exiting.")
+            return
+        
+        print()
+        
+        # Filter to Standard-legal only
+        standard_cards = self.filter_standard_legal(all_cards)
+        if not standard_cards:
+            print("ERROR: No Standard-legal cards found. Exiting.")
+            return
+        
+        print()
+        
         # Process cards
-        processed_cards = self.process_cards(raw_cards)
+        processed_cards = self.process_cards(standard_cards)
+        
+        print()
         
         # Export all formats
         json_file = self.export_json(processed_cards)
         txt_file = self.export_text(processed_cards)
         csv_file = self.export_csv(processed_cards)
         
-        print("\n" + "="*80)
+        print()
+        print("="*80)
         print("Export Complete!")
         print(f"JSON: {json_file} (AI-optimized)")
         print(f"TXT:  {txt_file} (Human-readable)")
         print(f"CSV:  {csv_file} (Spreadsheet analysis)")
+        print("="*80)
+        print()
+        print("ADVANTAGES OF BULK DATA API:")
+        print("✓ Single request instead of 15+ paginated requests")
+        print("✓ Complete card data in one download (~100MB)")
+        print("✓ No rate limiting concerns")
+        print("✓ Updated daily by Scryfall")
+        print("✓ Includes all card fields without filtering")
         print("="*80)
 
 
