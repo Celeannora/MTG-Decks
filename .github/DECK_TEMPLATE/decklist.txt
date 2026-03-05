@@ -1,0 +1,23 @@
+Deck
+4 Example Creature (SET) 001
+4 Example Removal (SET) 015
+3 Example Planeswalker (SET) 120
+2 Example Finisher (SET) 200
+4 Example Draw Spell (SET) 045
+3 Example Interaction (SET) 087
+2 Example Utility (SET) 156
+
+// Lands (24)
+4 Pathway Land (SET) 250
+4 Shockland (SET) 251
+2 Triome (SET) 252
+8 Basic Land (SET) 270
+6 Basic Land (SET) 271
+
+Sideboard
+3 Sideboard Card 1 (SET) 088
+3 Sideboard Card 2 (SET) 099
+3 Sideboard Card 3 (SET) 145
+2 Sideboard Card 4 (SET) 178
+2 Sideboard Card 5 (SET) 189
+2 Sideboard Card 6 (SET) 201
