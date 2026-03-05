@@ -1,0 +1,29 @@
+Deck
+3 Overlord of the Hauntwoods (PDSK) 194p
+3 Extravagant Replication (PRM) 99821
+2 Aftermath Analyst (MKM) 148
+2 Abhorrent Oculus (PDSK) 42s
+2 Aegis Turtle (JMP) 138
+2 Agatha's Champion (WOE) 160
+2 Biomechan Engineer (EOE) 213
+2 Bioengineered Future (PEOE) 172s
+2 Circuitous Route (ZNC) 62
+2 Cycle of Renewal (TLA) 170
+2 Earthbender Ascension (TLA) 307
+2 An Offer You Can't Refuse (SNC) 51
+2 Cancel (ZEN) 44
+2 Disdainful Stroke (FDN) 51
+4 Tangled Islet (DMU) 258
+4 Thornwood Falls (M21) 257
+4 Botanical Sanctum (KLD) 244
+2 Restless Vinestalk (WOE) 257
+7 Forest (FDN) 280
+7 Island (FDN) 285
+
+Sideboard
+2 Aether Spike (MH3) 39
+3 Tear Asunder (DMU) 183
+2 Negate (M20) 69
+3 Struggle for Project Parity (NEO) 33
+3 Confiscate (FDN) 337
+2 Make Disappear (SNC) 49
