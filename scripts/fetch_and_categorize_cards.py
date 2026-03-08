@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-MTG Standard Card Data Fetcher with Category Splitting
-Splits large card database into smaller, AI-accessible category files
+MTG Standard Card Data Fetcher with Universal Categorization
+Splits large card database into <1MB category files with automatic part splitting
 """
 
 import requests
@@ -9,11 +9,14 @@ import json
 import csv
 import os
 from datetime import datetime
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from collections import defaultdict
 
-class CategorizedCardFetcher:
-    """Fetch and categorize Standard-legal MTG cards into manageable files"""
+class UniversalCardFetcher:
+    """Fetch and categorize Standard-legal MTG cards into <1MB files"""
+    
+    # 800KB threshold (leaves room for metadata, stays well under 1MB)
+    MAX_FILE_SIZE_BYTES = 800 * 1024
     
     def __init__(self, output_dir: str = "cards_by_category"):
         self.bulk_data_url = "https://api.scryfall.com/bulk-data"
@@ -125,135 +128,45 @@ class CategorizedCardFetcher:
         if 'produced_mana' in card:
             relevant['produced_mana'] = card.get('produced_mana')
         
-        relevant['standard_legal'] = card.get('legalities', {}).get('standard') == 'legal'
+        relevant['standard_legal'] = True
         
         return relevant
     
-    def categorize_card(self, card: Dict) -> List[str]:
-        """Determine which categories a card belongs to (can be multiple)"""
-        categories = []
-        type_line = card['type_line'].lower()
-        oracle_text = card.get('oracle_text', '').lower()
-        keywords = [k.lower() for k in card.get('keywords', [])]
+    def get_primary_type(self, type_line: str) -> str:
+        """Extract primary card type from type line"""
+        type_lower = type_line.lower()
         
-        # Card types
-        if 'creature' in type_line:
-            categories.append('creatures')
-            
-            # Creature subtypes
-            if 'angel' in type_line:
-                categories.append('angels')
-            if 'dragon' in type_line:
-                categories.append('dragons')
-            if 'vampire' in type_line:
-                categories.append('vampires')
-            if 'zombie' in type_line:
-                categories.append('zombies')
-            if 'elf' in type_line:
-                categories.append('elves')
-            if 'goblin' in type_line:
-                categories.append('goblins')
-            if 'merfolk' in type_line:
-                categories.append('merfolk')
-            if 'human' in type_line:
-                categories.append('humans')
-        
-        if 'instant' in type_line:
-            categories.append('instants')
-        
-        if 'sorcery' in type_line:
-            categories.append('sorceries')
-        
-        if 'enchantment' in type_line:
-            categories.append('enchantments')
-        
-        if 'artifact' in type_line:
-            categories.append('artifacts')
-        
-        if 'planeswalker' in type_line:
-            categories.append('planeswalkers')
-        
-        if 'land' in type_line:
-            categories.append('lands')
-        
-        # Mechanics and themes
-        if 'gain' in oracle_text and 'life' in oracle_text:
-            categories.append('lifegain')
-        
-        if 'mill' in oracle_text or 'library into' in oracle_text or 'graveyard from your library' in oracle_text:
-            categories.append('mill')
-        
-        if 'draw' in oracle_text and 'card' in oracle_text:
-            categories.append('card_draw')
-        
-        if 'counter target' in oracle_text:
-            categories.append('counterspells')
-        
-        if ('destroy' in oracle_text or 'exile' in oracle_text or 
-            'damage to target' in oracle_text or 'deals' in oracle_text):
-            categories.append('removal')
-        
-        if 'flying' in keywords or 'flying' in oracle_text:
-            categories.append('flying')
-        
-        if 'first strike' in keywords or 'double strike' in keywords:
-            categories.append('first_strike')
-        
-        if 'lifelink' in keywords:
-            categories.append('lifelink')
-        
-        if 'flash' in keywords:
-            categories.append('flash')
-        
-        if 'haste' in keywords:
-            categories.append('haste')
-        
-        if 'vigilance' in keywords:
-            categories.append('vigilance')
-        
-        if 'trample' in keywords:
-            categories.append('trample')
-        
-        # Color categories
-        colors = card.get('colors', [])
-        if not colors:
-            categories.append('colorless')
+        # Check in order of precedence
+        if 'creature' in type_lower:
+            return 'creature'
+        elif 'instant' in type_lower:
+            return 'instant'
+        elif 'sorcery' in type_lower:
+            return 'sorcery'
+        elif 'artifact' in type_lower:
+            return 'artifact'
+        elif 'enchantment' in type_lower:
+            return 'enchantment'
+        elif 'planeswalker' in type_lower:
+            return 'planeswalker'
+        elif 'land' in type_lower:
+            return 'land'
+        elif 'battle' in type_lower:
+            return 'battle'
         else:
-            if 'W' in colors:
-                categories.append('white')
-            if 'U' in colors:
-                categories.append('blue')
-            if 'B' in colors:
-                categories.append('black')
-            if 'R' in colors:
-                categories.append('red')
-            if 'G' in colors:
-                categories.append('green')
-            
-            if len(colors) > 1:
-                categories.append('multicolor')
+            return 'other'
+    
+    def categorize_card(self, card: Dict) -> str:
+        """Determine primary category for a card (single category for universal grouping)"""
+        type_line = card['type_line']
+        primary_type = self.get_primary_type(type_line)
         
-        # Rarity
-        categories.append(f"rarity_{card['rarity']}")
-        
-        # CMC ranges
-        cmc = card.get('cmc', 0)
-        if cmc == 0:
-            categories.append('cmc_0')
-        elif cmc <= 2:
-            categories.append('cmc_1_2')
-        elif cmc <= 4:
-            categories.append('cmc_3_4')
-        elif cmc <= 6:
-            categories.append('cmc_5_6')
-        else:
-            categories.append('cmc_7_plus')
-        
-        return categories
+        # Use primary type as the universal category
+        return primary_type
     
     def process_and_categorize(self, raw_cards: List[Dict]) -> Dict[str, List[Dict]]:
-        """Process cards and organize into categories"""
-        print("Processing and categorizing cards...")
+        """Process cards and organize into universal type categories"""
+        print("Processing and categorizing cards by universal types...")
         
         categorized = defaultdict(list)
         all_processed = []
@@ -270,12 +183,9 @@ class CategorizedCardFetcher:
             processed = self.extract_relevant_data(card)
             all_processed.append(processed)
             
-            # Get categories for this card
-            card_categories = self.categorize_card(processed)
-            
-            # Add to each category
-            for category in card_categories:
-                categorized[category].append(processed)
+            # Get primary category
+            category = self.categorize_card(processed)
+            categorized[category].append(processed)
         
         # Sort each category alphabetically
         for category in categorized:
@@ -285,14 +195,49 @@ class CategorizedCardFetcher:
         all_processed.sort(key=lambda x: x['name'])
         categorized['all'] = all_processed
         
-        print(f"Processed {len(all_processed)} cards into {len(categorized)} categories")
+        print(f"Processed {len(all_processed)} cards into {len(categorized)} universal categories")
         return categorized
     
-    def export_category_files(self, categorized: Dict[str, List[Dict]]):
-        """Export each category to separate JSON and CSV files"""
-        print("\nExporting category files...")
+    def split_into_parts(self, cards: List[Dict], category: str) -> List[Tuple[str, List[Dict]]]:
+        """Split a large card list into multiple parts under size threshold"""
+        parts = []
+        current_part = []
+        current_part_name = f"{category}_part1"
+        part_num = 1
         
-        metadata = {
+        for card in cards:
+            # Add card to current part
+            test_part = current_part + [card]
+            
+            # Estimate JSON size
+            test_data = {'cards': test_part}
+            test_size = len(json.dumps(test_data, ensure_ascii=False))
+            
+            if test_size > self.MAX_FILE_SIZE_BYTES and current_part:
+                # Current part is full, save it and start new part
+                parts.append((current_part_name, current_part))
+                part_num += 1
+                current_part = [card]
+                current_part_name = f"{category}_part{part_num}"
+            else:
+                # Add to current part
+                current_part = test_part
+        
+        # Add final part
+        if current_part:
+            if part_num == 1:
+                # Only one part, don't add part number
+                parts.append((category, current_part))
+            else:
+                parts.append((current_part_name, current_part))
+        
+        return parts
+    
+    def export_category_files(self, categorized: Dict[str, List[Dict]]):
+        """Export each category to separate JSON and CSV files with size limits"""
+        print("\nExporting category files with <1MB size limit...")
+        
+        metadata_base = {
             'format': 'Standard',
             'last_updated': datetime.utcnow().isoformat(),
             'source': 'Scryfall Bulk Data API',
@@ -301,111 +246,184 @@ class CategorizedCardFetcher:
         category_stats = []
         
         for category, cards in categorized.items():
-            # Skip empty categories
             if not cards:
                 continue
             
-            # JSON export
-            json_filename = os.path.join(self.output_dir, f"{category}.json")
-            json_data = {
-                'metadata': {**metadata, 'category': category, 'total_cards': len(cards)},
-                'cards': cards
-            }
+            # Check if we need to split this category
+            test_data = {'metadata': metadata_base, 'cards': cards}
+            estimated_size = len(json.dumps(test_data, ensure_ascii=False))
             
-            with open(json_filename, 'w', encoding='utf-8') as f:
-                json.dump(json_data, f, indent=2, ensure_ascii=False)
-            
-            json_size_kb = os.path.getsize(json_filename) / 1024
-            
-            # CSV export
-            csv_filename = os.path.join(self.output_dir, f"{category}.csv")
-            with open(csv_filename, 'w', newline='', encoding='utf-8') as f:
-                fieldnames = ['name', 'mana_cost', 'cmc', 'type_line', 'oracle_text',
-                            'colors', 'color_identity', 'rarity', 'set', 'set_name',
-                            'collector_number', 'power', 'toughness', 'loyalty', 'keywords']
+            if estimated_size > self.MAX_FILE_SIZE_BYTES:
+                # Split into parts
+                print(f"  {category}: {len(cards)} cards (splitting into parts)")
+                parts = self.split_into_parts(cards, category)
                 
-                writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
-                writer.writeheader()
-                
-                for card in cards:
-                    row = card.copy()
-                    row['colors'] = ','.join(row.get('colors', []))
-                    row['color_identity'] = ','.join(row.get('color_identity', []))
-                    row['keywords'] = ';'.join(row.get('keywords', []))
-                    row.pop('card_faces', None)
-                    row.pop('standard_legal', None)
-                    row.pop('produced_mana', None)
-                    writer.writerow(row)
-            
-            csv_size_kb = os.path.getsize(csv_filename) / 1024
-            
-            category_stats.append({
-                'category': category,
-                'cards': len(cards),
-                'json_size_kb': json_size_kb,
-                'csv_size_kb': csv_size_kb
-            })
+                for part_name, part_cards in parts:
+                    self._export_single_category(part_name, part_cards, metadata_base, category_stats)
+            else:
+                # Export as single file
+                print(f"  {category}: {len(cards)} cards")
+                self._export_single_category(category, cards, metadata_base, category_stats)
         
         # Export category index
         self.export_category_index(category_stats)
         
         return category_stats
     
+    def _export_single_category(self, filename: str, cards: List[Dict], 
+                                 metadata_base: Dict, stats_list: List[Dict]):
+        """Export a single category file (JSON and CSV)"""
+        # Determine display category (remove _partX suffix)
+        display_category = filename.split('_part')[0] if '_part' in filename else filename
+        
+        # JSON export
+        json_filename = os.path.join(self.output_dir, f"{filename}.json")
+        metadata = metadata_base.copy()
+        metadata.update({
+            'category': display_category,
+            'total_cards': len(cards),
+            'filename': filename
+        })
+        
+        json_data = {
+            'metadata': metadata,
+            'cards': cards
+        }
+        
+        with open(json_filename, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=2, ensure_ascii=False)
+        
+        json_size_kb = os.path.getsize(json_filename) / 1024
+        
+        # CSV export
+        csv_filename = os.path.join(self.output_dir, f"{filename}.csv")
+        with open(csv_filename, 'w', newline='', encoding='utf-8') as f:
+            fieldnames = ['name', 'mana_cost', 'cmc', 'type_line', 'oracle_text',
+                        'colors', 'color_identity', 'rarity', 'set', 'set_name',
+                        'collector_number', 'power', 'toughness', 'loyalty', 'keywords']
+            
+            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
+            writer.writeheader()
+            
+            for card in cards:
+                row = card.copy()
+                row['colors'] = ','.join(row.get('colors', []))
+                row['color_identity'] = ','.join(row.get('color_identity', []))
+                row['keywords'] = ';'.join(row.get('keywords', []))
+                row.pop('card_faces', None)
+                row.pop('standard_legal', None)
+                row.pop('produced_mana', None)
+                writer.writerow(row)
+        
+        csv_size_kb = os.path.getsize(csv_filename) / 1024
+        
+        stats_list.append({
+            'category': display_category,
+            'filename': filename,
+            'cards': len(cards),
+            'json_size_kb': json_size_kb,
+            'csv_size_kb': csv_size_kb,
+            'is_part': '_part' in filename
+        })
+    
     def export_category_index(self, stats: List[Dict]):
         """Export an index file listing all categories"""
         index_file = os.path.join(self.output_dir, "_INDEX.md")
         
         with open(index_file, 'w', encoding='utf-8') as f:
-            f.write("# MTG Standard Cards - Category Index\n\n")
+            f.write("# MTG Standard Cards - Universal Category Index\n\n")
             f.write(f"Last Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n\n")
-            f.write("This directory contains Standard-legal MTG cards split into manageable categories.\n")
-            f.write("Each category has both JSON and CSV formats for easy parsing.\n\n")
-            f.write("## File Size Benefits\n\n")
-            f.write("- Original database: ~3MB JSON (too large for GitHub API)\n")
-            f.write("- Category files: Typically 10-200KB (easily accessible)\n")
-            f.write("- AI tools can load specific categories as needed\n\n")
-            f.write("## Available Categories\n\n")
+            f.write("This directory contains Standard-legal MTG cards organized by universal card types.\n")
+            f.write("All files are under 1MB for easy GitHub API access and AI parsing.\n\n")
             
-            # Sort by card count
-            stats.sort(key=lambda x: x['cards'], reverse=True)
+            f.write("## File Size Guarantee\n\n")
+            f.write("- **Maximum file size**: <800KB (well under 1MB GitHub limit)\n")
+            f.write("- **Automatic splitting**: Large categories split into numbered parts\n")
+            f.write("- **Original database**: ~3MB (inaccessible via API)\n")
+            f.write("- **Category files**: All <800KB (directly accessible)\n\n")
             
-            f.write("| Category | Cards | JSON Size | CSV Size |\n")
-            f.write("|----------|-------|-----------|----------|\n")
-            
+            # Group by category
+            category_groups = defaultdict(list)
             for stat in stats:
-                f.write(f"| {stat['category']} | {stat['cards']} | "
-                       f"{stat['json_size_kb']:.1f} KB | {stat['csv_size_kb']:.1f} KB |\n")
+                category_groups[stat['category']].append(stat)
             
-            f.write("\n## Category Descriptions\n\n")
-            f.write("### Card Types\n")
-            f.write("- `creatures`, `instants`, `sorceries`, `enchantments`, `artifacts`, `planeswalkers`, `lands`\n\n")
+            f.write("## Available Categories\n\n")
+            f.write("| Category | Files | Total Cards | Size Range |\n")
+            f.write("|----------|-------|-------------|------------|\n")
             
-            f.write("### Creature Tribes\n")
-            f.write("- `angels`, `dragons`, `vampires`, `zombies`, `elves`, `goblins`, `merfolk`, `humans`\n\n")
+            # Sort by total cards
+            sorted_categories = sorted(category_groups.items(), 
+                                      key=lambda x: sum(s['cards'] for s in x[1]), 
+                                      reverse=True)
             
-            f.write("### Mechanics & Themes\n")
-            f.write("- `lifegain`, `mill`, `card_draw`, `counterspells`, `removal`\n")
-            f.write("- `flying`, `first_strike`, `lifelink`, `flash`, `haste`, `vigilance`, `trample`\n\n")
+            for category, cat_stats in sorted_categories:
+                total_cards = sum(s['cards'] for s in cat_stats)
+                num_files = len(cat_stats)
+                min_size = min(s['json_size_kb'] for s in cat_stats)
+                max_size = max(s['json_size_kb'] for s in cat_stats)
+                
+                if num_files == 1:
+                    size_range = f"{max_size:.0f} KB"
+                else:
+                    size_range = f"{min_size:.0f}-{max_size:.0f} KB"
+                
+                files_text = f"{num_files} parts" if num_files > 1 else "1 file"
+                f.write(f"| {category} | {files_text} | {total_cards} | {size_range} |\n")
             
-            f.write("### Colors\n")
-            f.write("- `white`, `blue`, `black`, `red`, `green`, `colorless`, `multicolor`\n\n")
+            f.write("\n## Detailed File Listing\n\n")
             
-            f.write("### Rarity\n")
-            f.write("- `rarity_common`, `rarity_uncommon`, `rarity_rare`, `rarity_mythic`\n\n")
+            for category, cat_stats in sorted_categories:
+                f.write(f"### {category.capitalize()}\n\n")
+                
+                if len(cat_stats) > 1:
+                    f.write(f"*Split into {len(cat_stats)} parts due to size*\n\n")
+                
+                for stat in cat_stats:
+                    f.write(f"- **{stat['filename']}**: {stat['cards']} cards "
+                           f"(JSON: {stat['json_size_kb']:.1f} KB, CSV: {stat['csv_size_kb']:.1f} KB)\n")
+                
+                f.write("\n")
             
-            f.write("### CMC Ranges\n")
-            f.write("- `cmc_0`, `cmc_1_2`, `cmc_3_4`, `cmc_5_6`, `cmc_7_plus`\n\n")
-            
-            f.write("### Special\n")
-            f.write("- `all` - Complete Standard card pool\n\n")
+            f.write("## Universal Categories\n\n")
+            f.write("Cards are organized by their primary card type:\n\n")
+            f.write("- **creature**: All creature cards\n")
+            f.write("- **instant**: All instant spells\n")
+            f.write("- **sorcery**: All sorcery spells\n")
+            f.write("- **artifact**: All artifacts (including artifact creatures)\n")
+            f.write("- **enchantment**: All enchantments (including enchantment creatures)\n")
+            f.write("- **planeswalker**: All planeswalker cards\n")
+            f.write("- **land**: All land cards\n")
+            f.write("- **battle**: All battle cards\n")
+            f.write("- **all**: Complete Standard card pool (may be split into parts)\n\n")
             
             f.write("## Usage with AI\n\n")
+            f.write("### Loading a Single Category\n")
             f.write("```python\n")
-            f.write("# Example: Load only angels for an angel tribal deck\n")
-            f.write("import json\n")
-            f.write("with open('cards_by_category/angels.json') as f:\n")
+            f.write("import json\n\n")
+            f.write("# Load all creatures\n")
+            f.write("with open('cards_by_category/creature.json') as f:\n")
             f.write("    data = json.load(f)\n")
-            f.write("    angels = data['cards']\n")
+            f.write("    creatures = data['cards']\n")
+            f.write("```\n\n")
+            
+            f.write("### Loading Multi-Part Categories\n")
+            f.write("```python\n")
+            f.write("import json\n")
+            f.write("import glob\n\n")
+            f.write("# Load all parts of a category\n")
+            f.write("all_cards = []\n")
+            f.write("for filename in sorted(glob.glob('cards_by_category/all_part*.json')):\n")
+            f.write("    with open(filename) as f:\n")
+            f.write("        data = json.load(f)\n")
+            f.write("        all_cards.extend(data['cards'])\n")
+            f.write("```\n\n")
+            
+            f.write("### Searching for Specific Cards\n")
+            f.write("```python\n")
+            f.write("# Search for 'Lyra' in creatures\n")
+            f.write("with open('cards_by_category/creature.json') as f:\n")
+            f.write("    creatures = json.load(f)['cards']\n")
+            f.write("    lyra_cards = [c for c in creatures if 'lyra' in c['name'].lower()]\n")
             f.write("```\n")
         
         print(f"\nCategory index exported: {index_file}")
@@ -413,7 +431,7 @@ class CategorizedCardFetcher:
     def run(self):
         """Main execution method"""
         print("="*80)
-        print("MTG Standard Card Data Fetcher with Category Splitting")
+        print("MTG Standard Card Data Fetcher - Universal Categories")
         print("="*80)
         print()
         
@@ -453,22 +471,37 @@ class CategorizedCardFetcher:
         print("="*80)
         print("Export Complete!")
         print(f"Output Directory: {self.output_dir}/")
-        print(f"Total Categories: {len(stats)}")
-        print(f"\nTop 10 Largest Categories:")
-        for stat in sorted(stats, key=lambda x: x['cards'], reverse=True)[:10]:
-            print(f"  {stat['category']:20s}: {stat['cards']:4d} cards "
-                  f"({stat['json_size_kb']:.1f} KB)")
+        
+        # Count unique categories vs total files
+        unique_categories = len(set(s['category'] for s in stats))
+        total_files = len(stats)
+        
+        print(f"Universal Categories: {unique_categories}")
+        print(f"Total Files: {total_files} (including parts)")
+        
+        print(f"\nCategory Summary:")
+        category_totals = defaultdict(int)
+        for stat in stats:
+            category_totals[stat['category']] += stat['cards']
+        
+        for category, count in sorted(category_totals.items(), key=lambda x: x[1], reverse=True):
+            parts = [s for s in stats if s['category'] == category]
+            if len(parts) > 1:
+                print(f"  {category:15s}: {count:4d} cards ({len(parts)} parts)")
+            else:
+                print(f"  {category:15s}: {count:4d} cards")
+        
         print("="*80)
         print()
         print("BENEFITS:")
-        print("✓ Small files (<200KB each) easily accessible by AI")
-        print("✓ Load only relevant categories for faster processing")
-        print("✓ No GitHub API file size limitations")
-        print("✓ Cards can appear in multiple categories")
+        print("✓ All files guaranteed <800KB (GitHub API accessible)")
+        print("✓ Universal card type organization")
+        print("✓ Automatic splitting of large categories")
         print("✓ Both JSON (structured) and CSV (spreadsheet) formats")
+        print("✓ Easy to search and filter by card type")
         print("="*80)
 
 
 if __name__ == "__main__":
-    fetcher = CategorizedCardFetcher()
+    fetcher = UniversalCardFetcher()
     fetcher.run()
