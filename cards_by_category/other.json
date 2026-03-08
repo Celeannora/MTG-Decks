@@ -1,0 +1,725 @@
+{
+  "metadata": {
+    "format": "Standard",
+    "last_updated": "2026-03-08T06:11:55.595655",
+    "source": "Scryfall Bulk Data API",
+    "category": "other",
+    "total_cards": 20,
+    "filename": "other"
+  },
+  "cards": [
+    {
+      "name": "Blood Crypt // Blood Crypt",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "B",
+        "R"
+      ],
+      "keywords": [],
+      "set": "ECL",
+      "set_name": "Lorwyn Eclipsed",
+      "rarity": "rare",
+      "collector_number": "349",
+      "card_faces": [
+        {
+          "name": "Blood Crypt",
+          "mana_cost": "",
+          "type_line": "Land — Swamp Mountain",
+          "oracle_text": "({T}: Add {B} or {R}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+        },
+        {
+          "name": "Blood Crypt",
+          "mana_cost": "",
+          "type_line": "Land — Swamp Mountain",
+          "oracle_text": "({T}: Add {B} or {R}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+        }
+      ],
+      "produced_mana": [
+        "B",
+        "R"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Bloomvine Regent // Claim Territory // Bloomvine Regent",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [
+        "Flying"
+      ],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "rare",
+      "collector_number": "381",
+      "card_faces": [
+        {
+          "name": "Bloomvine Regent",
+          "mana_cost": "{3}{G}{G}",
+          "type_line": "Creature — Dragon",
+          "oracle_text": "Flying\nWhenever this creature or another Dragon you control enters, you gain 3 life.",
+          "power": "4",
+          "toughness": "5"
+        },
+        {
+          "name": "Claim Territory",
+          "mana_cost": "{2}{G}",
+          "type_line": "Sorcery — Omen",
+          "oracle_text": "Flying\nWhenever this creature or another Dragon you control enters, you gain 3 life.",
+          "power": "4",
+          "toughness": "5"
+        }
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Clarion Conqueror // Clarion Conqueror",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [
+        "Flying"
+      ],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "rare",
+      "collector_number": "377",
+      "card_faces": [
+        {
+          "name": "Clarion Conqueror",
+          "mana_cost": "{2}{W}",
+          "type_line": "Creature — Dragon",
+          "oracle_text": "Flying\nActivated abilities of artifacts, creatures, and planeswalkers can't be activated.",
+          "power": "3",
+          "toughness": "3"
+        },
+        {
+          "name": "Clarion Conqueror",
+          "mana_cost": "{2}{W}",
+          "type_line": "Creature — Dragon",
+          "oracle_text": "Flying\nActivated abilities of artifacts, creatures, and planeswalkers can't be activated.",
+          "power": "3",
+          "toughness": "3"
+        }
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Darksteel Colossus // Darksteel Colossus",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [],
+      "keywords": [
+        "Indestructible",
+        "Trample"
+      ],
+      "set": "SLD",
+      "set_name": "Secret Lair Drop",
+      "rarity": "mythic",
+      "collector_number": "1081",
+      "card_faces": [
+        {
+          "name": "Darksteel Colossus",
+          "mana_cost": "{11}",
+          "type_line": "Artifact Creature — Golem",
+          "oracle_text": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nIndestructible (Damage and effects that say \"destroy\" don't destroy this creature.)\nIf Darksteel Colossus would be put into a graveyard from anywhere, reveal Darksteel Colossus and shuffle it into its owner's library instead.",
+          "power": "11",
+          "toughness": "11"
+        },
+        {
+          "name": "Darksteel Colossus",
+          "mana_cost": "{11}",
+          "type_line": "Artifact Creature — Golem",
+          "oracle_text": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nIndestructible (Damage and effects that say \"destroy\" don't destroy this creature.)\nIf Darksteel Colossus would be put into a graveyard from anywhere, reveal Darksteel Colossus and shuffle it into its owner's library instead.",
+          "power": "11",
+          "toughness": "11"
+        }
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Death Baron // Death Baron",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "SLD",
+      "set_name": "Secret Lair Drop",
+      "rarity": "rare",
+      "collector_number": "1458",
+      "card_faces": [
+        {
+          "name": "Death Baron",
+          "mana_cost": "{1}{B}{B}",
+          "type_line": "Creature — Zombie Wizard",
+          "oracle_text": "Skeletons you control and other Zombies you control get +1/+1 and have deathtouch. (Any amount of damage they deal to a creature is enough to destroy it.)",
+          "power": "2",
+          "toughness": "2"
+        },
+        {
+          "name": "Death Baron",
+          "mana_cost": "{1}{B}{B}",
+          "type_line": "Creature — Zombie Wizard",
+          "oracle_text": "Skeletons you control and other Zombies you control get +1/+1 and have deathtouch. (Any amount of damage they deal to a creature is enough to destroy it.)",
+          "power": "2",
+          "toughness": "2"
+        }
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Etali, Primal Storm // Etali, Primal Storm",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "SLD",
+      "set_name": "Secret Lair Drop",
+      "rarity": "rare",
+      "collector_number": "1123",
+      "card_faces": [
+        {
+          "name": "Etali, Primal Storm",
+          "mana_cost": "{4}{R}{R}",
+          "type_line": "Legendary Creature — Elder Dinosaur",
+          "oracle_text": "Whenever Etali attacks, exile the top card of each player's library, then you may cast any number of spells from among those cards without paying their mana costs.",
+          "power": "6",
+          "toughness": "6"
+        },
+        {
+          "name": "Etali, Primal Storm",
+          "mana_cost": "{4}{R}{R}",
+          "type_line": "Legendary Creature — Elder Dinosaur",
+          "oracle_text": "Whenever Etali attacks, exile the top card of each player's library, then you may cast any number of spells from among those cards without paying their mana costs.",
+          "power": "6",
+          "toughness": "6"
+        }
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Forest // Forest",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "REX",
+      "set_name": "Jurassic World Collection",
+      "rarity": "common",
+      "collector_number": "25",
+      "card_faces": [
+        {
+          "name": "Forest",
+          "mana_cost": "",
+          "type_line": "Basic Land — Forest",
+          "oracle_text": "({T}: Add {G}.)"
+        },
+        {
+          "name": "Forest",
+          "mana_cost": "",
+          "type_line": "Basic Land — Forest",
+          "oracle_text": "({T}: Add {G}.)"
+        }
+      ],
+      "produced_mana": [
+        "G"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Ghalta, Primal Hunger // Ghalta, Primal Hunger",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [
+        "Trample"
+      ],
+      "set": "SLD",
+      "set_name": "Secret Lair Drop",
+      "rarity": "rare",
+      "collector_number": "1124",
+      "card_faces": [
+        {
+          "name": "Ghalta, Primal Hunger",
+          "mana_cost": "{10}{G}{G}",
+          "type_line": "Legendary Creature — Elder Dinosaur",
+          "oracle_text": "This spell costs {X} less to cast, where X is the total power of creatures you control.\nTrample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)",
+          "power": "12",
+          "toughness": "12"
+        },
+        {
+          "name": "Ghalta, Primal Hunger",
+          "mana_cost": "{10}{G}{G}",
+          "type_line": "Legendary Creature — Elder Dinosaur",
+          "oracle_text": "This spell costs {X} less to cast, where X is the total power of creatures you control.\nTrample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)",
+          "power": "12",
+          "toughness": "12"
+        }
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Hallowed Fountain // Hallowed Fountain",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "U",
+        "W"
+      ],
+      "keywords": [],
+      "set": "ECL",
+      "set_name": "Lorwyn Eclipsed",
+      "rarity": "rare",
+      "collector_number": "347",
+      "card_faces": [
+        {
+          "name": "Hallowed Fountain",
+          "mana_cost": "",
+          "type_line": "Land — Plains Island",
+          "oracle_text": "({T}: Add {W} or {U}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+        },
+        {
+          "name": "Hallowed Fountain",
+          "mana_cost": "",
+          "type_line": "Land — Plains Island",
+          "oracle_text": "({T}: Add {W} or {U}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+        }
+      ],
+      "produced_mana": [
+        "U",
+        "W"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Island // Island",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [],
+      "set": "REX",
+      "set_name": "Jurassic World Collection",
+      "rarity": "common",
+      "collector_number": "22",
+      "card_faces": [
+        {
+          "name": "Island",
+          "mana_cost": "",
+          "type_line": "Basic Land — Island",
+          "oracle_text": "({T}: Add {U}.)"
+        },
+        {
+          "name": "Island",
+          "mana_cost": "",
+          "type_line": "Basic Land — Island",
+          "oracle_text": "({T}: Add {U}.)"
+        }
+      ],
+      "produced_mana": [
+        "U"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Magmatic Hellkite // Magmatic Hellkite",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [
+        "Flying"
+      ],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "rare",
+      "collector_number": "380",
+      "card_faces": [
+        {
+          "name": "Magmatic Hellkite",
+          "mana_cost": "{2}{R}{R}",
+          "type_line": "Creature — Dragon",
+          "oracle_text": "Flying\nWhen this creature enters, destroy target nonbasic land an opponent controls. Its controller searches their library for a basic land card, puts it onto the battlefield tapped with a stun counter on it, then shuffles. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+          "power": "4",
+          "toughness": "5"
+        },
+        {
+          "name": "Magmatic Hellkite",
+          "mana_cost": "{2}{R}{R}",
+          "type_line": "Creature — Dragon",
+          "oracle_text": "Flying\nWhen this creature enters, destroy target nonbasic land an opponent controls. Its controller searches their library for a basic land card, puts it onto the battlefield tapped with a stun counter on it, then shuffles. (If a permanent with a stun counter would become untapped, remove one from it instead.)",
+          "power": "4",
+          "toughness": "5"
+        }
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Marang River Regent // Coil and Catch // Marang River Regent",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [
+        "Flying"
+      ],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "rare",
+      "collector_number": "378",
+      "card_faces": [
+        {
+          "name": "Marang River Regent",
+          "mana_cost": "{4}{U}{U}",
+          "type_line": "Creature — Dragon",
+          "oracle_text": "Flying\nWhen this creature enters, return up to two other target nonland permanents to their owners' hands.",
+          "power": "6",
+          "toughness": "7"
+        },
+        {
+          "name": "Coil and Catch",
+          "mana_cost": "{3}{U}",
+          "type_line": "Instant — Omen",
+          "oracle_text": "Flying\nWhen this creature enters, return up to two other target nonland permanents to their owners' hands.",
+          "power": "6",
+          "toughness": "7"
+        }
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Mountain // Mountain",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "REX",
+      "set_name": "Jurassic World Collection",
+      "rarity": "common",
+      "collector_number": "24",
+      "card_faces": [
+        {
+          "name": "Mountain",
+          "mana_cost": "",
+          "type_line": "Basic Land — Mountain",
+          "oracle_text": "({T}: Add {R}.)"
+        },
+        {
+          "name": "Mountain",
+          "mana_cost": "",
+          "type_line": "Basic Land — Mountain",
+          "oracle_text": "({T}: Add {R}.)"
+        }
+      ],
+      "produced_mana": [
+        "R"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Overgrown Tomb // Overgrown Tomb",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "B",
+        "G"
+      ],
+      "keywords": [],
+      "set": "ECL",
+      "set_name": "Lorwyn Eclipsed",
+      "rarity": "rare",
+      "collector_number": "350",
+      "card_faces": [
+        {
+          "name": "Overgrown Tomb",
+          "mana_cost": "",
+          "type_line": "Land — Swamp Forest",
+          "oracle_text": "({T}: Add {B} or {G}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+        },
+        {
+          "name": "Overgrown Tomb",
+          "mana_cost": "",
+          "type_line": "Land — Swamp Forest",
+          "oracle_text": "({T}: Add {B} or {G}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+        }
+      ],
+      "produced_mana": [
+        "B",
+        "G"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Plains // Plains",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "REX",
+      "set_name": "Jurassic World Collection",
+      "rarity": "common",
+      "collector_number": "21",
+      "card_faces": [
+        {
+          "name": "Plains",
+          "mana_cost": "",
+          "type_line": "Basic Land — Plains",
+          "oracle_text": "({T}: Add {W}.)"
+        },
+        {
+          "name": "Plains",
+          "mana_cost": "",
+          "type_line": "Basic Land — Plains",
+          "oracle_text": "({T}: Add {W}.)"
+        }
+      ],
+      "produced_mana": [
+        "W"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Scavenger Regent // Exude Toxin // Scavenger Regent",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [
+        "Flying",
+        "Ward"
+      ],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "rare",
+      "collector_number": "379",
+      "card_faces": [
+        {
+          "name": "Scavenger Regent",
+          "mana_cost": "{3}{B}",
+          "type_line": "Creature — Dragon",
+          "oracle_text": "Flying\nWard—Discard a card.",
+          "power": "4",
+          "toughness": "4"
+        },
+        {
+          "name": "Exude Toxin",
+          "mana_cost": "{X}{B}{B}",
+          "type_line": "Sorcery — Omen",
+          "oracle_text": "Flying\nWard—Discard a card.",
+          "power": "4",
+          "toughness": "4"
+        }
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Steam Vents // Steam Vents",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "R",
+        "U"
+      ],
+      "keywords": [],
+      "set": "ECL",
+      "set_name": "Lorwyn Eclipsed",
+      "rarity": "rare",
+      "collector_number": "348",
+      "card_faces": [
+        {
+          "name": "Steam Vents",
+          "mana_cost": "",
+          "type_line": "Land — Island Mountain",
+          "oracle_text": "({T}: Add {U} or {R}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+        },
+        {
+          "name": "Steam Vents",
+          "mana_cost": "",
+          "type_line": "Land — Island Mountain",
+          "oracle_text": "({T}: Add {U} or {R}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+        }
+      ],
+      "produced_mana": [
+        "R",
+        "U"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Swamp // Swamp",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "REX",
+      "set_name": "Jurassic World Collection",
+      "rarity": "common",
+      "collector_number": "23",
+      "card_faces": [
+        {
+          "name": "Swamp",
+          "mana_cost": "",
+          "type_line": "Basic Land — Swamp",
+          "oracle_text": "({T}: Add {B}.)"
+        },
+        {
+          "name": "Swamp",
+          "mana_cost": "",
+          "type_line": "Basic Land — Swamp",
+          "oracle_text": "({T}: Add {B}.)"
+        }
+      ],
+      "produced_mana": [
+        "B"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Temple Garden // Temple Garden",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "G",
+        "W"
+      ],
+      "keywords": [],
+      "set": "ECL",
+      "set_name": "Lorwyn Eclipsed",
+      "rarity": "rare",
+      "collector_number": "351",
+      "card_faces": [
+        {
+          "name": "Temple Garden",
+          "mana_cost": "",
+          "type_line": "Land — Forest Plains",
+          "oracle_text": "({T}: Add {G} or {W}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+        },
+        {
+          "name": "Temple Garden",
+          "mana_cost": "",
+          "type_line": "Land — Forest Plains",
+          "oracle_text": "({T}: Add {G} or {W}.)\nAs this land enters, you may pay 2 life. If you don't, it enters tapped."
+        }
+      ],
+      "produced_mana": [
+        "G",
+        "W"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Ugin, Eye of the Storms // Ugin, Eye of the Storms",
+      "mana_cost": "",
+      "cmc": 0,
+      "type_line": "",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [],
+      "keywords": [],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "mythic",
+      "collector_number": "382",
+      "card_faces": [
+        {
+          "name": "Ugin, Eye of the Storms",
+          "mana_cost": "{7}",
+          "type_line": "Legendary Planeswalker — Ugin",
+          "oracle_text": "When you cast this spell, exile up to one target permanent that's one or more colors.\nWhenever you cast a colorless spell, exile up to one target permanent that's one or more colors.\n+2: You gain 3 life and draw a card.\n0: Add {C}{C}{C}.\n−11: Search your library for any number of colorless nonland cards, exile them, then shuffle. Until end of turn, you may cast those cards without paying their mana costs.",
+          "loyalty": "7"
+        },
+        {
+          "name": "Ugin, Eye of the Storms",
+          "mana_cost": "{7}",
+          "type_line": "Legendary Planeswalker — Ugin",
+          "oracle_text": "When you cast this spell, exile up to one target permanent that's one or more colors.\nWhenever you cast a colorless spell, exile up to one target permanent that's one or more colors.\n+2: You gain 3 life and draw a card.\n0: Add {C}{C}{C}.\n−11: Search your library for any number of colorless nonland cards, exile them, then shuffle. Until end of turn, you may cast those cards without paying their mana costs.",
+          "loyalty": "7"
+        }
+      ],
+      "produced_mana": [
+        "C"
+      ],
+      "standard_legal": true
+    }
+  ]
+}

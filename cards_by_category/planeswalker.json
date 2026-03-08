@@ -1,0 +1,2229 @@
+{
+  "metadata": {
+    "format": "Standard",
+    "last_updated": "2026-03-08T06:11:55.595655",
+    "source": "Scryfall Bulk Data API",
+    "category": "planeswalker",
+    "total_cards": 103,
+    "filename": "planeswalker"
+  },
+  "cards": [
+    {
+      "name": "Ajani, Caller of the Pride",
+      "mana_cost": "{1}{W}{W}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Ajani",
+      "oracle_text": "+1: Put a +1/+1 counter on up to one target creature.\n−3: Target creature gains flying and double strike until end of turn.\n−8: Create X 2/2 white Cat creature tokens, where X is your life total.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "M14",
+      "set_name": "Magic 2014",
+      "rarity": "mythic",
+      "collector_number": "1",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ajani, Caller of the Pride",
+      "mana_cost": "{1}{W}{W}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Ajani",
+      "oracle_text": "+1: Put a +1/+1 counter on up to one target creature.\n−3: Target creature gains flying and double strike until end of turn.\n−8: Create X 2/2 white Cat creature tokens, where X is your life total.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "417",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ajani, Caller of the Pride",
+      "mana_cost": "{1}{W}{W}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Ajani",
+      "oracle_text": "+1: Put a +1/+1 counter on up to one target creature.\n−3: Target creature gains flying and double strike until end of turn.\n−8: Create X 2/2 white Cat creature tokens, where X is your life total.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "134",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ajani, Caller of the Pride",
+      "mana_cost": "{1}{W}{W}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Ajani",
+      "oracle_text": "+1: Put a +1/+1 counter on up to one target creature.\n−3: Target creature gains flying and double strike until end of turn.\n−8: Create X 2/2 white Cat creature tokens, where X is your life total.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "M13",
+      "set_name": "Magic 2013",
+      "rarity": "mythic",
+      "collector_number": "1",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ajani, Caller of the Pride",
+      "mana_cost": "{1}{W}{W}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Ajani",
+      "oracle_text": "+1: Put a +1/+1 counter on up to one target creature.\n−3: Target creature gains flying and double strike until end of turn.\n−8: Create X 2/2 white Cat creature tokens, where X is your life total.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "SCD",
+      "set_name": "Starter Commander Decks",
+      "rarity": "mythic",
+      "collector_number": "6",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ajani, Caller of the Pride",
+      "mana_cost": "{1}{W}{W}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Ajani",
+      "oracle_text": "+1: Put a +1/+1 counter on up to one target creature.\n−3: Target creature gains flying and double strike until end of turn.\n−8: Create X 2/2 white Cat creature tokens, where X is your life total.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "357",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ajani, Caller of the Pride",
+      "mana_cost": "{1}{W}{W}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Ajani",
+      "oracle_text": "+1: Put a +1/+1 counter on up to one target creature.\n−3: Target creature gains flying and double strike until end of turn.\n−8: Create X 2/2 white Cat creature tokens, where X is your life total.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "PSDC",
+      "set_name": "San Diego Comic-Con 2013",
+      "rarity": "mythic",
+      "collector_number": "1★",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ajani, Caller of the Pride",
+      "mana_cost": "{1}{W}{W}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Ajani",
+      "oracle_text": "+1: Put a +1/+1 counter on up to one target creature.\n−3: Target creature gains flying and double strike until end of turn.\n−8: Create X 2/2 white Cat creature tokens, where X is your life total.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "PFDN",
+      "set_name": "Foundations Promos",
+      "rarity": "mythic",
+      "collector_number": "134s",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ajani, Outland Chaperone",
+      "mana_cost": "{1}{W}{W}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Ajani",
+      "oracle_text": "+1: Create a 1/1 green and white Kithkin creature token.\n−2: Ajani deals 4 damage to target tapped creature.\n−8: Look at the top X cards of your library, where X is your life total. You may put any number of nonland permanent cards with mana value 3 or less from among them onto the battlefield. Then shuffle.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "ECL",
+      "set_name": "Lorwyn Eclipsed",
+      "rarity": "mythic",
+      "collector_number": "4",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Ajani, Outland Chaperone",
+      "mana_cost": "{1}{W}{W}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Ajani",
+      "oracle_text": "+1: Create a 1/1 green and white Kithkin creature token.\n−2: Ajani deals 4 damage to target tapped creature.\n−8: Look at the top X cards of your library, where X is your life total. You may put any number of nonland permanent cards with mana value 3 or less from among them onto the battlefield. Then shuffle.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "ECL",
+      "set_name": "Lorwyn Eclipsed",
+      "rarity": "mythic",
+      "collector_number": "284",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Ajani, Outland Chaperone",
+      "mana_cost": "{1}{W}{W}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Ajani",
+      "oracle_text": "+1: Create a 1/1 green and white Kithkin creature token.\n−2: Ajani deals 4 damage to target tapped creature.\n−8: Look at the top X cards of your library, where X is your life total. You may put any number of nonland permanent cards with mana value 3 or less from among them onto the battlefield. Then shuffle.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "PECL",
+      "set_name": "Lorwyn Eclipsed Promos",
+      "rarity": "mythic",
+      "collector_number": "4p",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Ashiok, Wicked Manipulator",
+      "mana_cost": "{3}{B}{B}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Ashiok",
+      "oracle_text": "If you would pay life while your library has at least that many cards in it, exile that many cards from the top of your library instead.\n+1: Look at the top two cards of your library. Exile one of them and put the other into your hand.\n−2: Create two 1/1 black Nightmare creature tokens with \"At the beginning of combat on your turn, if a card was put into exile this turn, put a +1/+1 counter on this token.\"\n−7: Target player exiles the top X cards of their library, where X is the total mana value of cards you own in exile.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "PWOE",
+      "set_name": "Wilds of Eldraine Promos",
+      "rarity": "mythic",
+      "collector_number": "78p",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Ashiok, Wicked Manipulator",
+      "mana_cost": "{3}{B}{B}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Ashiok",
+      "oracle_text": "If you would pay life while your library has at least that many cards in it, exile that many cards from the top of your library instead.\n+1: Look at the top two cards of your library. Exile one of them and put the other into your hand.\n−2: Create two 1/1 black Nightmare creature tokens with \"At the beginning of combat on your turn, if a card was put into exile this turn, put a +1/+1 counter on this token.\"\n−7: Target player exiles the top X cards of their library, where X is the total mana value of cards you own in exile.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "WOE",
+      "set_name": "Wilds of Eldraine",
+      "rarity": "mythic",
+      "collector_number": "78",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Ashiok, Wicked Manipulator",
+      "mana_cost": "{3}{B}{B}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Ashiok",
+      "oracle_text": "If you would pay life while your library has at least that many cards in it, exile that many cards from the top of your library instead.\n+1: Look at the top two cards of your library. Exile one of them and put the other into your hand.\n−2: Create two 1/1 black Nightmare creature tokens with \"At the beginning of combat on your turn, if a card was put into exile this turn, put a +1/+1 counter on this token.\"\n−7: Target player exiles the top X cards of their library, where X is the total mana value of cards you own in exile.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "PWOE",
+      "set_name": "Wilds of Eldraine Promos",
+      "rarity": "mythic",
+      "collector_number": "78s",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Ashiok, Wicked Manipulator",
+      "mana_cost": "{3}{B}{B}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Ashiok",
+      "oracle_text": "If you would pay life while your library has at least that many cards in it, exile that many cards from the top of your library instead.\n+1: Look at the top two cards of your library. Exile one of them and put the other into your hand.\n−2: Create two 1/1 black Nightmare creature tokens with \"At the beginning of combat on your turn, if a card was put into exile this turn, put a +1/+1 counter on this token.\"\n−7: Target player exiles the top X cards of their library, where X is the total mana value of cards you own in exile.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "WOE",
+      "set_name": "Wilds of Eldraine",
+      "rarity": "mythic",
+      "collector_number": "297",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Chandra, Flameshaper",
+      "mana_cost": "{5}{R}{R}",
+      "cmc": 7.0,
+      "type_line": "Legendary Planeswalker — Chandra",
+      "oracle_text": "+2: Add {R}{R}{R}. Exile the top three cards of your library. Choose one. You may play that card this turn.\n+1: Create a token that's a copy of target creature you control, except it has haste and \"At the beginning of the end step, sacrifice this token.\"\n−4: Chandra deals 8 damage divided as you choose among any number of target creatures and/or planeswalkers.",
+      "colors": [
+        "R"
+      ],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "360",
+      "loyalty": "6",
+      "produced_mana": [
+        "R"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Chandra, Flameshaper",
+      "mana_cost": "{5}{R}{R}",
+      "cmc": 7.0,
+      "type_line": "Legendary Planeswalker — Chandra",
+      "oracle_text": "+2: Add {R}{R}{R}. Exile the top three cards of your library. Choose one. You may play that card this turn.\n+1: Create a token that's a copy of target creature you control, except it has haste and \"At the beginning of the end step, sacrifice this token.\"\n−4: Chandra deals 8 damage divided as you choose among any number of target creatures and/or planeswalkers.",
+      "colors": [
+        "R"
+      ],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "PFDN",
+      "set_name": "Foundations Promos",
+      "rarity": "mythic",
+      "collector_number": "81s",
+      "loyalty": "6",
+      "produced_mana": [
+        "R"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Chandra, Flameshaper",
+      "mana_cost": "{5}{R}{R}",
+      "cmc": 7.0,
+      "type_line": "Legendary Planeswalker — Chandra",
+      "oracle_text": "+2: Add {R}{R}{R}. Exile the top three cards of your library. Choose one. You may play that card this turn.\n+1: Create a token that's a copy of target creature you control, except it has haste and \"At the beginning of the end step, sacrifice this token.\"\n−4: Chandra deals 8 damage divided as you choose among any number of target creatures and/or planeswalkers.",
+      "colors": [
+        "R"
+      ],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "81",
+      "loyalty": "6",
+      "produced_mana": [
+        "R"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Chandra, Flameshaper",
+      "mana_cost": "{5}{R}{R}",
+      "cmc": 7.0,
+      "type_line": "Legendary Planeswalker — Chandra",
+      "oracle_text": "+2: Add {R}{R}{R}. Exile the top three cards of your library. Choose one. You may play that card this turn.\n+1: Create a token that's a copy of target creature you control, except it has haste and \"At the beginning of the end step, sacrifice this token.\"\n−4: Chandra deals 8 damage divided as you choose among any number of target creatures and/or planeswalkers.",
+      "colors": [
+        "R"
+      ],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "420",
+      "loyalty": "6",
+      "produced_mana": [
+        "R"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Chandra, Spark Hunter",
+      "mana_cost": "{3}{R}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Chandra",
+      "oracle_text": "At the beginning of combat on your turn, choose up to one target Vehicle you control. Until end of turn, it becomes an artifact creature and gains haste.\n+2: You may sacrifice an artifact or discard a card. If you do, draw a card.\n0: Create a 3/2 colorless Vehicle artifact token with crew 1.\n−7: You get an emblem with \"Whenever an artifact you control enters, this emblem deals 3 damage to any target.\"",
+      "colors": [
+        "R"
+      ],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "DFT",
+      "set_name": "Aetherdrift",
+      "rarity": "mythic",
+      "collector_number": "116",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Chandra, Spark Hunter",
+      "mana_cost": "{3}{R}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Chandra",
+      "oracle_text": "At the beginning of combat on your turn, choose up to one target Vehicle you control. Until end of turn, it becomes an artifact creature and gains haste.\n+2: You may sacrifice an artifact or discard a card. If you do, draw a card.\n0: Create a 3/2 colorless Vehicle artifact token with crew 1.\n−7: You get an emblem with \"Whenever an artifact you control enters, this emblem deals 3 damage to any target.\"",
+      "colors": [
+        "R"
+      ],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "DFT",
+      "set_name": "Aetherdrift",
+      "rarity": "mythic",
+      "collector_number": "456",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Chandra, Spark Hunter",
+      "mana_cost": "{3}{R}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Chandra",
+      "oracle_text": "At the beginning of combat on your turn, choose up to one target Vehicle you control. Until end of turn, it becomes an artifact creature and gains haste.\n+2: You may sacrifice an artifact or discard a card. If you do, draw a card.\n0: Create a 3/2 colorless Vehicle artifact token with crew 1.\n−7: You get an emblem with \"Whenever an artifact you control enters, this emblem deals 3 damage to any target.\"",
+      "colors": [
+        "R"
+      ],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "PDFT",
+      "set_name": "Aetherdrift Promos",
+      "rarity": "mythic",
+      "collector_number": "116p",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Chandra, Spark Hunter",
+      "mana_cost": "{3}{R}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Chandra",
+      "oracle_text": "At the beginning of combat on your turn, choose up to one target Vehicle you control. Until end of turn, it becomes an artifact creature and gains haste.\n+2: You may sacrifice an artifact or discard a card. If you do, draw a card.\n0: Create a 3/2 colorless Vehicle artifact token with crew 1.\n−7: You get an emblem with \"Whenever an artifact you control enters, this emblem deals 3 damage to any target.\"",
+      "colors": [
+        "R"
+      ],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "DFT",
+      "set_name": "Aetherdrift",
+      "rarity": "mythic",
+      "collector_number": "401",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Chandra, Spark Hunter",
+      "mana_cost": "{3}{R}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Chandra",
+      "oracle_text": "At the beginning of combat on your turn, choose up to one target Vehicle you control. Until end of turn, it becomes an artifact creature and gains haste.\n+2: You may sacrifice an artifact or discard a card. If you do, draw a card.\n0: Create a 3/2 colorless Vehicle artifact token with crew 1.\n−7: You get an emblem with \"Whenever an artifact you control enters, this emblem deals 3 damage to any target.\"",
+      "colors": [
+        "R"
+      ],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "PDFT",
+      "set_name": "Aetherdrift Promos",
+      "rarity": "mythic",
+      "collector_number": "116s",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Chandra, Spark Hunter",
+      "mana_cost": "{3}{R}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Chandra",
+      "oracle_text": "At the beginning of combat on your turn, choose up to one target Vehicle you control. Until end of turn, it becomes an artifact creature and gains haste.\n+2: You may sacrifice an artifact or discard a card. If you do, draw a card.\n0: Create a 3/2 colorless Vehicle artifact token with crew 1.\n−7: You get an emblem with \"Whenever an artifact you control enters, this emblem deals 3 damage to any target.\"",
+      "colors": [
+        "R"
+      ],
+      "color_identity": [
+        "R"
+      ],
+      "keywords": [],
+      "set": "DFT",
+      "set_name": "Aetherdrift",
+      "rarity": "mythic",
+      "collector_number": "411",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Elspeth, Storm Slayer",
+      "mana_cost": "{3}{W}{W}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Elspeth",
+      "oracle_text": "If one or more tokens would be created under your control, twice that many of those tokens are created instead.\n+1: Create a 1/1 white Soldier creature token.\n0: Put a +1/+1 counter on each creature you control. Those creatures gain flying until your next turn.\n−3: Destroy target creature an opponent controls with mana value 3 or greater.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "mythic",
+      "collector_number": "398",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Elspeth, Storm Slayer",
+      "mana_cost": "{3}{W}{W}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Elspeth",
+      "oracle_text": "If one or more tokens would be created under your control, twice that many of those tokens are created instead.\n+1: Create a 1/1 white Soldier creature token.\n0: Put a +1/+1 counter on each creature you control. Those creatures gain flying until your next turn.\n−3: Destroy target creature an opponent controls with mana value 3 or greater.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "PTDM",
+      "set_name": "Tarkir: Dragonstorm Promos",
+      "rarity": "mythic",
+      "collector_number": "11s",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Elspeth, Storm Slayer",
+      "mana_cost": "{3}{W}{W}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Elspeth",
+      "oracle_text": "If one or more tokens would be created under your control, twice that many of those tokens are created instead.\n+1: Create a 1/1 white Soldier creature token.\n0: Put a +1/+1 counter on each creature you control. Those creatures gain flying until your next turn.\n−3: Destroy target creature an opponent controls with mana value 3 or greater.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "mythic",
+      "collector_number": "11",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Elspeth, Storm Slayer",
+      "mana_cost": "{3}{W}{W}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Elspeth",
+      "oracle_text": "If one or more tokens would be created under your control, twice that many of those tokens are created instead.\n+1: Create a 1/1 white Soldier creature token.\n0: Put a +1/+1 counter on each creature you control. Those creatures gain flying until your next turn.\n−3: Destroy target creature an opponent controls with mana value 3 or greater.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "PTDM",
+      "set_name": "Tarkir: Dragonstorm Promos",
+      "rarity": "mythic",
+      "collector_number": "11p",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Elspeth, Storm Slayer",
+      "mana_cost": "{3}{W}{W}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Elspeth",
+      "oracle_text": "If one or more tokens would be created under your control, twice that many of those tokens are created instead.\n+1: Create a 1/1 white Soldier creature token.\n0: Put a +1/+1 counter on each creature you control. Those creatures gain flying until your next turn.\n−3: Destroy target creature an opponent controls with mana value 3 or greater.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "mythic",
+      "collector_number": "411",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Elspeth, Storm Slayer",
+      "mana_cost": "{3}{W}{W}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Elspeth",
+      "oracle_text": "If one or more tokens would be created under your control, twice that many of those tokens are created instead.\n+1: Create a 1/1 white Soldier creature token.\n0: Put a +1/+1 counter on each creature you control. Those creatures gain flying until your next turn.\n−3: Destroy target creature an opponent controls with mana value 3 or greater.",
+      "colors": [
+        "W"
+      ],
+      "color_identity": [
+        "W"
+      ],
+      "keywords": [],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "mythic",
+      "collector_number": "401",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Jace Reawakened",
+      "mana_cost": "{U}{U}",
+      "cmc": 2.0,
+      "type_line": "Legendary Planeswalker — Jace",
+      "oracle_text": "You can't cast Jace Reawakened during your first, second, or third turns of the game.\n+1: Draw a card, then discard a card.\n+1: You may exile a nonland card with mana value 3 or less from your hand. If you do, it becomes plotted.\n−6: Until end of turn, whenever you cast a spell, copy it. You may choose new targets for the copy.",
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [
+        "Plot"
+      ],
+      "set": "POTJ",
+      "set_name": "Outlaws of Thunder Junction Promos",
+      "rarity": "mythic",
+      "collector_number": "271p",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Jace Reawakened",
+      "mana_cost": "{U}{U}",
+      "cmc": 2.0,
+      "type_line": "Legendary Planeswalker — Jace",
+      "oracle_text": "You can't cast Jace Reawakened during your first, second, or third turns of the game.\n+1: Draw a card, then discard a card.\n+1: You may exile a nonland card with mana value 3 or less from your hand. If you do, it becomes plotted.\n−6: Until end of turn, whenever you cast a spell, copy it. You may choose new targets for the copy.",
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [
+        "Plot"
+      ],
+      "set": "PWCS",
+      "set_name": "Planeswalker Championship Promos",
+      "rarity": "mythic",
+      "collector_number": "2024-09",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Jace Reawakened",
+      "mana_cost": "{U}{U}",
+      "cmc": 2.0,
+      "type_line": "Legendary Planeswalker — Jace",
+      "oracle_text": "You can't cast Jace Reawakened during your first, second, or third turns of the game.\n+1: Draw a card, then discard a card.\n+1: You may exile a nonland card with mana value 3 or less from your hand. If you do, it becomes plotted.\n−6: Until end of turn, whenever you cast a spell, copy it. You may choose new targets for the copy.",
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [
+        "Plot"
+      ],
+      "set": "POTJ",
+      "set_name": "Outlaws of Thunder Junction Promos",
+      "rarity": "mythic",
+      "collector_number": "271s",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Jace Reawakened",
+      "mana_cost": "{U}{U}",
+      "cmc": 2.0,
+      "type_line": "Legendary Planeswalker — Jace",
+      "oracle_text": "You can't cast Jace Reawakened during your first, second, or third turns of the game.\n+1: Draw a card, then discard a card.\n+1: You may exile a nonland card with mana value 3 or less from your hand. If you do, it becomes plotted.\n−6: Until end of turn, whenever you cast a spell, copy it. You may choose new targets for the copy.",
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [
+        "Plot"
+      ],
+      "set": "OTJ",
+      "set_name": "Outlaws of Thunder Junction",
+      "rarity": "mythic",
+      "collector_number": "306",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Jace Reawakened",
+      "mana_cost": "{U}{U}",
+      "cmc": 2.0,
+      "type_line": "Legendary Planeswalker — Jace",
+      "oracle_text": "You can't cast Jace Reawakened during your first, second, or third turns of the game.\n+1: Draw a card, then discard a card.\n+1: You may exile a nonland card with mana value 3 or less from your hand. If you do, it becomes plotted.\n−6: Until end of turn, whenever you cast a spell, copy it. You may choose new targets for the copy.",
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [
+        "Plot"
+      ],
+      "set": "OTJ",
+      "set_name": "Outlaws of Thunder Junction",
+      "rarity": "mythic",
+      "collector_number": "271",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaito, Bane of Nightmares",
+      "mana_cost": "{2}{U}{B}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Kaito",
+      "oracle_text": "Ninjutsu {1}{U}{B} ({1}{U}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nDuring your turn, as long as Kaito has one or more loyalty counters on him, he's a 3/4 Ninja creature and has hexproof.\n+1: You get an emblem with \"Ninjas you control get +1/+1.\"\n0: Surveil 2. Then draw a card for each opponent who lost life this turn.\n−2: Tap target creature. Put two stun counters on it.",
+      "colors": [
+        "B",
+        "U"
+      ],
+      "color_identity": [
+        "B",
+        "U"
+      ],
+      "keywords": [
+        "Surveil",
+        "Ninjutsu"
+      ],
+      "set": "DSK",
+      "set_name": "Duskmourn: House of Horror",
+      "rarity": "mythic",
+      "collector_number": "409",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaito, Bane of Nightmares",
+      "mana_cost": "{2}{U}{B}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Kaito",
+      "oracle_text": "Ninjutsu {1}{U}{B} ({1}{U}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nDuring your turn, as long as Kaito has one or more loyalty counters on him, he's a 3/4 Ninja creature and has hexproof.\n+1: You get an emblem with \"Ninjas you control get +1/+1.\"\n0: Surveil 2. Then draw a card for each opponent who lost life this turn.\n−2: Tap target creature. Put two stun counters on it.",
+      "colors": [
+        "B",
+        "U"
+      ],
+      "color_identity": [
+        "B",
+        "U"
+      ],
+      "keywords": [
+        "Surveil",
+        "Ninjutsu"
+      ],
+      "set": "PDSK",
+      "set_name": "Duskmourn: House of Horror Promos",
+      "rarity": "mythic",
+      "collector_number": "220p",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaito, Bane of Nightmares",
+      "mana_cost": "{2}{U}{B}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Kaito",
+      "oracle_text": "Ninjutsu {1}{U}{B} ({1}{U}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nDuring your turn, as long as Kaito has one or more loyalty counters on him, he's a 3/4 Ninja creature and has hexproof.\n+1: You get an emblem with \"Ninjas you control get +1/+1.\"\n0: Surveil 2. Then draw a card for each opponent who lost life this turn.\n−2: Tap target creature. Put two stun counters on it.",
+      "colors": [
+        "B",
+        "U"
+      ],
+      "color_identity": [
+        "B",
+        "U"
+      ],
+      "keywords": [
+        "Surveil",
+        "Ninjutsu"
+      ],
+      "set": "DSK",
+      "set_name": "Duskmourn: House of Horror",
+      "rarity": "mythic",
+      "collector_number": "220",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaito, Bane of Nightmares",
+      "mana_cost": "{2}{U}{B}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Kaito",
+      "oracle_text": "Ninjutsu {1}{U}{B} ({1}{U}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nDuring your turn, as long as Kaito has one or more loyalty counters on him, he's a 3/4 Ninja creature and has hexproof.\n+1: You get an emblem with \"Ninjas you control get +1/+1.\"\n0: Surveil 2. Then draw a card for each opponent who lost life this turn.\n−2: Tap target creature. Put two stun counters on it.",
+      "colors": [
+        "B",
+        "U"
+      ],
+      "color_identity": [
+        "B",
+        "U"
+      ],
+      "keywords": [
+        "Surveil",
+        "Ninjutsu"
+      ],
+      "set": "DSK",
+      "set_name": "Duskmourn: House of Horror",
+      "rarity": "mythic",
+      "collector_number": "328",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaito, Bane of Nightmares",
+      "mana_cost": "{2}{U}{B}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Kaito",
+      "oracle_text": "Ninjutsu {1}{U}{B} ({1}{U}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nDuring your turn, as long as Kaito has one or more loyalty counters on him, he's a 3/4 Ninja creature and has hexproof.\n+1: You get an emblem with \"Ninjas you control get +1/+1.\"\n0: Surveil 2. Then draw a card for each opponent who lost life this turn.\n−2: Tap target creature. Put two stun counters on it.",
+      "colors": [
+        "B",
+        "U"
+      ],
+      "color_identity": [
+        "B",
+        "U"
+      ],
+      "keywords": [
+        "Surveil",
+        "Ninjutsu"
+      ],
+      "set": "PDSK",
+      "set_name": "Duskmourn: House of Horror Promos",
+      "rarity": "mythic",
+      "collector_number": "220s",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaito, Bane of Nightmares",
+      "mana_cost": "{2}{U}{B}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Kaito",
+      "oracle_text": "Ninjutsu {1}{U}{B} ({1}{U}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)\nDuring your turn, as long as Kaito has one or more loyalty counters on him, he's a 3/4 Ninja creature and has hexproof.\n+1: You get an emblem with \"Ninjas you control get +1/+1.\"\n0: Surveil 2. Then draw a card for each opponent who lost life this turn.\n−2: Tap target creature. Put two stun counters on it.",
+      "colors": [
+        "B",
+        "U"
+      ],
+      "color_identity": [
+        "B",
+        "U"
+      ],
+      "keywords": [
+        "Surveil",
+        "Ninjutsu"
+      ],
+      "set": "DSK",
+      "set_name": "Duskmourn: House of Horror",
+      "rarity": "mythic",
+      "collector_number": "354",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaito, Cunning Infiltrator",
+      "mana_cost": "{1}{U}{U}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Kaito",
+      "oracle_text": "Whenever a creature you control deals combat damage to a player, put a loyalty counter on Kaito.\n+1: Up to one target creature you control can't be blocked this turn. Draw a card, then discard a card.\n−2: Create a 2/1 blue Ninja creature token.\n−9: You get an emblem with \"Whenever a player casts a spell, you create a 2/1 blue Ninja creature token.\"",
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "44",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaito, Cunning Infiltrator",
+      "mana_cost": "{1}{U}{U}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Kaito",
+      "oracle_text": "Whenever a creature you control deals combat damage to a player, put a loyalty counter on Kaito.\n+1: Up to one target creature you control can't be blocked this turn. Draw a card, then discard a card.\n−2: Create a 2/1 blue Ninja creature token.\n−9: You get an emblem with \"Whenever a player casts a spell, you create a 2/1 blue Ninja creature token.\"",
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [],
+      "set": "PFDN",
+      "set_name": "Foundations Promos",
+      "rarity": "mythic",
+      "collector_number": "44s",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaito, Cunning Infiltrator",
+      "mana_cost": "{1}{U}{U}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Kaito",
+      "oracle_text": "Whenever a creature you control deals combat damage to a player, put a loyalty counter on Kaito.\n+1: Up to one target creature you control can't be blocked this turn. Draw a card, then discard a card.\n−2: Create a 2/1 blue Ninja creature token.\n−9: You get an emblem with \"Whenever a player casts a spell, you create a 2/1 blue Ninja creature token.\"",
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "418",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaito, Cunning Infiltrator",
+      "mana_cost": "{1}{U}{U}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Kaito",
+      "oracle_text": "Whenever a creature you control deals combat damage to a player, put a loyalty counter on Kaito.\n+1: Up to one target creature you control can't be blocked this turn. Draw a card, then discard a card.\n−2: Create a 2/1 blue Ninja creature token.\n−9: You get an emblem with \"Whenever a player casts a spell, you create a 2/1 blue Ninja creature token.\"",
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "434",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaito, Cunning Infiltrator",
+      "mana_cost": "{1}{U}{U}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Kaito",
+      "oracle_text": "Whenever a creature you control deals combat damage to a player, put a loyalty counter on Kaito.\n+1: Up to one target creature you control can't be blocked this turn. Draw a card, then discard a card.\n−2: Create a 2/1 blue Ninja creature token.\n−9: You get an emblem with \"Whenever a player casts a spell, you create a 2/1 blue Ninja creature token.\"",
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "424",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaito, Cunning Infiltrator",
+      "mana_cost": "{1}{U}{U}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Kaito",
+      "oracle_text": "Whenever a creature you control deals combat damage to a player, put a loyalty counter on Kaito.\n+1: Up to one target creature you control can't be blocked this turn. Draw a card, then discard a card.\n−2: Create a 2/1 blue Ninja creature token.\n−9: You get an emblem with \"Whenever a player casts a spell, you create a 2/1 blue Ninja creature token.\"",
+      "colors": [
+        "U"
+      ],
+      "color_identity": [
+        "U"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "358",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaya, Spirits' Justice",
+      "mana_cost": "{2}{W}{B}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Kaya",
+      "oracle_text": "Whenever one or more creatures you control and/or creature cards in your graveyard are put into exile, you may choose a creature card from among them. Until end of turn, target token you control becomes a copy of it, except it has flying.\n+2: Surveil 2, then exile a card from a graveyard.\n+1: Create a 1/1 white and black Spirit creature token with flying.\n−2: Exile target creature you control. For each other player, exile up to one target creature that player controls.",
+      "colors": [
+        "B",
+        "W"
+      ],
+      "color_identity": [
+        "B",
+        "W"
+      ],
+      "keywords": [
+        "Surveil"
+      ],
+      "set": "PMKM",
+      "set_name": "Murders at Karlov Manor Promos",
+      "rarity": "mythic",
+      "collector_number": "211p",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaya, Spirits' Justice",
+      "mana_cost": "{2}{W}{B}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Kaya",
+      "oracle_text": "Whenever one or more creatures you control and/or creature cards in your graveyard are put into exile, you may choose a creature card from among them. Until end of turn, target token you control becomes a copy of it, except it has flying.\n+2: Surveil 2, then exile a card from a graveyard.\n+1: Create a 1/1 white and black Spirit creature token with flying.\n−2: Exile target creature you control. For each other player, exile up to one target creature that player controls.",
+      "colors": [
+        "B",
+        "W"
+      ],
+      "color_identity": [
+        "B",
+        "W"
+      ],
+      "keywords": [
+        "Surveil"
+      ],
+      "set": "MKM",
+      "set_name": "Murders at Karlov Manor",
+      "rarity": "mythic",
+      "collector_number": "335",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaya, Spirits' Justice",
+      "mana_cost": "{2}{W}{B}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Kaya",
+      "oracle_text": "Whenever one or more creatures you control and/or creature cards in your graveyard are put into exile, you may choose a creature card from among them. Until end of turn, target token you control becomes a copy of it, except it has flying.\n+2: Surveil 2, then exile a card from a graveyard.\n+1: Create a 1/1 white and black Spirit creature token with flying.\n−2: Exile target creature you control. For each other player, exile up to one target creature that player controls.",
+      "colors": [
+        "B",
+        "W"
+      ],
+      "color_identity": [
+        "B",
+        "W"
+      ],
+      "keywords": [
+        "Surveil"
+      ],
+      "set": "PMKM",
+      "set_name": "Murders at Karlov Manor Promos",
+      "rarity": "mythic",
+      "collector_number": "211s",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaya, Spirits' Justice",
+      "mana_cost": "{2}{W}{B}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Kaya",
+      "oracle_text": "Whenever one or more creatures you control and/or creature cards in your graveyard are put into exile, you may choose a creature card from among them. Until end of turn, target token you control becomes a copy of it, except it has flying.\n+2: Surveil 2, then exile a card from a graveyard.\n+1: Create a 1/1 white and black Spirit creature token with flying.\n−2: Exile target creature you control. For each other player, exile up to one target creature that player controls.",
+      "colors": [
+        "B",
+        "W"
+      ],
+      "color_identity": [
+        "B",
+        "W"
+      ],
+      "keywords": [
+        "Surveil"
+      ],
+      "set": "MKM",
+      "set_name": "Murders at Karlov Manor",
+      "rarity": "mythic",
+      "collector_number": "211",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Kaya, Spirits' Justice",
+      "mana_cost": "{2}{W}{B}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Kaya",
+      "oracle_text": "Whenever one or more creatures you control and/or creature cards in your graveyard are put into exile, you may choose a creature card from among them. Until end of turn, target token you control becomes a copy of it, except it has flying.\n+2: Surveil 2, then exile a card from a graveyard.\n+1: Create a 1/1 white and black Spirit creature token with flying.\n−2: Exile target creature you control. For each other player, exile up to one target creature that player controls.",
+      "colors": [
+        "B",
+        "W"
+      ],
+      "color_identity": [
+        "B",
+        "W"
+      ],
+      "keywords": [
+        "Surveil"
+      ],
+      "set": "PWCS",
+      "set_name": "Planeswalker Championship Promos",
+      "rarity": "mythic",
+      "collector_number": "2024-06",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "SLD",
+      "set_name": "Secret Lair Drop",
+      "rarity": "mythic",
+      "collector_number": "510",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "PRM",
+      "set_name": "Magic Online Promos",
+      "rarity": "mythic",
+      "collector_number": "72283",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "WAR",
+      "set_name": "War of the Spark",
+      "rarity": "mythic",
+      "collector_number": "97★",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "PWCS",
+      "set_name": "Planeswalker Championship Promos",
+      "rarity": "mythic",
+      "collector_number": "2020-3",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "RVR",
+      "set_name": "Ravnica Remastered",
+      "rarity": "mythic",
+      "collector_number": "80",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "PRM",
+      "set_name": "Magic Online Promos",
+      "rarity": "mythic",
+      "collector_number": "78017",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "PWAR",
+      "set_name": "War of the Spark Promos",
+      "rarity": "mythic",
+      "collector_number": "97s★",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "419",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "PWAR",
+      "set_name": "War of the Spark Promos",
+      "rarity": "mythic",
+      "collector_number": "97s",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "PFDN",
+      "set_name": "Foundations Promos",
+      "rarity": "mythic",
+      "collector_number": "176s",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "359",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "176",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "PWAR",
+      "set_name": "War of the Spark Promos",
+      "rarity": "mythic",
+      "collector_number": "97p",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Liliana, Dreadhorde General",
+      "mana_cost": "{4}{B}{B}",
+      "cmc": 6.0,
+      "type_line": "Legendary Planeswalker — Liliana",
+      "oracle_text": "Whenever a creature you control dies, draw a card.\n+1: Create a 2/2 black Zombie creature token.\n−4: Each player sacrifices two creatures of their choice.\n−9: Each opponent chooses a permanent they control of each permanent type and sacrifices the rest.",
+      "colors": [
+        "B"
+      ],
+      "color_identity": [
+        "B"
+      ],
+      "keywords": [],
+      "set": "WAR",
+      "set_name": "War of the Spark",
+      "rarity": "mythic",
+      "collector_number": "97",
+      "loyalty": "6",
+      "standard_legal": true
+    },
+    {
+      "name": "Oko, Lorwyn Liege // Oko, Shadowmoor Scion",
+      "mana_cost": "",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Oko // Legendary Planeswalker — Oko",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "G",
+        "U"
+      ],
+      "keywords": [
+        "Transform",
+        "Mill"
+      ],
+      "set": "ECL",
+      "set_name": "Lorwyn Eclipsed",
+      "rarity": "mythic",
+      "collector_number": "61",
+      "card_faces": [
+        {
+          "name": "Oko, Lorwyn Liege",
+          "mana_cost": "{2}{U}",
+          "type_line": "Legendary Planeswalker — Oko",
+          "oracle_text": "At the beginning of your first main phase, you may pay {G}. If you do, transform Oko.\n+2: Up to one target creature gains all creature types. (This effect doesn't end.)\n+1: Target creature gets -2/-0 until your next turn.",
+          "loyalty": "3"
+        },
+        {
+          "name": "Oko, Shadowmoor Scion",
+          "mana_cost": "",
+          "type_line": "Legendary Planeswalker — Oko",
+          "oracle_text": "At the beginning of your first main phase, you may pay {U}. If you do, transform Oko.\n−1: Mill three cards. You may put a permanent card from among them into your hand.\n−3: Create two 3/3 green Elk creature tokens.\n−6: Choose a creature type. You get an emblem with \"Creatures you control of the chosen type get +3/+3 and have vigilance and hexproof.\"",
+          "loyalty": "3"
+        }
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Oko, Lorwyn Liege // Oko, Shadowmoor Scion",
+      "mana_cost": "",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Oko // Legendary Planeswalker — Oko",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "G",
+        "U"
+      ],
+      "keywords": [
+        "Transform",
+        "Mill"
+      ],
+      "set": "ECL",
+      "set_name": "Lorwyn Eclipsed",
+      "rarity": "mythic",
+      "collector_number": "287",
+      "card_faces": [
+        {
+          "name": "Oko, Lorwyn Liege",
+          "mana_cost": "{2}{U}",
+          "type_line": "Legendary Planeswalker — Oko",
+          "oracle_text": "At the beginning of your first main phase, you may pay {G}. If you do, transform Oko.\n+2: Up to one target creature gains all creature types. (This effect doesn't end.)\n+1: Target creature gets -2/-0 until your next turn.",
+          "loyalty": "3"
+        },
+        {
+          "name": "Oko, Shadowmoor Scion",
+          "mana_cost": "",
+          "type_line": "Legendary Planeswalker — Oko",
+          "oracle_text": "At the beginning of your first main phase, you may pay {U}. If you do, transform Oko.\n−1: Mill three cards. You may put a permanent card from among them into your hand.\n−3: Create two 3/3 green Elk creature tokens.\n−6: Choose a creature type. You get an emblem with \"Creatures you control of the chosen type get +3/+3 and have vigilance and hexproof.\"",
+          "loyalty": "3"
+        }
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Oko, Lorwyn Liege // Oko, Shadowmoor Scion",
+      "mana_cost": "",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Oko // Legendary Planeswalker — Oko",
+      "oracle_text": "",
+      "colors": [],
+      "color_identity": [
+        "G",
+        "U"
+      ],
+      "keywords": [
+        "Transform",
+        "Mill"
+      ],
+      "set": "PECL",
+      "set_name": "Lorwyn Eclipsed Promos",
+      "rarity": "mythic",
+      "collector_number": "61p",
+      "card_faces": [
+        {
+          "name": "Oko, Lorwyn Liege",
+          "mana_cost": "{2}{U}",
+          "type_line": "Legendary Planeswalker — Oko",
+          "oracle_text": "At the beginning of your first main phase, you may pay {G}. If you do, transform Oko.\n+2: Up to one target creature gains all creature types. (This effect doesn't end.)\n+1: Target creature gets -2/-0 until your next turn.",
+          "loyalty": "3"
+        },
+        {
+          "name": "Oko, Shadowmoor Scion",
+          "mana_cost": "",
+          "type_line": "Legendary Planeswalker — Oko",
+          "oracle_text": "At the beginning of your first main phase, you may pay {U}. If you do, transform Oko.\n−1: Mill three cards. You may put a permanent card from among them into your hand.\n−3: Create two 3/3 green Elk creature tokens.\n−6: Choose a creature type. You get an emblem with \"Creatures you control of the chosen type get +3/+3 and have vigilance and hexproof.\"",
+          "loyalty": "3"
+        }
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Oko, the Ringleader",
+      "mana_cost": "{2}{G}{U}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Oko",
+      "oracle_text": "At the beginning of combat on your turn, Oko becomes a copy of up to one target creature you control until end of turn, except he has hexproof.\n+1: Draw two cards. If you've committed a crime this turn, discard a card. Otherwise, discard two cards.\n−1: Create a 3/3 green Elk creature token.\n−5: For each other nonland permanent you control, create a token that's a copy of that permanent.",
+      "colors": [
+        "G",
+        "U"
+      ],
+      "color_identity": [
+        "G",
+        "U"
+      ],
+      "keywords": [],
+      "set": "OTJ",
+      "set_name": "Outlaws of Thunder Junction",
+      "rarity": "mythic",
+      "collector_number": "305",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Oko, the Ringleader",
+      "mana_cost": "{2}{G}{U}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Oko",
+      "oracle_text": "At the beginning of combat on your turn, Oko becomes a copy of up to one target creature you control until end of turn, except he has hexproof.\n+1: Draw two cards. If you've committed a crime this turn, discard a card. Otherwise, discard two cards.\n−1: Create a 3/3 green Elk creature token.\n−5: For each other nonland permanent you control, create a token that's a copy of that permanent.",
+      "colors": [
+        "G",
+        "U"
+      ],
+      "color_identity": [
+        "G",
+        "U"
+      ],
+      "keywords": [],
+      "set": "OTJ",
+      "set_name": "Outlaws of Thunder Junction",
+      "rarity": "mythic",
+      "collector_number": "223",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Oko, the Ringleader",
+      "mana_cost": "{2}{G}{U}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Oko",
+      "oracle_text": "At the beginning of combat on your turn, Oko becomes a copy of up to one target creature you control until end of turn, except he has hexproof.\n+1: Draw two cards. If you've committed a crime this turn, discard a card. Otherwise, discard two cards.\n−1: Create a 3/3 green Elk creature token.\n−5: For each other nonland permanent you control, create a token that's a copy of that permanent.",
+      "colors": [
+        "G",
+        "U"
+      ],
+      "color_identity": [
+        "G",
+        "U"
+      ],
+      "keywords": [],
+      "set": "POTJ",
+      "set_name": "Outlaws of Thunder Junction Promos",
+      "rarity": "mythic",
+      "collector_number": "223p",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Oko, the Ringleader",
+      "mana_cost": "{2}{G}{U}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Oko",
+      "oracle_text": "At the beginning of combat on your turn, Oko becomes a copy of up to one target creature you control until end of turn, except he has hexproof.\n+1: Draw two cards. If you've committed a crime this turn, discard a card. Otherwise, discard two cards.\n−1: Create a 3/3 green Elk creature token.\n−5: For each other nonland permanent you control, create a token that's a copy of that permanent.",
+      "colors": [
+        "G",
+        "U"
+      ],
+      "color_identity": [
+        "G",
+        "U"
+      ],
+      "keywords": [],
+      "set": "POTJ",
+      "set_name": "Outlaws of Thunder Junction Promos",
+      "rarity": "mythic",
+      "collector_number": "223s",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Oko, the Ringleader",
+      "mana_cost": "{2}{G}{U}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Oko",
+      "oracle_text": "At the beginning of combat on your turn, Oko becomes a copy of up to one target creature you control until end of turn, except he has hexproof.\n+1: Draw two cards. If you've committed a crime this turn, discard a card. Otherwise, discard two cards.\n−1: Create a 3/3 green Elk creature token.\n−5: For each other nonland permanent you control, create a token that's a copy of that permanent.",
+      "colors": [
+        "G",
+        "U"
+      ],
+      "color_identity": [
+        "G",
+        "U"
+      ],
+      "keywords": [],
+      "set": "OTJ",
+      "set_name": "Outlaws of Thunder Junction",
+      "rarity": "mythic",
+      "collector_number": "296",
+      "loyalty": "3",
+      "standard_legal": true
+    },
+    {
+      "name": "Quintorius Kand",
+      "mana_cost": "{3}{R}{W}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Quintorius",
+      "oracle_text": "Whenever you cast a spell from exile, Quintorius Kand deals 2 damage to each opponent and you gain 2 life.\n+1: Create a 3/2 red and white Spirit creature token.\n−3: Discover 4.\n−6: Exile any number of target cards from your graveyard. Add {R} for each card exiled this way. You may play those cards this turn.",
+      "colors": [
+        "R",
+        "W"
+      ],
+      "color_identity": [
+        "R",
+        "W"
+      ],
+      "keywords": [
+        "Discover"
+      ],
+      "set": "LCI",
+      "set_name": "The Lost Caverns of Ixalan",
+      "rarity": "mythic",
+      "collector_number": "352",
+      "loyalty": "4",
+      "produced_mana": [
+        "R"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Quintorius Kand",
+      "mana_cost": "{3}{R}{W}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Quintorius",
+      "oracle_text": "Whenever you cast a spell from exile, Quintorius Kand deals 2 damage to each opponent and you gain 2 life.\n+1: Create a 3/2 red and white Spirit creature token.\n−3: Discover 4.\n−6: Exile any number of target cards from your graveyard. Add {R} for each card exiled this way. You may play those cards this turn.",
+      "colors": [
+        "R",
+        "W"
+      ],
+      "color_identity": [
+        "R",
+        "W"
+      ],
+      "keywords": [
+        "Discover"
+      ],
+      "set": "LCI",
+      "set_name": "The Lost Caverns of Ixalan",
+      "rarity": "mythic",
+      "collector_number": "307",
+      "loyalty": "4",
+      "produced_mana": [
+        "R"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Quintorius Kand",
+      "mana_cost": "{3}{R}{W}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Quintorius",
+      "oracle_text": "Whenever you cast a spell from exile, Quintorius Kand deals 2 damage to each opponent and you gain 2 life.\n+1: Create a 3/2 red and white Spirit creature token.\n−3: Discover 4.\n−6: Exile any number of target cards from your graveyard. Add {R} for each card exiled this way. You may play those cards this turn.",
+      "colors": [
+        "R",
+        "W"
+      ],
+      "color_identity": [
+        "R",
+        "W"
+      ],
+      "keywords": [
+        "Discover"
+      ],
+      "set": "LCI",
+      "set_name": "The Lost Caverns of Ixalan",
+      "rarity": "mythic",
+      "collector_number": "238",
+      "loyalty": "4",
+      "produced_mana": [
+        "R"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Quintorius Kand",
+      "mana_cost": "{3}{R}{W}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Quintorius",
+      "oracle_text": "Whenever you cast a spell from exile, Quintorius Kand deals 2 damage to each opponent and you gain 2 life.\n+1: Create a 3/2 red and white Spirit creature token.\n−3: Discover 4.\n−6: Exile any number of target cards from your graveyard. Add {R} for each card exiled this way. You may play those cards this turn.",
+      "colors": [
+        "R",
+        "W"
+      ],
+      "color_identity": [
+        "R",
+        "W"
+      ],
+      "keywords": [
+        "Discover"
+      ],
+      "set": "PLCI",
+      "set_name": "The Lost Caverns of Ixalan Promos",
+      "rarity": "mythic",
+      "collector_number": "238p",
+      "loyalty": "4",
+      "produced_mana": [
+        "R"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Quintorius Kand",
+      "mana_cost": "{3}{R}{W}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Quintorius",
+      "oracle_text": "Whenever you cast a spell from exile, Quintorius Kand deals 2 damage to each opponent and you gain 2 life.\n+1: Create a 3/2 red and white Spirit creature token.\n−3: Discover 4.\n−6: Exile any number of target cards from your graveyard. Add {R} for each card exiled this way. You may play those cards this turn.",
+      "colors": [
+        "R",
+        "W"
+      ],
+      "color_identity": [
+        "R",
+        "W"
+      ],
+      "keywords": [
+        "Discover"
+      ],
+      "set": "PLCI",
+      "set_name": "The Lost Caverns of Ixalan Promos",
+      "rarity": "mythic",
+      "collector_number": "238s",
+      "loyalty": "4",
+      "produced_mana": [
+        "R"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Ral, Crackling Wit",
+      "mana_cost": "{2}{U}{R}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Ral",
+      "oracle_text": "Whenever you cast a noncreature spell, put a loyalty counter on Ral.\n+1: Create a 1/1 blue and red Otter creature token with prowess.\n−3: Draw three cards, then discard two cards.\n−10: Draw three cards. You get an emblem with \"Instant and sorcery spells you cast have storm.\" (Whenever you cast an instant or sorcery spell, copy it for each spell cast before it this turn.)",
+      "colors": [
+        "R",
+        "U"
+      ],
+      "color_identity": [
+        "R",
+        "U"
+      ],
+      "keywords": [],
+      "set": "BLB",
+      "set_name": "Bloomburrow",
+      "rarity": "mythic",
+      "collector_number": "341",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ral, Crackling Wit",
+      "mana_cost": "{2}{U}{R}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Ral",
+      "oracle_text": "Whenever you cast a noncreature spell, put a loyalty counter on Ral.\n+1: Create a 1/1 blue and red Otter creature token with prowess.\n−3: Draw three cards, then discard two cards.\n−10: Draw three cards. You get an emblem with \"Instant and sorcery spells you cast have storm.\" (Whenever you cast an instant or sorcery spell, copy it for each spell cast before it this turn.)",
+      "colors": [
+        "R",
+        "U"
+      ],
+      "color_identity": [
+        "R",
+        "U"
+      ],
+      "keywords": [],
+      "set": "PBLB",
+      "set_name": "Bloomburrow Promos",
+      "rarity": "mythic",
+      "collector_number": "230p",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ral, Crackling Wit",
+      "mana_cost": "{2}{U}{R}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Ral",
+      "oracle_text": "Whenever you cast a noncreature spell, put a loyalty counter on Ral.\n+1: Create a 1/1 blue and red Otter creature token with prowess.\n−3: Draw three cards, then discard two cards.\n−10: Draw three cards. You get an emblem with \"Instant and sorcery spells you cast have storm.\" (Whenever you cast an instant or sorcery spell, copy it for each spell cast before it this turn.)",
+      "colors": [
+        "R",
+        "U"
+      ],
+      "color_identity": [
+        "R",
+        "U"
+      ],
+      "keywords": [],
+      "set": "BLB",
+      "set_name": "Bloomburrow",
+      "rarity": "mythic",
+      "collector_number": "230",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ral, Crackling Wit",
+      "mana_cost": "{2}{U}{R}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Ral",
+      "oracle_text": "Whenever you cast a noncreature spell, put a loyalty counter on Ral.\n+1: Create a 1/1 blue and red Otter creature token with prowess.\n−3: Draw three cards, then discard two cards.\n−10: Draw three cards. You get an emblem with \"Instant and sorcery spells you cast have storm.\" (Whenever you cast an instant or sorcery spell, copy it for each spell cast before it this turn.)",
+      "colors": [
+        "R",
+        "U"
+      ],
+      "color_identity": [
+        "R",
+        "U"
+      ],
+      "keywords": [],
+      "set": "BLB",
+      "set_name": "Bloomburrow",
+      "rarity": "mythic",
+      "collector_number": "353",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ral, Crackling Wit",
+      "mana_cost": "{2}{U}{R}",
+      "cmc": 4.0,
+      "type_line": "Legendary Planeswalker — Ral",
+      "oracle_text": "Whenever you cast a noncreature spell, put a loyalty counter on Ral.\n+1: Create a 1/1 blue and red Otter creature token with prowess.\n−3: Draw three cards, then discard two cards.\n−10: Draw three cards. You get an emblem with \"Instant and sorcery spells you cast have storm.\" (Whenever you cast an instant or sorcery spell, copy it for each spell cast before it this turn.)",
+      "colors": [
+        "R",
+        "U"
+      ],
+      "color_identity": [
+        "R",
+        "U"
+      ],
+      "keywords": [],
+      "set": "PBLB",
+      "set_name": "Bloomburrow Promos",
+      "rarity": "mythic",
+      "collector_number": "230s",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Tezzeret, Cruel Captain",
+      "mana_cost": "{3}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Tezzeret",
+      "oracle_text": "Whenever an artifact you control enters, put a loyalty counter on Tezzeret.\n0: Untap target artifact or creature. If it's an artifact creature, put a +1/+1 counter on it.\n−3: Search your library for an artifact card with mana value 1 or less, reveal it, put it into your hand, then shuffle.\n−7: You get an emblem with \"At the beginning of combat on your turn, put three +1/+1 counters on target artifact you control. If it's not a creature, it becomes a 0/0 Robot artifact creature.\"",
+      "colors": [],
+      "color_identity": [],
+      "keywords": [],
+      "set": "EOE",
+      "set_name": "Edge of Eternities",
+      "rarity": "mythic",
+      "collector_number": "2",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Tezzeret, Cruel Captain",
+      "mana_cost": "{3}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Tezzeret",
+      "oracle_text": "Whenever an artifact you control enters, put a loyalty counter on Tezzeret.\n0: Untap target artifact or creature. If it's an artifact creature, put a +1/+1 counter on it.\n−3: Search your library for an artifact card with mana value 1 or less, reveal it, put it into your hand, then shuffle.\n−7: You get an emblem with \"At the beginning of combat on your turn, put three +1/+1 counters on target artifact you control. If it's not a creature, it becomes a 0/0 Robot artifact creature.\"",
+      "colors": [],
+      "color_identity": [],
+      "keywords": [],
+      "set": "PEOE",
+      "set_name": "Edge of Eternities Promos",
+      "rarity": "mythic",
+      "collector_number": "2p",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Tezzeret, Cruel Captain",
+      "mana_cost": "{3}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Tezzeret",
+      "oracle_text": "Whenever an artifact you control enters, put a loyalty counter on Tezzeret.\n0: Untap target artifact or creature. If it's an artifact creature, put a +1/+1 counter on it.\n−3: Search your library for an artifact card with mana value 1 or less, reveal it, put it into your hand, then shuffle.\n−7: You get an emblem with \"At the beginning of combat on your turn, put three +1/+1 counters on target artifact you control. If it's not a creature, it becomes a 0/0 Robot artifact creature.\"",
+      "colors": [],
+      "color_identity": [],
+      "keywords": [],
+      "set": "EOE",
+      "set_name": "Edge of Eternities",
+      "rarity": "mythic",
+      "collector_number": "287",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Tezzeret, Cruel Captain",
+      "mana_cost": "{3}",
+      "cmc": 3.0,
+      "type_line": "Legendary Planeswalker — Tezzeret",
+      "oracle_text": "Whenever an artifact you control enters, put a loyalty counter on Tezzeret.\n0: Untap target artifact or creature. If it's an artifact creature, put a +1/+1 counter on it.\n−3: Search your library for an artifact card with mana value 1 or less, reveal it, put it into your hand, then shuffle.\n−7: You get an emblem with \"At the beginning of combat on your turn, put three +1/+1 counters on target artifact you control. If it's not a creature, it becomes a 0/0 Robot artifact creature.\"",
+      "colors": [],
+      "color_identity": [],
+      "keywords": [],
+      "set": "PEOE",
+      "set_name": "Edge of Eternities Promos",
+      "rarity": "mythic",
+      "collector_number": "2s",
+      "loyalty": "4",
+      "standard_legal": true
+    },
+    {
+      "name": "Ugin, Eye of the Storms",
+      "mana_cost": "{7}",
+      "cmc": 7.0,
+      "type_line": "Legendary Planeswalker — Ugin",
+      "oracle_text": "When you cast this spell, exile up to one target permanent that's one or more colors.\nWhenever you cast a colorless spell, exile up to one target permanent that's one or more colors.\n+2: You gain 3 life and draw a card.\n0: Add {C}{C}{C}.\n−11: Search your library for any number of colorless nonland cards, exile them, then shuffle. Until end of turn, you may cast those cards without paying their mana costs.",
+      "colors": [],
+      "color_identity": [],
+      "keywords": [],
+      "set": "PTDM",
+      "set_name": "Tarkir: Dragonstorm Promos",
+      "rarity": "mythic",
+      "collector_number": "1p",
+      "loyalty": "7",
+      "produced_mana": [
+        "C"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Ugin, Eye of the Storms",
+      "mana_cost": "{7}",
+      "cmc": 7.0,
+      "type_line": "Legendary Planeswalker — Ugin",
+      "oracle_text": "When you cast this spell, exile up to one target permanent that's one or more colors.\nWhenever you cast a colorless spell, exile up to one target permanent that's one or more colors.\n+2: You gain 3 life and draw a card.\n0: Add {C}{C}{C}.\n−11: Search your library for any number of colorless nonland cards, exile them, then shuffle. Until end of turn, you may cast those cards without paying their mana costs.",
+      "colors": [],
+      "color_identity": [],
+      "keywords": [],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "mythic",
+      "collector_number": "409",
+      "loyalty": "7",
+      "produced_mana": [
+        "C"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Ugin, Eye of the Storms",
+      "mana_cost": "{7}",
+      "cmc": 7.0,
+      "type_line": "Legendary Planeswalker — Ugin",
+      "oracle_text": "When you cast this spell, exile up to one target permanent that's one or more colors.\nWhenever you cast a colorless spell, exile up to one target permanent that's one or more colors.\n+2: You gain 3 life and draw a card.\n0: Add {C}{C}{C}.\n−11: Search your library for any number of colorless nonland cards, exile them, then shuffle. Until end of turn, you may cast those cards without paying their mana costs.",
+      "colors": [],
+      "color_identity": [],
+      "keywords": [],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "mythic",
+      "collector_number": "399",
+      "loyalty": "7",
+      "produced_mana": [
+        "C"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Ugin, Eye of the Storms",
+      "mana_cost": "{7}",
+      "cmc": 7.0,
+      "type_line": "Legendary Planeswalker — Ugin",
+      "oracle_text": "When you cast this spell, exile up to one target permanent that's one or more colors.\nWhenever you cast a colorless spell, exile up to one target permanent that's one or more colors.\n+2: You gain 3 life and draw a card.\n0: Add {C}{C}{C}.\n−11: Search your library for any number of colorless nonland cards, exile them, then shuffle. Until end of turn, you may cast those cards without paying their mana costs.",
+      "colors": [],
+      "color_identity": [],
+      "keywords": [],
+      "set": "PTDM",
+      "set_name": "Tarkir: Dragonstorm Promos",
+      "rarity": "mythic",
+      "collector_number": "1s",
+      "loyalty": "7",
+      "produced_mana": [
+        "C"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Ugin, Eye of the Storms",
+      "mana_cost": "{7}",
+      "cmc": 7.0,
+      "type_line": "Legendary Planeswalker — Ugin",
+      "oracle_text": "When you cast this spell, exile up to one target permanent that's one or more colors.\nWhenever you cast a colorless spell, exile up to one target permanent that's one or more colors.\n+2: You gain 3 life and draw a card.\n0: Add {C}{C}{C}.\n−11: Search your library for any number of colorless nonland cards, exile them, then shuffle. Until end of turn, you may cast those cards without paying their mana costs.",
+      "colors": [],
+      "color_identity": [],
+      "keywords": [],
+      "set": "TDM",
+      "set_name": "Tarkir: Dragonstorm",
+      "rarity": "mythic",
+      "collector_number": "1",
+      "loyalty": "7",
+      "produced_mana": [
+        "C"
+      ],
+      "standard_legal": true
+    },
+    {
+      "name": "Vivien Reid",
+      "mana_cost": "{3}{G}{G}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Vivien",
+      "oracle_text": "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\n−3: Destroy target artifact, enchantment, or creature with flying.\n−8: You get an emblem with \"Creatures you control get +2/+2 and have vigilance, trample, and indestructible.\"",
+      "colors": [
+        "G"
+      ],
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "421",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Vivien Reid",
+      "mana_cost": "{3}{G}{G}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Vivien",
+      "oracle_text": "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\n−3: Destroy target artifact, enchantment, or creature with flying.\n−8: You get an emblem with \"Creatures you control get +2/+2 and have vigilance, trample, and indestructible.\"",
+      "colors": [
+        "G"
+      ],
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "PLST",
+      "set_name": "The List",
+      "rarity": "mythic",
+      "collector_number": "M19-208",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Vivien Reid",
+      "mana_cost": "{3}{G}{G}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Vivien",
+      "oracle_text": "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\n−3: Destroy target artifact, enchantment, or creature with flying.\n−8: You get an emblem with \"Creatures you control get +2/+2 and have vigilance, trample, and indestructible.\"",
+      "colors": [
+        "G"
+      ],
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "361",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Vivien Reid",
+      "mana_cost": "{3}{G}{G}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Vivien",
+      "oracle_text": "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\n−3: Destroy target artifact, enchantment, or creature with flying.\n−8: You get an emblem with \"Creatures you control get +2/+2 and have vigilance, trample, and indestructible.\"",
+      "colors": [
+        "G"
+      ],
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "FDN",
+      "set_name": "Foundations",
+      "rarity": "mythic",
+      "collector_number": "234",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Vivien Reid",
+      "mana_cost": "{3}{G}{G}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Vivien",
+      "oracle_text": "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\n−3: Destroy target artifact, enchantment, or creature with flying.\n−8: You get an emblem with \"Creatures you control get +2/+2 and have vigilance, trample, and indestructible.\"",
+      "colors": [
+        "G"
+      ],
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "M19",
+      "set_name": "Core Set 2019",
+      "rarity": "mythic",
+      "collector_number": "208",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Vivien Reid",
+      "mana_cost": "{3}{G}{G}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Vivien",
+      "oracle_text": "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\n−3: Destroy target artifact, enchantment, or creature with flying.\n−8: You get an emblem with \"Creatures you control get +2/+2 and have vigilance, trample, and indestructible.\"",
+      "colors": [
+        "G"
+      ],
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "PM19",
+      "set_name": "Core Set 2019 Promos",
+      "rarity": "mythic",
+      "collector_number": "208p",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Vivien Reid",
+      "mana_cost": "{3}{G}{G}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Vivien",
+      "oracle_text": "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\n−3: Destroy target artifact, enchantment, or creature with flying.\n−8: You get an emblem with \"Creatures you control get +2/+2 and have vigilance, trample, and indestructible.\"",
+      "colors": [
+        "G"
+      ],
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "M3C",
+      "set_name": "Modern Horizons 3 Commander",
+      "rarity": "mythic",
+      "collector_number": "252",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Vivien Reid",
+      "mana_cost": "{3}{G}{G}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Vivien",
+      "oracle_text": "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\n−3: Destroy target artifact, enchantment, or creature with flying.\n−8: You get an emblem with \"Creatures you control get +2/+2 and have vigilance, trample, and indestructible.\"",
+      "colors": [
+        "G"
+      ],
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "PFDN",
+      "set_name": "Foundations Promos",
+      "rarity": "mythic",
+      "collector_number": "234s",
+      "loyalty": "5",
+      "standard_legal": true
+    },
+    {
+      "name": "Vivien Reid",
+      "mana_cost": "{3}{G}{G}",
+      "cmc": 5.0,
+      "type_line": "Legendary Planeswalker — Vivien",
+      "oracle_text": "+1: Look at the top four cards of your library. You may reveal a creature or land card from among them and put it into your hand. Put the rest on the bottom of your library in a random order.\n−3: Destroy target artifact, enchantment, or creature with flying.\n−8: You get an emblem with \"Creatures you control get +2/+2 and have vigilance, trample, and indestructible.\"",
+      "colors": [
+        "G"
+      ],
+      "color_identity": [
+        "G"
+      ],
+      "keywords": [],
+      "set": "PM19",
+      "set_name": "Core Set 2019 Promos",
+      "rarity": "mythic",
+      "collector_number": "208s",
+      "loyalty": "5",
+      "standard_legal": true
+    }
+  ]
+}
