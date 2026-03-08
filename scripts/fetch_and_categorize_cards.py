@@ -2,10 +2,10 @@
 """
 MTG Standard Card Data Fetcher - Letter-Split Version
 Splits card database by type (folder) then first letter of card name.
-Target: each file ~50KB max for reliable GitHub API access by AI tools.
+Target: each file ~80KB max for reliable GitHub API access by AI tools.
 
 File naming convention: {type}/{type}_{letter}.csv
-  e.g. creature/creature_a.csv, creature/creature_b.csv
+  e.g. card_data/creature/creature_a.csv
   If a single letter is still too large: creature_s1.csv, creature_s2.csv
 """
 
@@ -22,7 +22,7 @@ class UniversalCardFetcher:
     # Target max file size: 80KB (well under GitHub API truncation threshold)
     MAX_FILE_SIZE_BYTES = 80 * 1024
 
-    def __init__(self, output_dir: str = "cards_by_category"):
+    def __init__(self, output_dir: str = "card_data"):
         self.bulk_data_url = "https://api.scryfall.com/bulk-data"
         self.output_dir = output_dir
         self.cards = []
@@ -85,14 +85,14 @@ class UniversalCardFetcher:
 
     def get_primary_type(self, type_line: str) -> str:
         t = type_line.lower()
-        if 'creature' in t:    return 'creature'
-        if 'instant' in t:     return 'instant'
-        if 'sorcery' in t:     return 'sorcery'
-        if 'artifact' in t:    return 'artifact'
-        if 'enchantment' in t: return 'enchantment'
-        if 'planeswalker' in t:return 'planeswalker'
-        if 'land' in t:        return 'land'
-        if 'battle' in t:      return 'battle'
+        if 'creature' in t:     return 'creature'
+        if 'instant' in t:      return 'instant'
+        if 'sorcery' in t:      return 'sorcery'
+        if 'artifact' in t:     return 'artifact'
+        if 'enchantment' in t:  return 'enchantment'
+        if 'planeswalker' in t: return 'planeswalker'
+        if 'land' in t:         return 'land'
+        if 'battle' in t:       return 'battle'
         return 'other'
 
     def process_and_categorize(self, raw_cards: List[Dict]) -> Dict[str, List[Dict]]:
@@ -137,7 +137,7 @@ class UniversalCardFetcher:
         Split cards by first letter of name.
         If a single letter's file would exceed MAX_FILE_SIZE_BYTES, further chunk it
         with numeric suffixes: creature_s1.csv, creature_s2.csv, etc.
-        Non-alpha names go into creature_0.csv.
+        Non-alpha names go into {type}_0.csv.
         """
         letter_groups: Dict[str, List[Dict]] = defaultdict(list)
         for card in cards:
@@ -153,7 +153,6 @@ class UniversalCardFetcher:
             if estimated <= self.MAX_FILE_SIZE_BYTES:
                 parts.append((f"{type_name}_{letter.lower()}", group))
             else:
-                # Sub-split by chunks
                 num_chunks = (estimated // self.MAX_FILE_SIZE_BYTES) + 1
                 per_chunk = len(group) // num_chunks + 1
                 for i in range(num_chunks):
@@ -188,7 +187,7 @@ class UniversalCardFetcher:
                 continue
 
             parts = self.split_by_letter(cards, type_name)
-            print(f"\n  [{type_name}] {len(cards)} cards → {len(parts)} files")
+            print(f"\n  [{type_name}] {len(cards)} cards -> {len(parts)} files")
 
             for filename, part_cards in parts:
                 size_kb = self.write_csv_file(type_name, filename, part_cards)
@@ -211,13 +210,13 @@ class UniversalCardFetcher:
             by_type[s['type']].append(s)
 
         with open(index_file, 'w', encoding='utf-8') as f:
-            f.write("# MTG Standard Cards — Letter-Split CSV Index\n\n")
-            f.write(f"Last Updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n\n")
-            f.write("## File Naming Convention\n\n")
-            f.write("```\ncards_by_category/{type}/{type}_{letter}.csv\n```\n\n")
-            f.write("Example: to find **Hope Estheim** (creature, starts with H):\n")
-            f.write("→ `cards_by_category/creature/creature_h.csv`\n\n")
-            f.write("## Index by Type\n\n")
+            f.write("# Card data index\n\n")
+            f.write(f"Last updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n\n")
+            f.write("## How to find a card\n\n")
+            f.write("**Pattern**: `card_data/{type}/{type}_{first_letter}.csv`\n\n")
+            f.write("**Example**: Hope Estheim (creature, H) -> `card_data/creature/creature_h.csv`\n\n")
+            f.write("---\n\n")
+            f.write("## Files by type\n\n")
 
             for type_name in sorted(by_type.keys()):
                 type_stats = by_type[type_name]
@@ -229,7 +228,7 @@ class UniversalCardFetcher:
                     f.write(f"| `{s['type']}/{s['filename']}.csv` | {s['cards']} | {s['size_kb']:.1f} KB |\n")
                 f.write("\n")
 
-            f.write("## CSV Columns\n\n")
+            f.write("## CSV columns\n\n")
             f.write("`name`, `mana_cost`, `cmc`, `type_line`, `oracle_text`, `colors`, "
                     "`color_identity`, `rarity`, `set`, `set_name`, `collector_number`, "
                     "`power`, `toughness`, `loyalty`, `keywords`\n")
@@ -238,7 +237,8 @@ class UniversalCardFetcher:
 
     def run(self):
         print("=" * 70)
-        print("MTG Standard Card Data Fetcher — Letter-Split Mode")
+        print("MTG Standard Card Data Fetcher - Letter-Split Mode")
+        print(f"Output directory: {self.output_dir}/")
         print("=" * 70)
 
         url = self.get_bulk_data_download_url()
