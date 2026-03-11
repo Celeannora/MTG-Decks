@@ -5,62 +5,96 @@ Splits card database by type (folder) then first letter of card name.
 Target: each file ~80KB max for reliable GitHub API access by AI tools.
 
 File naming convention: {type}/{type}_{letter}.csv
-  e.g. card_data/creature/creature_a.csv
+  e.g. cards_by_category/{type}/{type}_a.csv
   If a single letter is still too large: creature_s1.csv, creature_s2.csv
+
+Usage:
+    python scripts/fetch_and_categorize_cards.py
+
+Outputs to: cards_by_category/ (relative to repo root when run from repo root)
 """
 
-import requests
+import io
 import csv
+import math
 import os
-from datetime import datetime
-from typing import List, Dict, Tuple
+from datetime import datetime, timezone
+from typing import Dict, List, Tuple
 from collections import defaultdict
 
+import requests
+
+
+CARD_TYPES = [
+    'artifact', 'battle', 'creature', 'enchantment', 'instant',
+    'land', 'other', 'planeswalker', 'sorcery',
+]
+
+CSV_FIELDNAMES = [
+    'name', 'mana_cost', 'cmc', 'type_line', 'oracle_text',
+    'colors', 'color_identity', 'rarity', 'set', 'set_name',
+    'collector_number', 'power', 'toughness', 'loyalty',
+    'produced_mana', 'keywords',
+]
+
+
 class UniversalCardFetcher:
-    """Fetch and categorize Standard-legal MTG cards into letter-split CSV files"""
+    """Fetch and categorize Standard-legal MTG cards into letter-split CSV files."""
 
-    # Target max file size: 80KB (well under GitHub API truncation threshold)
+    # Target max file size: 80 KB (well under GitHub API truncation threshold)
     MAX_FILE_SIZE_BYTES = 80 * 1024
+    REQUEST_TIMEOUT = 60  # seconds
 
-    def __init__(self, output_dir: str = "card_data"):
+    def __init__(self, output_dir: str = "cards_by_category"):
         self.bulk_data_url = "https://api.scryfall.com/bulk-data"
         self.output_dir = output_dir
-        self.cards = []
 
-    def get_bulk_data_download_url(self) -> str:
+    def get_bulk_data_download_url(self) -> str | None:
         print("Fetching bulk data information from Scryfall...")
         try:
-            response = requests.get(self.bulk_data_url)
+            response = requests.get(self.bulk_data_url, timeout=self.REQUEST_TIMEOUT)
             response.raise_for_status()
             bulk_data = response.json()
             for item in bulk_data.get('data', []):
                 if item.get('type') == 'default_cards':
                     download_uri = item.get('download_uri')
-                    size_mb = item.get('size') / (1024 * 1024)
+                    size_mb = item.get('size', 0) / (1024 * 1024)
                     print(f"Found: {item.get('name')} | {size_mb:.2f} MB | {item.get('updated_at')}")
                     return download_uri
             print("ERROR: Could not find default_cards bulk data")
             return None
         except requests.exceptions.RequestException as e:
-            print(f"Error: {e}")
+            print(f"Error fetching bulk data info: {e}")
             return None
 
     def download_bulk_data(self, download_url: str) -> List[Dict]:
-        print("Downloading bulk card data (30-60 seconds)...")
+        """Download bulk card data using streaming to avoid loading 100MB into memory."""
+        print("Downloading bulk card data (this may take 30-60 seconds)...")
         try:
-            response = requests.get(download_url, stream=True)
+            import json
+            response = requests.get(download_url, stream=True, timeout=self.REQUEST_TIMEOUT)
             response.raise_for_status()
-            cards = response.json()
+            # Accumulate chunks with progress
+            chunks = []
+            downloaded = 0
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                chunks.append(chunk)
+                downloaded += len(chunk)
+                print(f"  Downloaded {downloaded / (1024 * 1024):.1f} MB...", end='\r')
+            print()  # newline after progress
+            cards = json.loads(b''.join(chunks))
             print(f"Downloaded {len(cards)} cards")
             return cards
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error downloading bulk data: {e}")
             return []
 
     def filter_standard_legal(self, all_cards: List[Dict]) -> List[Dict]:
         print("Filtering for Standard legality...")
-        standard_cards = [c for c in all_cards
-                          if c.get('legalities', {}).get('standard') == 'legal']
+        standard_cards = [
+            c for c in all_cards
+            if c.get('legalities', {}).get('standard') == 'legal'
+        ]
         print(f"Found {len(standard_cards)} Standard-legal cards")
         return standard_cards
 
@@ -81,6 +115,7 @@ class UniversalCardFetcher:
             'power': card.get('power', ''),
             'toughness': card.get('toughness', ''),
             'loyalty': card.get('loyalty', ''),
+            'produced_mana': ','.join(card.get('produced_mana', [])),
         }
 
     def get_primary_type(self, type_line: str) -> str:
@@ -96,14 +131,20 @@ class UniversalCardFetcher:
         return 'other'
 
     def process_and_categorize(self, raw_cards: List[Dict]) -> Dict[str, List[Dict]]:
+        """Process and categorize cards, deduplicating by lowercase card name."""
         print("Processing and categorizing cards...")
-        categorized = defaultdict(list)
+        categorized: Dict[str, List[Dict]] = defaultdict(list)
+        seen_names: set = set()
 
         for card in raw_cards:
             if card.get('layout') in ['token', 'emblem', 'art_series']:
                 continue
             if not card.get('name'):
                 continue
+            name_key = card['name'].lower()
+            if name_key in seen_names:
+                continue  # keep first (newest) occurrence; Scryfall bulk data is newest-first
+            seen_names.add(name_key)
             processed = self.extract_relevant_data(card)
             category = self.get_primary_type(processed['type_line'])
             categorized[category].append(processed)
@@ -112,30 +153,27 @@ class UniversalCardFetcher:
             categorized[cat].sort(key=lambda x: x['name'].lower())
 
         total = sum(len(v) for v in categorized.values())
-        print(f"Processed {total} cards into {len(categorized)} types")
-        return categorized
+        print(f"Processed {total} unique cards into {len(categorized)} types")
+        return dict(categorized)
 
     def estimate_csv_size(self, cards: List[Dict]) -> int:
         if not cards:
             return 0
-        fieldnames = ['name', 'mana_cost', 'cmc', 'type_line', 'oracle_text',
-                      'colors', 'color_identity', 'rarity', 'set', 'set_name',
-                      'collector_number', 'power', 'toughness', 'loyalty', 'keywords']
-        import io
         buf = io.StringIO()
-        writer = csv.DictWriter(buf, fieldnames=fieldnames)
+        writer = csv.DictWriter(buf, fieldnames=CSV_FIELDNAMES)
         writer.writeheader()
         sample = cards[:min(20, len(cards))]
         writer.writerows(sample)
-        sample_size = len(buf.getvalue().encode('utf-8'))
-        avg = sample_size / len(sample)
-        header = len(','.join(fieldnames).encode('utf-8')) + 1
-        return int(avg * len(cards) + header)
+        sample_bytes = len(buf.getvalue().encode('utf-8'))
+        avg = sample_bytes / len(sample)
+        return int(avg * len(cards))
 
-    def split_by_letter(self, cards: List[Dict], type_name: str) -> List[Tuple[str, List[Dict]]]:
+    def split_by_letter(
+        self, cards: List[Dict], type_name: str
+    ) -> List[Tuple[str, List[Dict]]]:
         """
         Split cards by first letter of name.
-        If a single letter's file would exceed MAX_FILE_SIZE_BYTES, further chunk it
+        If a single letter's file would exceed MAX_FILE_SIZE_BYTES, chunk it
         with numeric suffixes: creature_s1.csv, creature_s2.csv, etc.
         Non-alpha names go into {type}_0.csv.
         """
@@ -145,7 +183,7 @@ class UniversalCardFetcher:
             key = first if first.isalpha() else '0'
             letter_groups[key].append(card)
 
-        parts = []
+        parts: List[Tuple[str, List[Dict]]] = []
         for letter in sorted(letter_groups.keys()):
             group = letter_groups[letter]
             estimated = self.estimate_csv_size(group)
@@ -153,8 +191,9 @@ class UniversalCardFetcher:
             if estimated <= self.MAX_FILE_SIZE_BYTES:
                 parts.append((f"{type_name}_{letter.lower()}", group))
             else:
-                num_chunks = (estimated // self.MAX_FILE_SIZE_BYTES) + 1
-                per_chunk = len(group) // num_chunks + 1
+                # Use ceiling division to avoid empty final chunk
+                num_chunks = math.ceil(estimated / self.MAX_FILE_SIZE_BYTES)
+                per_chunk = math.ceil(len(group) / num_chunks)
                 for i in range(num_chunks):
                     chunk = group[i * per_chunk:(i + 1) * per_chunk]
                     if chunk:
@@ -162,30 +201,27 @@ class UniversalCardFetcher:
 
         return parts
 
-    def write_csv_file(self, subdir: str, filename: str, cards: List[Dict]) -> float:
+    def write_csv_file(
+        self, subdir: str, filename: str, cards: List[Dict]
+    ) -> float:
         dirpath = os.path.join(self.output_dir, subdir)
         os.makedirs(dirpath, exist_ok=True)
         filepath = os.path.join(dirpath, f"{filename}.csv")
 
-        fieldnames = ['name', 'mana_cost', 'cmc', 'type_line', 'oracle_text',
-                      'colors', 'color_identity', 'rarity', 'set', 'set_name',
-                      'collector_number', 'power', 'toughness', 'loyalty', 'keywords']
-
         with open(filepath, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer = csv.DictWriter(f, fieldnames=CSV_FIELDNAMES, extrasaction='ignore')
             writer.writeheader()
             writer.writerows(cards)
 
         return os.path.getsize(filepath) / 1024
 
-    def export_all(self, categorized: Dict[str, List[Dict]]):
+    def export_all(self, categorized: Dict[str, List[Dict]]) -> List[Dict]:
         print("\nExporting letter-split CSV files...")
-        all_stats = []
+        all_stats: List[Dict] = []
 
         for type_name, cards in sorted(categorized.items()):
             if not cards:
                 continue
-
             parts = self.split_by_letter(cards, type_name)
             print(f"\n  [{type_name}] {len(cards)} cards -> {len(parts)} files")
 
@@ -202,19 +238,22 @@ class UniversalCardFetcher:
         self.export_index(all_stats)
         return all_stats
 
-    def export_index(self, stats: List[Dict]):
-        """Write _INDEX.md at root of output_dir"""
+    def export_index(self, stats: List[Dict]) -> None:
+        """Write _INDEX.md at root of output_dir."""
         index_file = os.path.join(self.output_dir, "_INDEX.md")
-        by_type = defaultdict(list)
+        by_type: Dict[str, List[Dict]] = defaultdict(list)
         for s in stats:
             by_type[s['type']].append(s)
 
+        now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+        db_dir = self.output_dir
+
         with open(index_file, 'w', encoding='utf-8') as f:
             f.write("# Card data index\n\n")
-            f.write(f"Last updated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n\n")
+            f.write(f"Last updated: {now}\n\n")
             f.write("## How to find a card\n\n")
-            f.write("**Pattern**: `card_data/{type}/{type}_{first_letter}.csv`\n\n")
-            f.write("**Example**: Hope Estheim (creature, H) -> `card_data/creature/creature_h.csv`\n\n")
+            f.write(f"**Pattern**: `{db_dir}/{{type}}/{{type}}_{{first_letter}}.csv`\n\n")
+            f.write(f"**Example**: Atraxa (creature, A) -> `{db_dir}/creature/creature_a.csv`\n\n")
             f.write("---\n\n")
             f.write("## Files by type\n\n")
 
@@ -225,17 +264,22 @@ class UniversalCardFetcher:
                 f.write("| File | Cards | Size |\n")
                 f.write("|------|-------|------|\n")
                 for s in type_stats:
-                    f.write(f"| `{s['type']}/{s['filename']}.csv` | {s['cards']} | {s['size_kb']:.1f} KB |\n")
+                    f.write(
+                        f"| `{s['type']}/{s['filename']}.csv` "
+                        f"| {s['cards']} | {s['size_kb']:.1f} KB |\n"
+                    )
                 f.write("\n")
 
             f.write("## CSV columns\n\n")
-            f.write("`name`, `mana_cost`, `cmc`, `type_line`, `oracle_text`, `colors`, "
-                    "`color_identity`, `rarity`, `set`, `set_name`, `collector_number`, "
-                    "`power`, `toughness`, `loyalty`, `keywords`\n")
+            f.write(
+                "`name`, `mana_cost`, `cmc`, `type_line`, `oracle_text`, `colors`, "
+                "`color_identity`, `rarity`, `set`, `set_name`, `collector_number`, "
+                "`power`, `toughness`, `loyalty`, `produced_mana`, `keywords`\n"
+            )
 
         print(f"\nIndex written: {index_file}")
 
-    def run(self):
+    def run(self) -> None:
         print("=" * 70)
         print("MTG Standard Card Data Fetcher - Letter-Split Mode")
         print(f"Output directory: {self.output_dir}/")
@@ -258,7 +302,7 @@ class UniversalCardFetcher:
 
         total_files = len(stats)
         total_cards = sum(s['cards'] for s in stats)
-        max_size = max(s['size_kb'] for s in stats)
+        max_size = max((s['size_kb'] for s in stats), default=0)
 
         print("\n" + "=" * 70)
         print("Done!")
