@@ -1,18 +1,31 @@
-Deck
-4 Example Creature (SET) 001
-4 Example Removal (SET) 015
-3 Example Planeswalker (SET) 120
-2 Example Finisher (SET) 200
-4 Example Draw Spell (SET) 045
-3 Example Interaction (SET) 087
-2 Example Utility (SET) 156
+// DECK TEMPLATE - Replace all placeholder names with real cards from the database
+// Total: 60 mainboard + 15 sideboard
+// Run: python scripts/validate_decklist.py .github/DECK_TEMPLATE/decklist.txt
 
-// Lands (24)
-4 Pathway Land (SET) 250
-4 Shockland (SET) 251
-2 Triome (SET) 252
-8 Basic Land (SET) 270
-6 Basic Land (SET) 271
+Deck
+// Creatures (12)
+4 Example Creature A (SET) 001
+4 Example Creature B (SET) 015
+4 Example Creature C (SET) 045
+
+// Spells (12)
+4 Example Removal (SET) 020
+4 Example Draw Spell (SET) 055
+4 Example Interaction (SET) 087
+
+// Enchantments / Artifacts (4)
+2 Example Enchantment (SET) 120
+2 Example Artifact (SET) 156
+
+// Planeswalkers (2)
+2 Example Planeswalker (SET) 200
+
+// Lands (30)
+4 Example Dual Land A (SET) 250
+4 Example Dual Land B (SET) 251
+2 Example Utility Land (SET) 252
+10 Basic Land A (SET) 270
+10 Basic Land B (SET) 271
 
 Sideboard
 3 Sideboard Card 1 (SET) 088

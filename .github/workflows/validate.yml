@@ -1,0 +1,40 @@
+name: Validate Decklists
+
+on:
+  push:
+    paths:
+      - 'Decks/**/decklist.txt'
+  pull_request:
+    paths:
+      - 'Decks/**/decklist.txt'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    name: Validate all decklists
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Find and validate all decklists
+        run: |
+          set -e
+          FAIL=0
+          for f in $(find Decks -name 'decklist.txt' 2>/dev/null); do
+            echo "--- Validating $f ---"
+            python scripts/validate_decklist.py --quiet "$f" || FAIL=1
+          done
+          if [ $FAIL -ne 0 ]; then
+            echo "One or more decklists failed validation."
+            exit 1
+          fi
+          echo "All decklists passed validation."
