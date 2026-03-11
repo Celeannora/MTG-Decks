@@ -1,257 +1,237 @@
 #!/usr/bin/env python3
 """
-MTG Decklist Validator (Local Mode)
+MTG Decklist Validator (Local / Offline Mode)
 
-Fast offline validation using the minimal local database.
-Uses card_index.json pointer system for instant lookups without loading all CSVs.
+Fast offline validation using the pre-built local database.
+Uses card_index.json pointer system for instant lookups without loading CSVs.
 
 Usage:
-    # First, build the local database (one time)
+    # First, build the local database (one-time setup)
     python scripts/build_local_database.py
-    
-    # Then validate decks offline
-    python scripts/validate_decklist_local.py <path_to_decklist.txt>
-    python scripts/validate_decklist_local.py Decks/2026-03-09_Orzhov_Lifegain/decklist.txt
 
-Performance:
-    - Loads ~300KB JSON index (instant)
-    - No CSV parsing required
-    - Validation completes in < 0.1 seconds
+    # Then validate decks offline
+    python scripts/validate_decklist_local.py Decks/my_deck/decklist.txt
+    python scripts/validate_decklist_local.py --sqlite Decks/my_deck/decklist.txt
+    python scripts/validate_decklist_local.py --quiet Decks/my_deck/decklist.txt
+
+Exit codes:
+    0  Validation passed
+    1  Illegal / unrecognised cards found
+    2  Input file or database not found
+    3  Deck count error
 """
 
-import sys
+import argparse
 import json
+import logging
 import sqlite3
+import sys
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
+
+from mtg_utils import parse_decklist
+
+BASIC_LAND_NAMES = {
+    'plains', 'island', 'swamp', 'mountain', 'forest',
+    'wastes', 'snow-covered plains', 'snow-covered island',
+    'snow-covered swamp', 'snow-covered mountain', 'snow-covered forest',
+}
 
 
 class LocalDecklistValidator:
-    def __init__(self, repo_root: Path, use_sqlite: bool = False):
+    """Offline decklist validator backed by local_db/."""
+
+    def __init__(self, repo_root: Path, use_sqlite: bool = False) -> None:
         self.repo_root = repo_root
         self.local_db_dir = repo_root / "local_db"
         self.use_sqlite = use_sqlite
-        
-        # Load database
+        # Always initialise card_index so both code paths share the same lookup
+        self.card_index: Dict[str, Dict] = {}
+        self.total_cards = 0
+
         if use_sqlite:
-            self.load_sqlite_db()
+            self._load_sqlite_db()
         else:
-            self.load_json_index()
-    
-    def load_json_index(self):
-        """Load the lightweight JSON pointer index."""
+            self._load_json_index()
+
+    # ------------------------------------------------------------------
+    # Database loading
+    # ------------------------------------------------------------------
+
+    def _load_json_index(self) -> None:
         index_file = self.local_db_dir / "card_index.json"
-        
         if not index_file.exists():
-            print(f"❌ Error: Local database not found at {index_file}")
-            print("\nPlease build the local database first:")
-            print("  python scripts/build_local_database.py\n")
-            sys.exit(1)
-        
-        print("Loading local database...")
-        with open(index_file, 'r', encoding='utf-8') as f:
+            logging.error(
+                "Local database not found: %s\n"
+                "Build it first with: python scripts/build_local_database.py",
+                index_file,
+            )
+            sys.exit(2)
+        logging.info("Loading local JSON index...")
+        with open(index_file, encoding='utf-8') as f:
             data = json.load(f)
-        
         self.card_index = data['cards']
         self.total_cards = data['total_cards']
-        
-        print(f"✓ Loaded {self.total_cards:,} cards from local index\n")
-    
-    def load_sqlite_db(self):
-        """Load the SQLite database (alternative to JSON)."""
+        logging.info("Loaded %d cards from JSON index.", self.total_cards)
+
+    def _load_sqlite_db(self) -> None:
         db_file = self.local_db_dir / "card_details.db"
-        
         if not db_file.exists():
-            print(f"❌ Error: SQLite database not found at {db_file}")
-            print("\nPlease build the local database first:")
-            print("  python scripts/build_local_database.py\n")
-            sys.exit(1)
-        
-        print("Connecting to SQLite database...")
-        self.conn = sqlite3.connect(db_file)
-        self.cursor = self.conn.cursor()
-        
-        # Get total count
-        self.cursor.execute("SELECT COUNT(*) FROM cards")
-        self.total_cards = self.cursor.fetchone()[0]
-        
-        print(f"✓ Connected to database ({self.total_cards:,} cards)\n")
-    
-    def parse_decklist(self, decklist_path: Path) -> Tuple[List[Tuple[int, str]], List[Tuple[int, str]]]:
-        """Parse a decklist.txt file and extract mainboard and sideboard cards."""
+            logging.error(
+                "SQLite database not found: %s\n"
+                "Build it first with: python scripts/build_local_database.py",
+                db_file,
+            )
+            sys.exit(2)
+        logging.info("Loading cards from SQLite database...")
+        # Load all cards into self.card_index for a unified lookup path
+        with sqlite3.connect(db_file) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM cards")
+            self.total_cards = cursor.fetchone()[0]
+            cursor.execute(
+                "SELECT name_lower, name, type_line, mana_cost, source_file FROM cards"
+            )
+            for row in cursor.fetchall():
+                name_lower, name, type_line, mana_cost, source_file = row
+                self.card_index[name_lower] = {
+                    'name': name,
+                    'type_line': type_line,
+                    'mana_cost': mana_cost,
+                    'file': source_file,
+                }
+        logging.info("Loaded %d cards from SQLite.", self.total_cards)
+
+    # ------------------------------------------------------------------
+    # Lookup
+    # ------------------------------------------------------------------
+
+    def _lookup(self, card_name: str) -> Tuple[bool, Optional[Dict]]:
+        entry = self.card_index.get(card_name.lower())
+        return (True, entry) if entry else (False, None)
+
+    # ------------------------------------------------------------------
+    # Count validation (mirrors validate_decklist.py logic)
+    # ------------------------------------------------------------------
+
+    def _validate_counts(
+        self,
+        mainboard: List[Tuple[int, str]],
+        sideboard: List[Tuple[int, str]],
+    ) -> List[str]:
+        errors: List[str] = []
+        main_total = sum(q for q, _ in mainboard)
+        side_total = sum(q for q, _ in sideboard)
+        if main_total != 60:
+            errors.append(f"Mainboard has {main_total} cards (expected 60).")
+        if sideboard and side_total != 15:
+            errors.append(f"Sideboard has {side_total} cards (expected 15 or 0).")
+        copy_counts: Dict[str, int] = {}
+        for qty, name in mainboard + sideboard:
+            if name.lower() not in BASIC_LAND_NAMES:
+                copy_counts[name] = copy_counts.get(name, 0) + qty
+        for name, total in copy_counts.items():
+            if total > 4:
+                errors.append(f"'{name}' appears {total} times (max 4 for non-basic lands).")
+        return errors
+
+    # ------------------------------------------------------------------
+    # Validation
+    # ------------------------------------------------------------------
+
+    def validate(self, decklist_path: Path, verbose: bool = False) -> int:
         if not decklist_path.exists():
-            print(f"❌ Error: Decklist file not found at {decklist_path}")
-            sys.exit(1)
+            logging.error("Decklist not found: %s", decklist_path)
+            return 2
 
-        mainboard = []
-        sideboard = []
-        current_section = 'main'
-        
-        with open(decklist_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                
-                if not line or line.startswith('//'):
-                    continue
-                    
-                if line.lower() == 'deck':
-                    current_section = 'main'
-                    continue
-                elif line.lower() == 'sideboard':
-                    current_section = 'side'
-                    continue
-                
-                # Parse card line: "4 Card Name (SET) Number"
-                parts = line.split(None, 1)
-                if len(parts) < 2:
-                    continue
-                    
-                try:
-                    quantity = int(parts[0])
-                    rest = parts[1]
-                    
-                    # Extract card name
-                    if '(' in rest:
-                        card_name = rest[:rest.index('(')].strip()
-                    else:
-                        card_name = rest.strip()
-                    
-                    if current_section == 'main':
-                        mainboard.append((quantity, card_name))
-                    else:
-                        sideboard.append((quantity, card_name))
-                        
-                except (ValueError, IndexError):
-                    continue
-        
-        return mainboard, sideboard
-    
-    def validate_card_json(self, card_name: str) -> Tuple[bool, Optional[Dict]]:
-        """Check if a card exists using JSON index."""
-        normalized = card_name.lower()
-        
-        if normalized in self.card_index:
-            return True, self.card_index[normalized]
-        
-        return False, None
-    
-    def validate_card_sqlite(self, card_name: str) -> Tuple[bool, Optional[Dict]]:
-        """Check if a card exists using SQLite database."""
-        normalized = card_name.lower()
-        
-        self.cursor.execute(
-            "SELECT name, type_line, mana_cost, source_file FROM cards WHERE name_lower = ?",
-            (normalized,)
-        )
-        
-        result = self.cursor.fetchone()
-        if result:
-            return True, {
-                'name': result[0],
-                'type_line': result[1],
-                'mana_cost': result[2],
-                'file': result[3]
-            }
-        
-        return False, None
-    
-    def validate_card(self, card_name: str) -> Tuple[bool, Optional[Dict]]:
-        """Validate a card (dispatches to JSON or SQLite method)."""
-        if self.use_sqlite:
-            return self.validate_card_sqlite(card_name)
-        else:
-            return self.validate_card_json(card_name)
-    
-    def validate_decklist(self, decklist_path: Path) -> bool:
-        """Validate an entire decklist and print results."""
-        print(f"Validating: {decklist_path}\n")
+        mode = "SQLite" if self.use_sqlite else "JSON"
+        print(f"Validating (offline / {mode}): {decklist_path}")
         print("=" * 70)
-        
-        mainboard, sideboard = self.parse_decklist(decklist_path)
-        
-        illegal_cards = []
-        valid_mainboard = 0
-        valid_sideboard = 0
-        
-        # Validate mainboard
-        print("\n📋 MAINBOARD VALIDATION\n")
-        for quantity, card_name in mainboard:
-            is_valid, card_info = self.validate_card(card_name)
-            if is_valid:
-                print(f"✓ {quantity}x {card_name}")
-                if card_info:
-                    type_info = card_info.get('type_line', card_info.get('type', 'unknown'))
-                    print(f"  └─ {type_info}")
-                valid_mainboard += quantity
-            else:
-                print(f"❌ {quantity}x {card_name} - NOT FOUND IN DATABASE")
-                illegal_cards.append((quantity, card_name, 'mainboard'))
-        
-        # Validate sideboard
-        if sideboard:
-            print("\n📋 SIDEBOARD VALIDATION\n")
-            for quantity, card_name in sideboard:
-                is_valid, card_info = self.validate_card(card_name)
-                if is_valid:
-                    print(f"✓ {quantity}x {card_name}")
-                    if card_info:
-                        type_info = card_info.get('type_line', card_info.get('type', 'unknown'))
-                        print(f"  └─ {type_info}")
-                    valid_sideboard += quantity
+
+        mainboard, sideboard = parse_decklist(decklist_path)
+        illegal: List[Tuple[int, str, str]] = []
+
+        print("\n\U0001f4cb MAINBOARD VALIDATION\n")
+        for qty, name in mainboard:
+            found, info = self._lookup(name)
+            if found:
+                if verbose and info:
+                    type_info = info.get('type_line', info.get('type', 'unknown'))
+                    print(f"  \u2713 {qty}x {name}  [{type_info}]")
                 else:
-                    print(f"❌ {quantity}x {card_name} - NOT FOUND IN DATABASE")
-                    illegal_cards.append((quantity, card_name, 'sideboard'))
-        
-        # Summary
-        print("\n" + "=" * 70)
-        print("\n📊 VALIDATION SUMMARY\n")
-        print(f"Mainboard: {valid_mainboard} cards validated")
+                    print(f"  \u2713 {qty}x {name}")
+            else:
+                print(f"  \u274c {qty}x {name} \u2014 NOT FOUND IN DATABASE")
+                illegal.append((qty, name, 'mainboard'))
+
         if sideboard:
-            print(f"Sideboard: {valid_sideboard} cards validated")
-        
-        if illegal_cards:
-            print(f"\n❌ VALIDATION FAILED\n")
-            print(f"Found {len(illegal_cards)} illegal card(s):\n")
-            for quantity, card_name, section in illegal_cards:
-                print(f"  • {quantity}x {card_name} ({section})")
-            print("\n🚨 This deck contains cards not present in the database.")
-            print("   These cards are either rotated or not Standard-legal.\n")
-            return False
-        else:
-            print(f"\n✅ VALIDATION PASSED\n")
-            print("All cards are legal and present in the database.\n")
-            return True
+            print("\n\U0001f4cb SIDEBOARD VALIDATION\n")
+            for qty, name in sideboard:
+                found, info = self._lookup(name)
+                if found:
+                    if verbose and info:
+                        type_info = info.get('type_line', info.get('type', 'unknown'))
+                        print(f"  \u2713 {qty}x {name}  [{type_info}]")
+                    else:
+                        print(f"  \u2713 {qty}x {name}")
+                else:
+                    print(f"  \u274c {qty}x {name} \u2014 NOT FOUND IN DATABASE")
+                    illegal.append((qty, name, 'sideboard'))
+
+        count_errors = self._validate_counts(mainboard, sideboard)
+
+        print("\n" + "=" * 70)
+        print("\n\U0001f4ca VALIDATION SUMMARY\n")
+        print(f"  Mainboard : {sum(q for q, _ in mainboard)} cards ({len(mainboard)} unique entries)")
+        if sideboard:
+            print(f"  Sideboard : {sum(q for q, _ in sideboard)} cards")
+
+        if count_errors:
+            print("\n\u26a0\ufe0f  COUNT VIOLATIONS\n")
+            for err in count_errors:
+                print(f"  \u2022 {err}")
+
+        if illegal:
+            print(f"\n\u274c VALIDATION FAILED\n")
+            print(f"  Found {len(illegal)} unrecognised card(s):\n")
+            for qty, name, section in illegal:
+                print(f"  \u2022 {qty}x {name} ({section})")
+            print("\n  These cards are either rotated or not present in the database.\n")
+            return 1
+
+        if count_errors:
+            return 3
+
+        print("\n\u2705 VALIDATION PASSED\n")
+        print("  All cards are legal and present in the database.\n")
+        return 0
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: python scripts/validate_decklist_local.py <path_to_decklist.txt>")
-        print("Example: python scripts/validate_decklist_local.py Decks/2026-03-09_Orzhov_Lifegain/decklist.txt")
-        print("\nOptions:")
-        print("  --sqlite    Use SQLite database instead of JSON index")
-        sys.exit(1)
-    
-    # Check for SQLite flag
-    use_sqlite = '--sqlite' in sys.argv
-    if use_sqlite:
-        sys.argv.remove('--sqlite')
-    
-    # Determine repository root
+def _build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        description="Offline MTG decklist validator using pre-built local_db/."
+    )
+    p.add_argument("decklist", help="Path to decklist.txt")
+    p.add_argument("--sqlite", action="store_true", help="Use SQLite DB instead of JSON index")
+    p.add_argument("--quiet", action="store_true", help="Only print summary")
+    p.add_argument("--verbose", action="store_true", help="Print card type info for each valid card")
+    return p
+
+
+def main() -> None:
+    args = _build_parser().parse_args()
+    log_level = logging.WARNING if args.quiet else logging.INFO
+    logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
+
     script_dir = Path(__file__).parent
     repo_root = script_dir.parent
-    
-    decklist_path = Path(sys.argv[1])
+
+    decklist_path = Path(args.decklist)
     if not decklist_path.is_absolute():
         decklist_path = repo_root / decklist_path
-    
-    validator = LocalDecklistValidator(repo_root, use_sqlite=use_sqlite)
-    is_valid = validator.validate_decklist(decklist_path)
-    
-    # Close SQLite connection if used
-    if use_sqlite and hasattr(validator, 'conn'):
-        validator.conn.close()
-    
-    sys.exit(0 if is_valid else 1)
+
+    validator = LocalDecklistValidator(repo_root, use_sqlite=args.sqlite)
+    sys.exit(validator.validate(decklist_path, verbose=args.verbose))
 
 
 if __name__ == "__main__":
