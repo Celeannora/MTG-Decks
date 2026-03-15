@@ -1,5 +1,5 @@
 # AI DECK BUILDING INSTRUCTIONS
-## Version 8.1 — Absolute Adherence Protocol
+## Version 8.2 — Absolute Adherence Protocol
 
 ---
 
@@ -26,20 +26,19 @@ AI assistants consistently:
 1. Research web-based decks (explicitly forbidden)
 2. Recall cards from training memory (explicitly forbidden)
 3. Then attempt to validate those cards against the database AFTER selection
+4. Open only one or two CSV files and treat that as a complete database review
 
-This approach **always fails** because rotated cards appear in web results and memory. The database is the **only source of truth**. If a card is not in the database, it is not Standard-legal — period.
+All of these approaches produce incomplete or illegal decks. The database is the **only source of truth**. Every file for every needed card type must be opened and read before any card is selected.
 
-**The only workflow that produces a legal deck is: database → cards. Never: cards → database.**
+**The only workflow that produces a legal deck is: full database sweep → card pool → selection. Never: selection → validation.**
 
 ---
 
 ## ⚠️ CRITICAL: HOW THE FILE NAMING SYSTEM WORKS ⚠️
 
-This is the most commonly misunderstood part of this repository.
-
 ### The letters in filenames are ALPHABETICAL — NOT thematic
 
-The `_{letter}` suffix in every CSV filename refers to the **first letter of the card name**. Nothing else.
+The `_{letter}` suffix refers to the **first letter of the card name**. Nothing else.
 
 | Filename | Contains |
 |----------|----------|
@@ -52,133 +51,140 @@ The `_{letter}` suffix in every CSV filename refers to the **first letter of the
 ### ❌ WRONG — Do not do this
 
 ```
-# INCORRECT interpretation — letters do NOT mean themes:
+# INCORRECT - letters do NOT mean themes:
 Creatures: H (lifegain), L (lifegain), M (mill), D (drain)
 Instants: C, D, H, L, M, S, T (counterspells, removal, lifegain, mill)
 Lands: D, H, I, S, T (dual/triome lands for Esper)
 ```
 
-This is completely wrong. H does not mean lifegain. M does not mean mill. D does not mean drain.
-Loading files by theme instead of by card name wastes time and misses cards entirely.
+H does not mean lifegain. M does not mean mill. D does not mean drain.
 
-### ✅ CORRECT — How to actually find a card
-
-You must know (or hypothesize) the **name** of a card first, then look it up by its first letter:
+### ❌ ALSO WRONG — Partial loading
 
 ```
-To find "Sheoldred, the Apocalypse" (Creature starting with S):
-→ Check _INDEX.md to see if creature_s1.csv, creature_s2.csv, creature_s3.csv, creature_s4.csv exist
-→ Open those files and search for "Sheoldred"
-
-To find "Sunfall" (Sorcery starting with S):
-→ Open sorcery/sorcery_s.csv
-→ Search for "Sunfall"
-
-To find "Adarkar Wastes" (Land starting with A):
-→ Open land/land_a.csv
-→ Search for "Adarkar Wastes"
+# INCORRECT - opening only a few files is not a database review:
+"I'll open creature_s1.csv and creature_b1.csv to find my creatures."
 ```
 
-### ✅ CORRECT — How to browse a card type for options
+This misses every relevant creature starting with A, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, T, U, V, W, X, Y, Z. You cannot build a best-possible deck from a fraction of the available card pool.
 
-If you want to browse all legal creatures for a strategy, you must open files **by first letter of name** and read their contents:
+### ✅ CORRECT — Exhaustive sweep by card type
 
-```
-To find all legal lifegain creatures:
-→ Open creature_a1.csv, creature_a2.csv — read for lifegain keywords/oracle text
-→ Open creature_b1.csv, creature_b2.csv — read for lifegain
-→ Continue through all letter files as needed
-Do NOT assume a particular letter file = a particular theme.
-```
-
-### Why this matters
-
-If you plan an Esper mill deck and write:
-> "I'll load `creature_m.csv` for mill creatures and `instant_c.csv` for counterspells"
-
-You will get:
-- `creature_m1.csv` / `creature_m2.csv` = creatures whose names begin with M (Merfolk, Mulldrifter, etc.) — many will NOT be mill-related
-- `instant_c.csv` = instants whose names begin with C — some will be counterspells, many will not
-
-You will miss mill creatures whose names start with A, B, D, G, etc., and you will include non-counterspell instants starting with C.
-
-**The letter is always and only the first letter of the card name.**
+For each card type you need, open **every file** for that type listed in `_INDEX.md`, read its contents, and extract relevant cards before moving on.
 
 ---
 
 ## MANDATORY GATE SYSTEM
 
-You must complete each gate **in order**. You cannot proceed to the next gate until the current one is fully complete. There are no exceptions.
+You must complete each gate **in order** and **in full**. Partial completion is not completion.
 
 ---
 
-### ✅ GATE 1: DATABASE LOAD (Required before any card selection)
+### ✅ GATE 1: EXHAUSTIVE DATABASE SWEEP (Required before any card selection)
 
-**Actions:**
+This gate requires opening **every CSV file** for each card type you need. Not some files. Not the likely files. **Every file.**
 
-1. Open `cards_by_category/_INDEX.md` — confirm you can read it
-2. Identify all card types needed for the requested archetype
-3. Open and load the specific letter CSV files for cards you are considering by **card name first letter**
-4. Build a working list of **only the cards actually present in those files**
-5. **Write out the list of CSV files you loaded** before moving to Gate 2
+**Step 1: Identify needed card types**
 
-**Gate 1 is complete when:**
-- You have a list of loaded CSV filenames
-- You have a working card pool drawn **exclusively** from those files
-- You have named zero cards from memory or web sources
+Based on the requested archetype, list which card types you will need:
+- Creatures? → Must open ALL creature files (creature_a1 through creature_z)
+- Instants? → Must open ALL instant files (instant_a through instant_z)
+- Sorceries? → Must open ALL sorcery files
+- Enchantments? → Must open ALL enchantment files
+- Artifacts? → Must open ALL artifact files
+- Planeswalkers? → Must open ALL planeswalker files
+- Lands? → Must open ALL land files
+- Other? → Must open ALL other files
 
-**If `cards_by_category/` is inaccessible:** STOP. Do not proceed. Inform the user the database is unavailable and ask them to confirm card legality manually before you continue.
+**Step 2: Open every file for each needed type**
+
+For each card type identified above:
+1. Check `_INDEX.md` for the complete file list for that type
+2. Open **every file** in that type's folder
+3. Read each file and extract cards relevant to your strategy (filter by `oracle_text`, `keywords`, `colors`, `color_identity`)
+4. Record each candidate card with: name, mana cost, set, collector number, and source CSV filename
+
+**Step 3: Build the complete candidate pool**
+
+After opening all files for all needed types, you have a complete candidate pool. Only then may you proceed to Gate 2.
+
+**Step 4: Document completion**
+
+Write a checklist confirming every file was opened, e.g.:
+```
+Creature files opened: creature_a1 ✓, creature_a2 ✓, creature_b1 ✓, creature_b2 ✓,
+creature_c1 ✓, creature_c2 ✓, creature_d1 ✓, creature_d2 ✓, creature_e ✓,
+creature_f1 ✓, creature_f2 ✓, creature_g1 ✓, creature_g2 ✓, creature_h1 ✓,
+creature_h2 ✓, creature_i ✓, creature_j ✓, creature_k ✓, creature_l1 ✓,
+creature_l2 ✓, creature_m1 ✓, creature_m2 ✓, creature_n ✓, creature_o ✓,
+creature_p ✓, creature_q ✓, creature_r1 ✓, creature_r2 ✓, creature_s1 ✓,
+creature_s2 ✓, creature_s3 ✓, creature_s4 ✓, creature_t1 ✓, creature_t2 ✓,
+creature_u ✓, creature_v ✓, creature_w ✓, creature_x ✓, creature_y ✓,
+creature_z ✓
+
+Instant files opened: instant_a ✓, instant_b ✓, instant_c ✓, instant_d ✓ ...
+[etc. for every type used]
+```
+
+**Gate 1 is complete ONLY when:**
+- Every file for every needed card type has been opened and read
+- A complete candidate pool exists drawn exclusively from those files
+- The file-opened checklist above is written out
+- Zero cards have been named from memory or web sources
+
+**If `cards_by_category/` is inaccessible:** STOP. Inform the user. Do not proceed.
 
 ---
 
 ### ✅ GATE 2: STRATEGY DEFINITION (Required before any card slot is filled)
 
-Using only cards confirmed present in Gate 1:
+Using only cards confirmed present in the Gate 1 candidate pool:
 
 1. Define ONE primary win condition
 2. Identify the target win turn
 3. Identify the card types needed to execute that win condition
-4. Confirm all those card types are represented in your loaded database pool
+4. Confirm all needed cards exist in your candidate pool
 
 **Gate 2 is complete when:**
-- Strategy is defined using database-confirmed cards only
-- No card has been assigned a slot yet
+- Strategy is fully defined using database-confirmed cards only
+- No card slot has been assigned yet
 
 ---
 
-### ✅ GATE 3: CARD SELECTION (One card at a time, database only)
+### ✅ GATE 3: CARD SELECTION (One card at a time, from candidate pool only)
 
 For each card slot:
 
-1. **Name the card** — pulled from your Gate 1 database pool only
+1. **Name the card** — pulled from your Gate 1 candidate pool only
 2. **State the CSV file it came from** (e.g., `cards_by_category/creature/creature_s1.csv`)
 3. **Record its mana cost, type line, and set code** from the CSV row
 4. Only then add it to the decklist
 
-**If you cannot cite a CSV file for a card, do not include it. Full stop.**
+**If you cannot cite a CSV file and row for a card, do not include it. Full stop.**
 
 Cards that fail Gate 3:
 - Cards recalled from memory without CSV citation → **REJECTED**
 - Cards found via web search → **REJECTED**
 - Cards "assumed" to be legal → **REJECTED**
-- Cards present in web decklists but not confirmed in CSV → **REJECTED**
+- Cards not in the Gate 1 candidate pool → **REJECTED**
 
 ---
 
-### ✅ GATE 4: MANA BASE (Database-verified lands only)
-
-All lands must come from `cards_by_category/land/` files.
+### ✅ GATE 4: MANA BASE (Exhaustive land sweep)
 
 1. Count colored pips across your mainboard
-2. Load the appropriate land letter files (by first letter of land name)
-3. Select lands with CSV citations
-4. Validate curve support
+2. Open **every land file** in `cards_by_category/land/` (land_a through land_w — check `_INDEX.md` for full list)
+3. Extract all dual lands, triomes, utility lands relevant to your color identity
+4. Select lands with CSV citations
+5. Validate curve support
+
+Do not open only a few land files. All land files must be checked.
 
 ---
 
-### ✅ GATE 5: SIDEBOARD (Database-verified only)
+### ✅ GATE 5: SIDEBOARD (Exhaustive sweep for sideboard options)
 
-All 15 sideboard cards must have CSV citations. Same rules as Gate 3.
+Repeat the relevant type sweeps from Gate 1 if not already complete. All 15 sideboard cards must have CSV citations.
 
 ---
 
@@ -186,6 +192,7 @@ All 15 sideboard cards must have CSV citations. Same rules as Gate 3.
 
 Before writing any output files, confirm every item:
 
+- [ ] All files for all needed card types were opened (Gate 1 checklist complete)
 - [ ] All 60 mainboard cards have a cited CSV source
 - [ ] All 15 sideboard cards have a cited CSV source
 - [ ] Zero cards sourced from web searches
@@ -215,11 +222,10 @@ There is no appeal. There is no override. The database is authoritative.
 
 ## PROHIBITED ACTIONS (Zero Tolerance)
 
-The following actions result in an immediately invalid deck that must be restarted from Gate 1:
-
 | Action | Consequence |
 |--------|-------------|
-| Naming any card before loading database | Restart from Gate 1 |
+| Naming any card before completing Gate 1 | Restart from Gate 1 |
+| Opening only some files for a card type | Restart Gate 1 for that type |
 | Using web search results to select cards | Restart from Gate 1 |
 | Copying any external decklist | Restart from Gate 1 |
 | Adding a card without a CSV citation | Remove card, find database alternative |
@@ -234,31 +240,34 @@ ONE illegal card = ENTIRE DECK REJECTED.
 
 ## CARD DATABASE STRUCTURE
 
+Total card pool (from `_INDEX.md`):
+- **Artifact**: 1,012 cards across 23 files (artifact_a – artifact_w)
+- **Battle**: files exist for some letters
+- **Creature**: 6,345 cards across 40 files (creature_a1 through creature_z)
+- **Enchantment**: 1,048 cards across 22 files (enchantment_a – enchantment_z)
+- **Instant**: 1,359 cards across 25 files (instant_a – instant_z)
+- **Land**: 6,082 cards across 33 files (land_a – land_w, some letters split into 4 files)
+- **Other**: 20 cards across 14 files
+- **Planeswalker**: 103 cards across 12 files
+- **Sorcery**: 1,101 cards across 24 files (sorcery_a – sorcery_z)
+
 ```
 cards_by_category/
-├── _INDEX.md              ← Open this first, always
-├── artifact/
-│   ├── artifact_a.csv     ← Artifacts starting with A
-│   ├── artifact_b.csv     ← Artifacts starting with B
-│   └── ...
+├── _INDEX.md              ← Open this first. Lists EVERY file with card counts.
+├── artifact/              ← 23 files, all must be opened if using artifacts
 ├── battle/
-│   └── battle_a.csv
-├── creature/
-│   ├── creature_a1.csv    ← Creatures starting with A (file 1 of 2)
-│   ├── creature_a2.csv    ← Creatures starting with A (file 2 of 2)
-│   ├── creature_b1.csv    ← Creatures starting with B (file 1 of 2)
-│   └── ...
-├── enchantment/
-├── instant/
-├── land/
+├── creature/              ← 40 files, all must be opened if using creatures
+├── enchantment/           ← 22 files, all must be opened if using enchantments
+├── instant/               ← 25 files, all must be opened if using instants
+├── land/                  ← 33 files, ALL must be opened for mana base
 ├── other/
-├── planeswalker/
-└── sorcery/
+├── planeswalker/          ← 12 files, all must be opened if using planeswalkers
+└── sorcery/               ← 24 files, all must be opened if using sorceries
 ```
 
 **Pattern:** `cards_by_category/{type}/{type}_{first_letter_of_card_name}.csv`
 
-Large letters (A, B, C, S, T, etc.) are split into numbered files (e.g., `creature_s1.csv` through `creature_s4.csv`). Always check `_INDEX.md` first to confirm which numbered files exist.
+Large letters are split into numbered files (e.g., `creature_s1.csv` through `creature_s4.csv`). Always check `_INDEX.md` to confirm all split files for a letter.
 
 ### CSV Columns
 
@@ -298,23 +307,34 @@ Sideboard
 
 ### Required Sections in analysis.md
 
-#### 1. Database Verification (MANDATORY — must appear first)
+#### 1. Database Sweep Report (MANDATORY — must appear first)
 
 ```markdown
-## Database Verification
+## Database Sweep Report
 
-### Files Loaded
-- `cards_by_category/creature/creature_s1.csv`  ← creatures starting with S
-- `cards_by_category/instant/instant_c.csv`     ← instants starting with C
-- `cards_by_category/land/land_f1.csv`          ← lands starting with F
-[List ALL CSV files loaded, with first-letter note]
+### Files Opened
+
+Creature files (40 total):
+creature_a1 ✓, creature_a2 ✓, creature_b1 ✓, creature_b2 ✓, creature_c1 ✓,
+creature_c2 ✓, creature_d1 ✓, creature_d2 ✓, creature_e ✓, creature_f1 ✓,
+creature_f2 ✓, creature_g1 ✓, creature_g2 ✓, creature_h1 ✓, creature_h2 ✓,
+creature_i ✓, creature_j ✓, creature_k ✓, creature_l1 ✓, creature_l2 ✓,
+creature_m1 ✓, creature_m2 ✓, creature_n ✓, creature_o ✓, creature_p ✓,
+creature_q ✓, creature_r1 ✓, creature_r2 ✓, creature_s1 ✓, creature_s2 ✓,
+creature_s3 ✓, creature_s4 ✓, creature_t1 ✓, creature_t2 ✓, creature_u ✓,
+creature_v ✓, creature_w ✓, creature_x ✓, creature_y ✓, creature_z ✓
+
+Instant files (25 total):
+instant_a ✓, instant_b ✓, instant_c ✓, ... [all files listed]
+
+[Repeat for every card type used]
 
 ### Per-Card Verification (ALL 60+15 cards)
-✓ [Card Name] - [cards_by_category/type/file.csv]
-[Every single card listed with its source file]
+✓ [Card Name] — [cards_by_category/type/file.csv] — (SET) Collector#
+[Every single card listed with source file and set info]
 
 ### Rejected Cards
-[Cards considered but not found in database — list with reason]
+[Cards considered but not found in database — name and reason]
 
 ### Validation Script Result
 $ python scripts/validate_decklist.py Decks/YYYY-MM-DD_Archetype/decklist.txt
@@ -353,9 +373,9 @@ python scripts/validate_decklist.py Decks/YYYY-MM-DD_Archetype/decklist.txt
 
 ## WHEN A REQUESTED CARD IS NOT IN THE DATABASE
 
-> "I checked `cards_by_category/` and [Card Name] is not present. It is not Standard-legal.
+> "I checked all files in `cards_by_category/` and [Card Name] is not present. It is not Standard-legal.
 >
-> Legal alternatives from the database:
+> Legal alternatives found during my full database sweep:
 > - [Alternative 1] — `cards_by_category/[file]`
 > - [Alternative 2] — `cards_by_category/[file]`
 > - [Alternative 3] — `cards_by_category/[file]`
@@ -372,12 +392,13 @@ Every AI session must begin with this acknowledgment **before any other action:*
 
 > "I acknowledge this repository's absolute database-first protocol. I will:
 > 1. Open `cards_by_category/_INDEX.md` before naming any card
-> 2. Load specific CSV files by the **first letter of the card name**, not by theme
-> 3. Cite the source CSV for every card I suggest
-> 4. Reject any card not found in the database, regardless of web sources or memory
-> 5. Run the validation script before finalizing any deck
+> 2. Open **every CSV file** for each card type I need — not just some files
+> 3. Build my candidate pool exclusively from those files before selecting any card
+> 4. Cite the source CSV for every card I suggest
+> 5. Reject any card not found during my full database sweep
+> 6. Run the validation script before finalizing any deck
 >
-> I will not name a single card until Gate 1 is complete."
+> I will not name a single card until Gate 1 (full sweep) is complete."
 
 ---
 
@@ -389,7 +410,7 @@ Every card choice is mathematically justified. Every strategic decision is rigor
 
 **Failure is acceptable. Unjustified mediocrity is not. Illegal cards are unacceptable.**
 
-The database is the only source of truth. The workflow runs one direction only: database → cards.
+The database is the only source of truth. The workflow runs one direction only: full database sweep → candidate pool → card selection.
 
 ---
 
@@ -397,7 +418,8 @@ The database is the only source of truth. The workflow runs one direction only: 
 
 | Version | Date | Notes |
 |---------|------|-------|
-| 8.1 | 2026-03-15 | Fix critical file-naming misconception: added explicit section clarifying letter suffixes are alphabetical (first letter of card name), NOT thematic categories; added wrong/correct examples; added "treating letters as themes" to zero-tolerance table |
+| 8.2 | 2026-03-15 | Mandate exhaustive full-database sweep: ALL files for each needed card type must be opened before any selection; added partial-loading prohibition to zero-tolerance table; added file-opened checklist to Gate 1 and analysis.md output; updated card type file counts from _INDEX.md |
+| 8.1 | 2026-03-15 | Fix critical file-naming misconception: letters are alphabetical (first letter of card name), NOT thematic categories |
 | 8.0 | 2026-03-15 | Absolute adherence rewrite: hard-gated protocol, explicit card-naming prohibition, zero-tolerance table, mandatory CSV citation per card |
 | 7.1 | 2026-03-10 | Fix directory name; add `battle` type; add validator flags/exit codes |
 | 7.0 | 2026-03-09 | Consolidated all instructions into single file; added validation script integration |
