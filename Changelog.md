@@ -1,5 +1,57 @@
 # Changelog
 
+## v9.0 — March 21, 2026
+
+### 🎉 Major improvements
+
+**Search-first deck building protocol**
+- Added `scripts/search_cards.py` — AI card search tool with 25+ strategic tags
+  - Tags: `lifegain`, `mill`, `draw`, `removal`, `counter`, `ramp`, `token`, `bounce`,
+    `discard`, `tutor`, `wipe`, `protection`, `pump`, `reanimation`, `etb`, `tribal`,
+    `scry`, `surveil`, `flash`, `haste`, `trample`, `flying`, `deathtouch`, `vigilance`,
+    `reach`, `menace`
+  - Filters: `--type`, `--colors`, `--tags`, `--oracle`, `--name`, `--cmc-max/min`,
+    `--rarity`, `--keywords`, `--format`, `--show-tags`, `--limit`
+  - Color identity subset matching (e.g. `WB` finds all cards playable in Orzhov)
+  - Exact color match with `=WB` prefix
+  - Output formats: table, csv, names
+- Replaces manual file-by-file CSV sweeps — AI now runs targeted queries instead
+  of opening 100+ files to build a candidate pool
+
+**Strategic tags column added to CSV schema**
+- `fetch_and_categorize_cards.py` now computes a `tags` column for every card
+- Pre-computed at database generation time for instant querying
+- `cards_by_category/` CSVs gain a `tags` column on next `fetch_and_categorize_cards.py` run
+
+**Unified validator**
+- `validate_decklist.py` now handles both online (CSV) and offline (local_db) modes
+- `--local` flag uses pre-built `local_db/` for fast validation
+- `--local --sqlite` uses SQLite backend
+- `validate_decklist_local.py` removed (functionality merged)
+
+**Deck registry**
+- Added `scripts/index_decks.py` — auto-generates `Decks/_INDEX.md`
+- Extracts: date, archetype, colors, format, card count, win condition, key cards
+- CI now regenerates index on every push
+
+**CI improvements**
+- Validation now also triggers on `cards_by_category/**` changes
+- Standard rotation automatically flags all stored decks with newly illegal cards
+- CI auto-commits regenerated `Decks/_INDEX.md` after each push
+
+**Cleanup**
+- Deleted 3 deprecated stub files: `DECK_BUILDING_PROTOCOL.md`,
+  `Deck_builder_instructions.md`, `Deck_building_guidelines.md`
+
+**AI_INSTRUCTIONS.md v9.0**
+- Gate 1 now uses `search_cards.py` queries instead of manual CSV sweeps
+- Added clarifying questions requirement for ambiguous archetypes
+- Added interaction justification requirement to Gate 3
+- Added `--local` flag docs to validation section
+- Updated session acknowledgment to reference search-first workflow
+
+---
+
 ## v5.0 — March 9, 2026
 
 ### 🎉 Major improvements

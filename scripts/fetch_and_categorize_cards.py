@@ -34,8 +34,60 @@ CSV_FIELDNAMES = [
     'name', 'mana_cost', 'cmc', 'type_line', 'oracle_text',
     'colors', 'color_identity', 'rarity', 'set', 'set_name',
     'collector_number', 'power', 'toughness', 'loyalty',
-    'produced_mana', 'keywords',
+    'produced_mana', 'keywords', 'tags',
 ]
+
+# ---------------------------------------------------------------------------
+# Strategic tag rules (mirrors search_cards.py — keep in sync)
+# ---------------------------------------------------------------------------
+_TAG_RULES = [
+    ("lifegain",    ["you gain", "lifelink", "gain life"]),
+    ("mill",        ["mill ", "mills ", "put the top", "from the top",
+                     "into their graveyard from their library"]),
+    ("draw",        ["draw a card", "draw two", "draw three", "draw x", "draw cards"]),
+    ("removal",     ["exile target", "destroy target", "deals damage to target",
+                     "deals that much damage"]),
+    ("counter",     ["counter target spell", "counter that spell",
+                     "counter target ability"]),
+    ("ramp",        ["add {", "add mana", "search your library for a basic land",
+                     "search your library for a land"]),
+    ("token",       ["create a ", "create x ", "create two ", "create three ", "token"]),
+    ("bounce",      ["return target", "return up to", "return each"]),
+    ("discard",     ["discards a card", "discards two", "each opponent discards",
+                     "target player discards"]),
+    ("tutor",       ["search your library for a card",
+                     "search your library for an instant",
+                     "search your library for a sorcery"]),
+    ("wipe",        ["destroy all", "exile all", "deals damage to all",
+                     "deals damage to each"]),
+    ("protection",  ["hexproof", "indestructible", "ward {"]),
+    ("pump",        ["+1/+1 counter", "gets +", "+x/+x"]),
+    ("reanimation", ["return target creature card from your graveyard",
+                     "return up to one target creature card from a graveyard"]),
+    ("etb",         ["when ~ enters", "when it enters", "enters the battlefield"]),
+    ("tribal",      ["other ", "s you control get", "s you control have"]),
+    ("scry",        ["scry "]),
+    ("surveil",     ["surveil "]),
+]
+_KEYWORD_TAG_MAP = {
+    "flash": "flash", "haste": "haste", "trample": "trample",
+    "flying": "flying", "deathtouch": "deathtouch", "vigilance": "vigilance",
+    "reach": "reach", "menace": "menace", "lifelink": "lifegain",
+}
+
+
+def _compute_tags(oracle_text: str, keywords: str) -> str:
+    """Return semicolon-separated strategic tags for a card."""
+    tags = set()
+    oracle = oracle_text.lower()
+    kw = keywords.lower()
+    for tag, patterns in _TAG_RULES:
+        if any(p in oracle for p in patterns):
+            tags.add(tag)
+    for kw_word, tag in _KEYWORD_TAG_MAP.items():
+        if kw_word in kw:
+            tags.add(tag)
+    return ";".join(sorted(tags))
 
 
 class UniversalCardFetcher:
@@ -99,15 +151,17 @@ class UniversalCardFetcher:
         return standard_cards
 
     def extract_relevant_data(self, card: Dict) -> Dict:
+        oracle = card.get('oracle_text', '')
+        keywords = ';'.join(card.get('keywords', []))
         return {
             'name': card.get('name', ''),
             'mana_cost': card.get('mana_cost', ''),
             'cmc': card.get('cmc', 0),
             'type_line': card.get('type_line', ''),
-            'oracle_text': card.get('oracle_text', ''),
+            'oracle_text': oracle,
             'colors': ','.join(card.get('colors', [])),
             'color_identity': ','.join(card.get('color_identity', [])),
-            'keywords': ';'.join(card.get('keywords', [])),
+            'keywords': keywords,
             'set': card.get('set', '').upper(),
             'set_name': card.get('set_name', ''),
             'rarity': card.get('rarity', ''),
@@ -116,6 +170,7 @@ class UniversalCardFetcher:
             'toughness': card.get('toughness', ''),
             'loyalty': card.get('loyalty', ''),
             'produced_mana': ','.join(card.get('produced_mana', [])),
+            'tags': _compute_tags(oracle, keywords),
         }
 
     def get_primary_type(self, type_line: str) -> str:

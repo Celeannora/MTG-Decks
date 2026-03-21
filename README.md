@@ -4,15 +4,16 @@
 
 **Before building ANY deck, you MUST:**
 
-1. ⚠️ **STOP** - Do not suggest cards yet
+1. ⚠️ **STOP** - Do not name any card yet
 2. 📚 **READ** `AI_INSTRUCTIONS.md` - Your ONLY authoritative instruction source
-3. 📋 **LOAD DATABASE** - Open `cards_by_category/` CSV files
-4. ✓ **VERIFY EVERY CARD** - Check each card exists in loaded CSVs before adding
+3. 🔍 **QUERY DATABASE** - Use `python scripts/search_cards.py` to build your candidate pool
+4. ✓ **VERIFY EVERY CARD** - Every card must come from a `search_cards.py` query result
 5. 🧪 **RUN VALIDATOR** - Execute `python scripts/validate_decklist.py` before finalizing
+6. ❓ **ASK QUESTIONS** - If the archetype or win condition is unclear, ask before building
 
 **Skipping these steps will generate illegal decks.**
 
-📖 **Primary instruction file:** [`AI_INSTRUCTIONS.md`](AI_INSTRUCTIONS.md) — All other instruction files are deprecated.
+📖 **Primary instruction file:** [`AI_INSTRUCTIONS.md`](AI_INSTRUCTIONS.md)
 
 ---
 
@@ -48,9 +49,10 @@ MTG-Decks/
 │   └── sorcery/
 ├── scripts/
 │   ├── fetch_and_categorize_cards.py  # Regenerates card database from Scryfall
-│   ├── validate_decklist.py           # Online validator (uses cards_by_category/)
-│   ├── validate_decklist_local.py     # Offline validator (uses local_db/)
-│   ├── build_local_database.py        # Builds local_db/ for offline use
+│   ├── search_cards.py                # 🔍 AI card search with strategy tag filtering
+│   ├── validate_decklist.py           # Validator (online CSV or offline --local mode)
+│   ├── build_local_database.py        # Builds local_db/ for fast offline validation
+│   ├── index_decks.py                 # Regenerates Decks/_INDEX.md registry
 │   └── mtg_utils.py                   # Shared utilities (parser, etc.)
 ├── .github/DECK_TEMPLATE/           # Template for new decks
 ├── AI_INSTRUCTIONS.md               # 🔴 SINGLE SOURCE OF TRUTH for AI deck building
@@ -81,10 +83,10 @@ python scripts/fetch_and_categorize_cards.py
 
 ## Deck validation
 
-### Online validation (uses cards_by_category/ CSVs)
+### Online validation (reads cards_by_category/ CSVs directly)
 
 ```bash
-python scripts/validate_decklist.py Decks/2026-03-09_Orzhov_Lifegain/decklist.txt
+python scripts/validate_decklist.py Decks/my_deck/decklist.txt
 ```
 
 ### Offline validation (faster, uses pre-built local_db/)
@@ -94,7 +96,8 @@ python scripts/validate_decklist.py Decks/2026-03-09_Orzhov_Lifegain/decklist.tx
 python scripts/build_local_database.py
 
 # Then validate quickly
-python scripts/validate_decklist_local.py Decks/2026-03-09_Orzhov_Lifegain/decklist.txt
+python scripts/validate_decklist.py --local Decks/my_deck/decklist.txt
+python scripts/validate_decklist.py --local --sqlite Decks/my_deck/decklist.txt
 ```
 
 ### Validation flags
@@ -102,7 +105,8 @@ python scripts/validate_decklist_local.py Decks/2026-03-09_Orzhov_Lifegain/deckl
 ```bash
 --quiet    # Summary only (good for CI/CD)
 --verbose  # Print source CSV for each card
---sqlite   # (local validator only) Use SQLite DB instead of JSON index
+--local    # Use pre-built local_db/ instead of scanning CSVs
+--sqlite   # (with --local) Use SQLite DB instead of JSON index
 ```
 
 ### Exit codes
@@ -138,24 +142,39 @@ Every deck MUST:
 
 ### 🚨 Critical legality requirements
 
-1. **Load database FIRST** — before selecting any cards
-2. **Only use database cards** — never rely on web searches for card selection
-3. **Verify every card** — check each card individually against loaded CSVs
+1. **Query database FIRST** — before naming any card
+2. **Only use database cards** — never rely on web searches or training memory
+3. **Cite every card** — each card must trace back to a `search_cards.py` result
 4. **Run validation script** — execute before finalizing deck
-5. **Document verification** — list which CSV files you loaded in analysis.md
-6. **Zero tolerance** — even one illegal card invalidates the entire deck
+5. **Document queries** — list all `search_cards.py` commands run in analysis.md
+6. **Ask if unclear** — ask clarifying questions about archetype/win condition before building
+7. **Zero tolerance** — even one illegal card invalidates the entire deck
 
 ### Workflow
 
 1. Read [`AI_INSTRUCTIONS.md`](AI_INSTRUCTIONS.md) for complete methodology
-2. Open `cards_by_category/_INDEX.md` to understand database structure
-3. Load specific letter files for card types you need
-4. Build working list of available legal cards from loaded CSVs
-5. Select cards ONLY from your loaded database list
-6. Verify each card individually before adding to decklist
-7. Run `python scripts/validate_decklist.py Decks/[deck_name]/decklist.txt`
-8. Create database verification section in analysis.md
-9. Save completed decks to `Decks/` with standard folder structure
+2. Use `search_cards.py` to query the database for each needed card type
+3. Build candidate pool exclusively from query results
+4. Select cards only from the candidate pool, citing source file for each
+5. Run `python scripts/validate_decklist.py Decks/[deck_name]/decklist.txt`
+6. Create database query report section in analysis.md
+7. Save completed deck to `Decks/YYYY-MM-DD_Archetype_Name/`
+
+### Card search examples
+
+```bash
+# Lifegain creatures in white/black
+python scripts/search_cards.py --type creature --colors WB --tags lifegain
+
+# Cheap removal instants
+python scripts/search_cards.py --type instant --tags removal --cmc-max 3
+
+# Mill cards across all spell types
+python scripts/search_cards.py --type instant,sorcery --tags mill
+
+# Dual lands for a color pair
+python scripts/search_cards.py --type land --colors WU
+```
 
 **Never trust external sources for card legality** — the database is the only source of truth.
 

@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'Decks/**/decklist.txt'
+      - 'cards_by_category/**'   # re-validate all decks after any rotation/DB update
   pull_request:
     paths:
       - 'Decks/**/decklist.txt'
+      - 'cards_by_category/**'
 
 jobs:
   validate:
@@ -38,3 +40,15 @@ jobs:
             exit 1
           fi
           echo "All decklists passed validation."
+
+      - name: Regenerate deck index
+        run: python scripts/index_decks.py
+
+      - name: Commit updated deck index (if changed)
+        if: github.event_name == 'push'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Decks/_INDEX.md
+          git diff --cached --quiet || git commit -m "chore: regenerate Decks/_INDEX.md [skip ci]"
+          git push
