@@ -1,0 +1,32 @@
+Deck
+4 Ajani's Pridemate (CLU) 52
+4 Giada, Font of Hope (PWCS) 2023-2
+4 Hope Estheim (FIN) 541
+4 Youthful Valkyrie (PLST) KHM-382
+4 Inspiring Overseer (SNC) 18
+3 Resplendent Angel (PLCI) 32p
+2 Lyra Dawnbringer (DMR) 413
+2 Angel of Vitality (CLU) 53
+1 Lifecreed Duo (BLB) 20
+4 No More Lies (MKM) 221
+2 Syncopate (VOW) 83
+2 Space-Time Anomaly (PEOE) 229p
+2 Sheltered by Ghosts (PJSC) 2026-1
+2 Authority of the Consuls (PKLD) 5s
+1 Leyline of Hope (DSK) 18
+
+4 Hallowed Fountain (UNF) 277
+4 Floodfarm Verge (DSK) 330
+4 Meticulous Archive (PMKM) 264p
+2 Cavern of Souls (LCI) 410c
+2 Plains (BLB) 281
+3 Island (ELD) 255
+
+Sideboard
+3 Prayer of Binding (DMU) 28
+2 Fumigate (PKLD) 15p
+2 Vanguard Seraph (FDN) 28
+2 Temporal Cleansing (ECL) 78
+2 Enter the Avatar State (TLA) 18
+2 Case of the Uneaten Feast (PMKM) 10s
+2 Spell Snare (PLST) DIS-33
