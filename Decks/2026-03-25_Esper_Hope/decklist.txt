@@ -2,21 +2,23 @@ Deck
 // Creatures (19)
 4 Hope Estheim (FIN) 541
 3 Deep-Cavern Bat (SCH) 33
-2 Ajani's Pridemate (CLU) 52
+2 Shinra Reinforcements (FIN) 118
 2 Overlord of the Balemurk (DSK) 391
 2 The Mindskinner (DSK) 357
 2 Resplendent Angel (PLCI) 32p
 2 Exemplar of Light (FDN) 297
 2 Lyra Dawnbringer (DMR) 413
 
-// Instants (13)
+// Sorceries (4)
+2 Day of Judgment (FDN) 140
+2 Split Up (DSK) 32
+
+// Instants (9)
 2 Heartless Act (IKO) 366
 2 Get Lost (PLCI) 14p
 2 No More Lies (MKM) 221
 2 Three Steps Ahead (POTJ) 75s
 1 Spell Pierce (2X2) 63
-2 Opt (WOC) 101
-2 Think Twice (TSP) 86
 2 Deduce (MKM) 293
 
 // Enchantments (4)
@@ -48,5 +50,5 @@ Sideboard
 2 Enduring Curiosity (PDSK) 51s
 1 Spellgyre (BLB) 72
 2 Angel of Finality (C20) 75
-2 Malicious Eclipse (LCI) 111
+2 Deadly Cover-Up (MKM) 83
 1 Consuming Ashes (OTJ) 83
