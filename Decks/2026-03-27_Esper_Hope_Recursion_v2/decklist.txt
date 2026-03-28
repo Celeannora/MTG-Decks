@@ -1,0 +1,58 @@
+Deck
+// Creatures (18)
+4 Hope Estheim (FIN) 541
+2 Deep-Cavern Bat (SCH) 33
+2 Scarblade Scout (ECL) 118
+2 Shinra Reinforcements (FIN) 118
+2 Billowing Shriekmass (FDN) 56
+2 Bloodghast (DFT) 337
+2 Overlord of the Balemurk (DSK) 391
+2 The Mindskinner (DSK) 357
+
+// Sorceries (2)
+2 Day of Judgment (FDN) 140
+
+// Instants (8)
+2 Heartless Act (IKO) 366
+2 Get Lost (PLCI) 14p
+2 No More Lies (MKM) 221
+1 Three Steps Ahead (POTJ) 75s
+1 Spell Pierce (2X2) 63
+
+// Enchantments (9)
+2 Smile at Death (TDM) 24
+2 Scavenger's Talent (BLB) 111
+2 Soul Enervation (MKM) 106
+1 Authority of the Consuls (PKLD) 5s
+1 Sheltered by Ghosts (PJSC) 2026-1
+1 Stillness in Motion (PTDM) 59p
+
+// Artifacts (2)
+2 Carrion Cruiser (DFT) 78
+
+// Lands (21)
+2 Hallowed Fountain (UNF) 277
+2 Watery Grave (CLU) 283
+2 Godless Shrine (UNF) 533
+1 Meticulous Archive (PMKM) 264p
+1 Undercity Sewers (PZA) 20
+1 Shadowy Backstreet (MKM) 330
+1 Restless Fortress (PWOE) 259s
+1 Restless Anchorage (LCI) 347
+2 Concealed Courtyard (POTJ) 268p
+1 Floodfarm Verge (DSK) 330
+1 Gloomlake Verge (PDSK) 260s
+2 Plains (CMA) 292
+2 Island (ELD) 255
+2 Swamp (JMP) 59
+
+Sideboard
+2 Moment of Craving (PLST) RIX-79
+2 Enduring Innocence (DSK) 6
+1 Bitter Triumph (LCI) 91
+2 Negate (OGW) 59
+2 Enduring Curiosity (PDSK) 51s
+1 Spellgyre (BLB) 72
+2 Angel of Finality (C20) 75
+2 Deadly Cover-Up (MKM) 83
+1 Consuming Ashes (OTJ) 83
