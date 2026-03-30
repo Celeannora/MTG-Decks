@@ -1,0 +1,40 @@
+Deck
+4 Hope Estheim (FIN) 541
+4 Hinterland Sanctifier (FDN) 730
+3 Dazzling Angel (FDN) 9
+2 Essence Channeler (PBLB) 12s
+2 Haliya, Guided by Light (PEOE) 19s
+2 Aerith Gainsborough (FIN) 519
+2 Inspiring Overseer (SNC) 18
+1 Resplendent Angel (PLCI) 32p
+1 Delney, Streetwise Lookout (MKM) 378
+1 Lyra Dawnbringer (DMR) 413
+3 No More Lies (MKM) 221
+2 Get Lost (PLCI) 14p
+2 Disdainful Stroke (GRN) 37
+2 Opt (WOC) 101
+2 Authority of the Consuls (PKLD) 5s
+2 Windcrag Siege (TDM) 235
+2 Riverchurn Monument (DFT) 440
+1 The Water Crystal (PFIN) 85s
+2 Space-Time Anomaly (PEOE) 229p
+4 Hallowed Fountain (UNF) 277
+4 Sacred Foundry (RVR) 409z
+4 Steam Vents (GPT) 164
+1 Inspiring Vantage (SLD) 1375
+2 Spirebluff Canal (PKLD) 249s
+1 Temple of Enlightenment (FDN) 698
+1 Temple of Triumph (OTC) 335
+2 Plains (CMA) 292
+1 Island (ELD) 255
+
+Sideboard
+2 Abrade (2XM) 114
+2 Authority of the Consuls (PKLD) 5s
+2 Disdainful Stroke (GRN) 37
+2 Stroke of Midnight (WOE) 33
+2 Stillness in Motion (PTDM) 59p
+2 Kutzil's Flanker (LCI) 355
+1 Watcher of the Wayside (TDM) 249
+1 The Water Crystal (PFIN) 85s
+1 Space-Time Anomaly (PEOE) 229p
