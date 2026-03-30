@@ -1,0 +1,38 @@
+Deck
+2 Hope Estheim (FIN) 541
+1 Vaultborn Tyrant (BIG) 85
+2 Ugin, Eye of the Storms (PTDM) 1p
+4 Get Lost (PLCI) 14p
+3 Three Steps Ahead (POTJ) 75s
+2 Negate (OGW) 59
+3 Elspeth's Smite (PLST) MOM-13
+2 No More Lies (MKM) 221
+3 Day of Judgment (M11) 12
+2 Fumigate (PKLD) 15p
+3 Make Your Own Luck (OTJ) 218
+3 Ancient Cornucopia (BIG) 46
+2 Mazemind Tome (CMM) 959
+1 Riverchurn Monument (DFT) 440
+3 Glacierwood Siege (TDM) 189
+1 Omenpath Journey (BIG) 48
+2 Forest (BLB) 280
+1 Island (ELD) 255
+3 Plains (CMA) 292
+4 Hallowed Fountain (UNF) 277
+2 Botanical Sanctum (SLD) 1376
+2 Willowrush Verge (DFT) 375
+2 Hushwood Verge (DSK) 332
+2 Temple Garden (CLU) 282
+4 Floodfarm Verge (DSK) 330
+1 Demolition Field (FDN) 687
+
+Sideboard
+2 Rest in Peace (PRM) 77943
+2 Disdainful Stroke (GRN) 37
+2 Negate (OGW) 59
+2 Heritage Reclamation (TDM) 145
+2 Bounce Off (DFT) 39
+2 Soul-Guide Lantern (WOE) 251
+1 Elspeth, Storm Slayer (TDM) 398
+1 Authority of the Consuls (PKLD) 5s
+1 Break Down the Door (DSK) 170
