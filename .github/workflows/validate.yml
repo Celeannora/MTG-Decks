@@ -10,6 +10,9 @@ on:
       - 'Decks/**/decklist.txt'
       - 'cards_by_category/**'
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
