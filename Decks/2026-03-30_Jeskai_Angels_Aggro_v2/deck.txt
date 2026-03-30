@@ -1,7 +1,6 @@
 Deck
 4 Healer's Hawk (FDN) 142
-4 Lunarch Veteran (MID) 27
-3 Ajani's Pridemate (FDN) 135
+4 Ajani's Pridemate (FDN) 135
 4 Essence Channeler (BLB) 12
 4 Delney, Streetwise Lookout (MKM) 12
 4 Hinterland Sanctifier (FDN) 730
