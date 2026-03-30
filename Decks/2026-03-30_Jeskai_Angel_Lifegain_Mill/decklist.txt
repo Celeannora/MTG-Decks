@@ -1,22 +1,23 @@
 Deck
 4 Hope Estheim (FIN) 541
 4 Hinterland Sanctifier (FDN) 730
-3 Dazzling Angel (FDN) 9
+2 Dazzling Angel (FDN) 9
 2 Essence Channeler (PBLB) 12s
 2 Haliya, Guided by Light (PEOE) 19s
 2 Aerith Gainsborough (FIN) 519
-2 Inspiring Overseer (SNC) 18
 1 Resplendent Angel (PLCI) 32p
 1 Delney, Streetwise Lookout (MKM) 378
 1 Lyra Dawnbringer (DMR) 413
 3 No More Lies (MKM) 221
 2 Get Lost (PLCI) 14p
-1 Disdainful Stroke (GRN) 37
+2 Lightning Helix (RAV) 213
+2 Unwanted Remake (DSK) 39
+2 Fumigate (PKLD) 15p
 2 Authority of the Consuls (PKLD) 5s
-2 Windcrag Siege (TDM) 235
+1 Windcrag Siege (TDM) 235
 1 Riverchurn Monument (DFT) 440
 1 The Water Crystal (PFIN) 85s
-2 Space-Time Anomaly (PEOE) 229p
+1 Space-Time Anomaly (PEOE) 229p
 4 Hallowed Fountain (UNF) 277
 3 Sacred Foundry (RVR) 409z
 3 Steam Vents (GPT) 164
@@ -31,12 +32,13 @@ Deck
 1 Mountain (ELD) 262
 
 Sideboard
+2 Day of Judgment (M11) 12
 2 Abrade (2XM) 114
-2 Authority of the Consuls (PKLD) 5s
 2 Disdainful Stroke (GRN) 37
 2 Stroke of Midnight (WOE) 33
-2 Stillness in Motion (PTDM) 59p
 2 Kutzil's Flanker (LCI) 355
-1 Watcher of the Wayside (TDM) 249
+1 Torch the Tower (WOE) 153
 1 The Water Crystal (PFIN) 85s
-1 Riverchurn Monument (DFT) 440
+1 Space-Time Anomaly (PEOE) 229p
+1 Stillness in Motion (PTDM) 59p
+1 Authority of the Consuls (PKLD) 5s
