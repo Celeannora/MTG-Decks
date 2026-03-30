@@ -11,22 +11,24 @@ Deck
 1 Lyra Dawnbringer (DMR) 413
 3 No More Lies (MKM) 221
 2 Get Lost (PLCI) 14p
-2 Disdainful Stroke (GRN) 37
-2 Opt (WOC) 101
+1 Disdainful Stroke (GRN) 37
 2 Authority of the Consuls (PKLD) 5s
 2 Windcrag Siege (TDM) 235
-2 Riverchurn Monument (DFT) 440
+1 Riverchurn Monument (DFT) 440
 1 The Water Crystal (PFIN) 85s
 2 Space-Time Anomaly (PEOE) 229p
 4 Hallowed Fountain (UNF) 277
-4 Sacred Foundry (RVR) 409z
-4 Steam Vents (GPT) 164
+3 Sacred Foundry (RVR) 409z
+3 Steam Vents (GPT) 164
+2 Starting Town (PFIN) 289s
+2 Floodfarm Verge (DSK) 330
+1 Fabled Passage (SLD) 727
 1 Inspiring Vantage (SLD) 1375
-2 Spirebluff Canal (PKLD) 249s
-1 Temple of Enlightenment (FDN) 698
-1 Temple of Triumph (OTC) 335
-2 Plains (CMA) 292
-1 Island (ELD) 255
+1 Spirebluff Canal (PKLD) 249s
+1 Sunbillow Verge (DFT) 264
+3 Plains (CMA) 292
+2 Island (ELD) 255
+1 Mountain (ELD) 262
 
 Sideboard
 2 Abrade (2XM) 114
@@ -37,4 +39,4 @@ Sideboard
 2 Kutzil's Flanker (LCI) 355
 1 Watcher of the Wayside (TDM) 249
 1 The Water Crystal (PFIN) 85s
-1 Space-Time Anomaly (PEOE) 229p
+1 Riverchurn Monument (DFT) 440
