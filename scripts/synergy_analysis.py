@@ -129,36 +129,80 @@ def load_cards_from_db(names: List[str], paths: RepoPaths) -> Dict[str, Dict]:
     return found
 
 
+# Matches the search_cards.py table output: lines starting with 2 spaces then a card name
+# Format:  "  Card Name"  followed by "    Mana: ..." on the next line
+_SEARCH_OUTPUT_CARD_RE = re.compile(r"^  ([A-Z][^\n]{1,60})$", re.MULTILINE)
+
+# Matches Gate 3 table rows: | 4 | Card Name | ... |
+_GATE3_ROW_RE = re.compile(r"\|\s*(\d+)\s*\|\s*([^|\n]{2,60})\s*\|")
+
+# Column headers to skip
+_SKIP_HEADERS = {
+    "card name", "card", "qty", "quantity", "mana", "source file",
+    "set/collector", "role/justification", "role", "color", "total pips",
+    "key cards", "required sources", "actual sources", "status",
+    "land name", "colors produced",
+}
+
+
 def extract_names_from_session(content: str) -> List[str]:
     """
-    Extract unique card names from a session.md.
-    Looks at: query output blocks (table rows) and Gate 3 selection tables.
+    Extract unique card names from a session.md by parsing:
+    1. search_cards.py table output inside fenced code blocks (indented "  Card Name" lines)
+    2. Gate 3 card selection tables (| Qty | Card Name | ... |)
     """
     names: List[str] = []
     seen: Set[str] = set()
 
-    # Table rows: | 4 | Card Name | ... | or | Card Name | ... |
-    for line in content.splitlines():
-        line = line.strip()
-        if not line.startswith("|"):
-            continue
-        parts = [p.strip() for p in line.split("|") if p.strip()]
-        if not parts or parts[0] in ("-", "Qty", "qty", "#", "Card", "card"):
-            continue
-        # Try each cell as a potential card name (2-5 words, mixed case)
-        for cell in parts:
-            cell = cell.strip()
-            # Strip quantity prefix like "4 " or "3x "
-            cell = re.sub(r"^\d+[x ]?\s*", "", cell).strip()
-            # Skip cells that look like mana costs, numbers, or long descriptions
-            if not cell or len(cell) < 3 or len(cell) > 50:
+    def add(name: str):
+        key = name.lower().strip()
+        if key and key not in seen and len(key) >= 3:
+            seen.add(key)
+            names.append(name.strip())
+
+    # 1. Parse search_cards.py output inside fenced code blocks
+    # Find all code blocks and scan for the indented card name pattern
+    code_blocks = re.findall(r"```[^\n]*\n(.*?)```", content, re.DOTALL)
+    for block in code_blocks:
+        lines = block.splitlines()
+        for i, line in enumerate(lines):
+            # search_cards output: "  CardName" (2 leading spaces, starts with capital)
+            m = re.match(r"^  ([A-Z][^\n]{1,60})$", line)
+            if not m:
                 continue
-            if re.match(r"^[\d{}/WUBRGC]+$", cell):
+            candidate = m.group(1).strip()
+            # Confirm it looks like a card name: next line should have "Mana:" or "Type:"
+            next_line = lines[i + 1] if i + 1 < len(lines) else ""
+            if "Mana:" in next_line or "Type:" in next_line or "CMC:" in next_line:
+                add(candidate)
+
+    # 2. Parse Gate 3 / Gate 5 card selection tables
+    # Look for sections after "# GATE 3" or "# GATE 5"
+    gate_sections = re.split(r"# GATE [35][^#]*", content)
+    for section in gate_sections[1:]:  # skip everything before Gate 3
+        for line in section.splitlines():
+            if not line.startswith("|"):
                 continue
-            if cell.lower() in seen:
+            parts = [p.strip() for p in line.split("|") if p.strip()]
+            if len(parts) < 3:
                 continue
-            seen.add(cell.lower())
-            names.append(cell)
+            # First cell is quantity, second is card name
+            qty_cell = parts[0]
+            name_cell = parts[1] if len(parts) > 1 else ""
+            # Skip header/separator rows
+            if name_cell.lower() in _SKIP_HEADERS:
+                continue
+            if re.match(r"^-+$", name_cell):
+                continue
+            # Skip empty template rows
+            if not name_cell or name_cell in ("", " "):
+                continue
+            # qty must be a number or empty
+            if qty_cell and not re.match(r"^\d+$", qty_cell.strip()):
+                continue
+            # Name must start with a capital letter and look like a card name
+            if re.match(r"^[A-Z][a-zA-Z',\- ]{1,50}$", name_cell):
+                add(name_cell)
 
     return names
 

@@ -46,13 +46,18 @@ def find_queries(content: str, force: bool = False):
     """
     Yield (match, command, has_output) for every search_cards.py block.
     If force=False, skip blocks that already have real output.
+    Skips template/placeholder commands containing <...> tokens.
     """
     for m in QUERY_BLOCK_RE.finditer(content):
+        cmd = m.group(2)
+        # Skip template lines like: search_cards.py --type <type> --colors <colors>
+        if re.search(r"<[^>]+>", cmd):
+            continue
         body = m.group(3).strip()
-        has_output = body and body != PLACEHOLDER
+        has_output = body and body != PLACEHOLDER and body != "(paste output here)"
         if has_output and not force:
             continue
-        yield m, m.group(2), has_output
+        yield m, cmd, has_output
 
 
 def run_query(command: str, repo_root: Path, timeout: int) -> tuple[str, bool]:
