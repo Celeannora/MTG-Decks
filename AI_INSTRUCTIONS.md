@@ -491,7 +491,14 @@ All cards are legal and present in the database.
 
 ## SESSION ACKNOWLEDGMENT
 
-Every AI session must begin with this acknowledgment **before any other action:**
+Every AI session must begin with one of the two acknowledgments below, depending
+on what context you have been given. **Choose the correct one — do not mix them.**
+
+---
+
+### Mode A — No session.md (starting from scratch)
+
+Use this when you have only `AI_INSTRUCTIONS.md` and a deck brief.
 
 > "I acknowledge this repository's database-first protocol. I will:
 > 1. Use `search_cards.py` to query the database before naming any card
@@ -502,6 +509,45 @@ Every AI session must begin with this acknowledgment **before any other action:*
 > 6. Ask clarifying questions if the archetype or strategy is ambiguous
 >
 > I will not name a single card until Gate 1 (database queries) is complete."
+
+---
+
+### Mode B — session.md provided (resuming from Gate 1)
+
+Use this when a `session.md` file has been attached. Gate 1 is already complete.
+
+> "I acknowledge this repository's database-first protocol. A session.md has been
+> provided. I will:
+> 1. Treat Gate 1 as complete — the candidate pool is the query output embedded
+>    in session.md. I will not run new queries or add cards from outside it.
+> 2. Read the deck's **Archetype** line at the top of session.md. If it specifies
+>    a tribe (e.g. "Tribal (Dog / Angel)"), that is a **hard constraint** — every
+>    creature selected in Gate 3 must be a member of that tribe or a Changeling.
+>    This is not a tag hint; it is a structural requirement.
+> 3. Start at the first incomplete gate (the first gate with unchecked checklist
+>    items). Do not re-do completed gates.
+> 4. Cite the source file for every card I select — only cards that appear in the
+>    Gate 1 query output may be chosen.
+> 5. Run the validation script before finalizing any deck.
+> 6. If a synergy_report.md has been provided alongside session.md, use it as a
+>    reference to inform Gate 2.5 — but I must still fill in the Gate 2.5 section
+>    of session.md myself. The report does not substitute for that work.
+>
+> I will not name a card that does not appear in the Gate 1 query output."
+
+---
+
+### How to tell the AI which mode to use
+
+Include one of these lines at the start of your prompt:
+
+**Mode A:** "Read AI_INSTRUCTIONS.md. Acknowledge Mode A and begin Gate 1."
+
+**Mode B:** "Read AI_INSTRUCTIONS.md. A session.md is attached. Acknowledge Mode B
+and continue from the first incomplete gate."
+
+If a tribe was specified, add: "The deck's tribe constraint is [Tribe]. Enforce it
+as a hard requirement in Gate 3 — creatures must be that type or Changelings."
 
 ---
 
@@ -524,6 +570,7 @@ Workflow runs one direction only: database query → candidate pool → card sel
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 9.2 | 2026-04-04 | Added dual-mode SESSION ACKNOWLEDGMENT: Mode A (no session.md, start from Gate 1) and Mode B (session.md provided, resume from first incomplete gate); added tribal hard constraint enforcement in Mode B; added synergy_report.md reference guidance; added prompt templates for both modes |
 | 9.1 | 2026-04-03 | Added Gate 2.5 (Synergy Evaluation): mandatory pairwise synergy classification, scoring (Synergy Count, Role Breadth, Dependency), universal thresholds, and synergy chain mapping before card selection; added synergy evaluation section to analysis.md template; added Gate 2.5 skip to prohibited actions table |
 | 9.0 | 2026-03-21 | Search-first protocol: replaced manual file-sweep with `search_cards.py`; added strategic tags column to CSV schema; unified validators into single script with `--local` flag; added `index_decks.py` for deck registry; removed deprecated stub files; CI now re-validates all decks on database changes; added clarifying questions to Gate 1; added interaction justification requirement to Gate 3 |
 | 8.2 | 2026-03-15 | Mandate exhaustive full-database sweep: ALL files for each needed card type must be opened before any selection; added partial-loading prohibition to zero-tolerance table; added file-opened checklist to Gate 1 |
@@ -533,4 +580,4 @@ Workflow runs one direction only: database query → candidate pool → card sel
 | 7.0 | 2026-03-09 | Consolidated all instructions into single file |
 
 **Maintained by:** Celeannora
-**Last updated:** April 3, 2026
+**Last updated:** April 4, 2026

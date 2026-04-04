@@ -61,14 +61,43 @@ Decks/2026-04-03_Orzhov_Lifegain/
 
 ### Step 2: Feed session.md to your AI tool
 
-Open `session.md` and paste it into your AI tool as context. The file contains:
-- All candidate pool data (pre-queried, embedded)
-- Every gate section with checklists
-- Structured tables to fill in
-- The validation command to run at the end
+Attach `session.md` to your AI tool. Then use the prompt template below.
 
-Tell the AI:
-> "This is a deck-building session file. Work through each gate in order, filling in the sections. Only use cards from the candidate pool in Gate 1. Cite the source file for every card."
+#### Standard prompt (no tribe constraint)
+
+```
+Read AI_INSTRUCTIONS.md from https://github.com/Celeannora/MTG-Decks.
+A session.md is attached. Acknowledge Mode B and continue from the first
+incomplete gate. Only use cards from the Gate 1 candidate pool in session.md.
+Cite the source file for every card you select.
+```
+
+#### Tribal deck prompt
+
+```
+Read AI_INSTRUCTIONS.md from https://github.com/Celeannora/MTG-Decks.
+A session.md is attached. Acknowledge Mode B and continue from the first
+incomplete gate. The deck's tribe constraint is [Dog / Angel] — enforce it
+as a hard requirement in Gate 3. Every creature must be that type or a
+Changeling. Only use cards from the Gate 1 candidate pool. Cite the source
+file for every card you select.
+```
+
+> Replace `[Dog / Angel]` with the tribe(s) from the **Archetype** line at
+> the top of session.md.
+
+#### If you also have a synergy_report.md
+
+Attach it alongside session.md and add this line to your prompt:
+
+```
+A synergy_report.md is also attached. Use it as a reference when completing
+Gate 2.5 in session.md, but fill in the Gate 2.5 section yourself — do not
+treat the report as a substitute for that work.
+```
+
+> **Do not attach synergy_report.md without session.md.** The report has no
+> meaning without the candidate pool and gate structure in session.md.
 
 ### Step 3: Fill in gates inside session.md
 
@@ -132,8 +161,16 @@ python scripts/generate_deck_scaffold.py --name "Dimir Mill" --colors UB --arche
 # Lifegain
 python scripts/generate_deck_scaffold.py --name "Orzhov Lifegain" --colors WB --archetype lifegain
 
-# Tribal (with --tribe flag)
+# Tribal — single tribe
 python scripts/generate_deck_scaffold.py --name "Simic Frogs" --colors GU --archetype tribal --tribe Frog
+
+# Tribal — multiple tribes (generates one query per type)
+python scripts/generate_deck_scaffold.py --name "Orzhov Dog Angel" --colors WB --archetype tribal --tribe Dog Angel
+
+# Tribal — with guaranteed focus cards
+python scripts/generate_deck_scaffold.py --name "Orzhov Dog Angel" --colors WB \
+  --archetype tribal --tribe Dog Angel \
+  --focus-cards "Resplendent Angel" "Wary Watchdog" "Prideful Feastling"
 
 # Ramp
 python scripts/generate_deck_scaffold.py --name "Gruul Ramp" --colors RG --archetype ramp
@@ -159,11 +196,21 @@ This generates the full scaffold structure with placeholder query sections. You 
 ### Additional flags
 
 ```bash
---date 2026-04-01        # Override date (default: today)
---output-dir ./my_decks  # Custom output directory
---extra-tags draw,etb    # Add extra search tags to all queries
---tribe Angel            # Creature subtype filter (for tribal)
+--date 2026-04-01                      # Override date (default: today)
+--output-dir ./my_decks                # Custom output directory
+--extra-tags draw,etb                  # Add extra search tags to all queries
+--tribe Angel Dog                      # One or more creature subtypes (tribal)
+--focus-cards "Resplendent Angel" \
+              "Wary Watchdog"          # Guarantee specific cards in the pool
 ```
+
+**`--tribe` with multiple types** generates one creature query per type
+(e.g. `--tribe Dog Angel` → separate Dog query + separate Angel query).
+This avoids the broken `Dog|Angel` oracle-text OR syntax.
+
+**`--focus-cards`** appends a `--name` lookup for each named card at the
+end of the query plan. Useful for key cards that archetype queries might
+miss (e.g. Changelings, multi-type creatures, specific legendaries).
 
 ---
 
