@@ -152,6 +152,18 @@ Used standalone or called internally by `generate_deck_scaffold.py` to build can
 
 Generates a complete single-file session scaffold for building a new deck through the full gate system (Gates 1–6) locally. Designed for users running the deck-building process with any AI tool that has limited tool access.
 
+#### Interactive Mode
+
+The easiest way to get started — just run the script with no arguments:
+
+```bash
+python scripts/generate_deck_scaffold.py
+```
+
+This launches a step-by-step wizard that walks you through deck name, colors, archetype, and options with clear prompts and input validation. You can also explicitly request the wizard with `--interactive` / `-i`.
+
+#### Non-interactive (CLI flags)
+
 ```bash
 # Basic usage
 python scripts/generate_deck_scaffold.py --name "Orzhov Lifegain" --colors WB --archetype lifegain
@@ -178,6 +190,7 @@ python scripts/generate_deck_scaffold.py --name "Boros Aggro" --colors WR --arch
 | `--output-dir` | No | Output directory override (default: `Decks/`) |
 | `--extra-tags` | No | Additional search tags, comma-separated |
 | `--skip-queries` | No | Generate scaffold without running `search_cards.py` queries |
+| `--interactive` / `-i` | No | Launch interactive wizard (also triggered when run with no args) |
 
 **What it does:**
 1. Runs archetype-specific `search_cards.py` queries to find candidate cards
