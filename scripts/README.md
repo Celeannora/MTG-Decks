@@ -34,45 +34,69 @@ python scripts/fetch_and_categorize_cards.py
 
 ### `validate_decklist.py`
 
-Validates a decklist against `cards_by_category/`. Requires no pre-build step.
+Validates a decklist against the local card database. Works out of the box
+after cloning — no pre-build step required.
+
+**Quick start (after cloning):**
 
 ```bash
 python scripts/validate_decklist.py Decks/my_deck/decklist.txt
-python scripts/validate_decklist.py --quiet Decks/my_deck/decklist.txt
+```
+
+**All usage:**
+
+```bash
+# Default — reads cards_by_category/ CSVs directly (no setup needed)
+python scripts/validate_decklist.py Decks/my_deck/decklist.txt
 python scripts/validate_decklist.py --verbose Decks/my_deck/decklist.txt
+python scripts/validate_decklist.py --quiet Decks/my_deck/decklist.txt
+
+# Faster backends (run build_local_database.py first)
+python scripts/validate_decklist.py --db json Decks/my_deck/decklist.txt
+python scripts/validate_decklist.py --db sqlite Decks/my_deck/decklist.txt
+
+# Extra analysis
+python scripts/validate_decklist.py --strict Decks/my_deck/decklist.txt
+python scripts/validate_decklist.py --show-tags Decks/my_deck/decklist.txt
+python scripts/validate_decklist.py --strict --show-tags --verbose Decks/my_deck/decklist.txt
 ```
 
 **What it checks:**
+
 - Every card exists in the database (Standard-legal)
 - Mainboard has exactly 60 cards
 - Sideboard has exactly 15 cards (or 0)
-- No non-basic land appears more than 4 times
+- No non-basic land appears more than 4 times (respects cards with unlimited copies like Rat Colony)
 - Offers "did you mean?" suggestions for near-miss card names
+- Empty or missing decklist detection
 
-**Exit codes:** `0` = pass, `1` = illegal cards, `2` = file not found, `3` = count violation
+**With `--strict`:**
 
----
+- Land count sanity check (warns if outside 20–28 range)
 
-### `validate_decklist_local.py`
+**With `--show-tags`:**
 
-Fast offline validation using a pre-built local index. Much faster than the full CSV scan.
+- Prints synergy tag summary for all mainboard non-land cards (lifegain, removal, draw, etc.)
 
-```bash
-# Build the index first (one-time)
-python scripts/build_local_database.py
+**Flags:**
 
-# Then validate
-python scripts/validate_decklist_local.py Decks/my_deck/decklist.txt
-python scripts/validate_decklist_local.py --sqlite Decks/my_deck/decklist.txt
-```
+| Flag | Description |
+|------|-------------|
+| `--db csv` | Read cards_by_category/ CSVs directly (default, no setup needed) |
+| `--db json` | Read local_db/card_index.json (run `build_local_database.py` first) |
+| `--db sqlite` | Read local_db/card_details.db (run `build_local_database.py` first) |
+| `--quiet` / `-q` | Suppress info-level logging |
+| `--verbose` / `-v` | Print source CSV path for each card |
+| `--strict` | Enable extra checks (land count warnings) |
+| `--show-tags` | Print synergy tag distribution for the deck |
 
-Same exit codes and flags as `validate_decklist.py`.
+**Exit codes:** `0` = pass, `1` = illegal cards, `2` = file/database not found, `3` = count violation
 
 ---
 
 ### `build_local_database.py`
 
-Builds the `local_db/` directory used by `validate_decklist_local.py`.
+Builds the `local_db/` directory for faster offline validation with `--db json` or `--db sqlite`.
 
 ```bash
 python scripts/build_local_database.py
@@ -93,13 +117,32 @@ The `local_db/` directory is in `.gitignore` and is not committed to the repo.
 
 ### `search_cards.py`
 
-Searches the `cards_by_category/` CSV files for cards matching a query. Supports filtering by name, type, color, keywords, mana value, and more.
+Searches the `cards_by_category/` CSV files for cards matching a query. Supports filtering by name, type, color identity, keywords, mana value, rarity, and strategic tags.
 
 ```bash
-python scripts/search_cards.py --color W --type creature --keyword lifelink
-python scripts/search_cards.py --color UB --type instant --max-mv 3
+python scripts/search_cards.py --colors W --type creature --tags lifegain
+python scripts/search_cards.py --colors UB --type instant --cmc-max 3
 python scripts/search_cards.py --name "Lightning"
+python scripts/search_cards.py --type creature --colors WB --tags removal --show-tags
+python scripts/search_cards.py --type land --colors WU
 ```
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--type` | Card type(s), comma-separated (creature, instant, sorcery, etc.) |
+| `--colors` | Color identity filter (W, UB, =WB for exact, C for colorless) |
+| `--oracle` | Substring match in oracle text |
+| `--name` | Substring match in card name |
+| `--tags` | Strategy tags, comma-separated (lifegain, draw, removal, etc.) |
+| `--cmc-max` | Maximum converted mana cost (inclusive) |
+| `--cmc-min` | Minimum converted mana cost (inclusive) |
+| `--rarity` | Rarity filter: common, uncommon, rare, mythic (comma-separated) |
+| `--keywords` | MTG keyword(s), comma-separated (Flying, Lifelink) |
+| `--limit` | Max results (default: 200) |
+| `--show-tags` | Print computed tags per card |
+| `--format` | Output format: table (default), csv, names |
 
 Used standalone or called internally by `generate_deck_scaffold.py` to build candidate pools.
 
@@ -191,10 +234,11 @@ python scripts/index_decks.py
 
 ### `mtg_utils.py`
 
-Shared utilities imported by both validator scripts. Not intended to be run directly.
+Shared utilities imported by other scripts. Not intended to be run directly.
 
-Provides `parse_decklist(path)` which handles MTGA-format decklists with `//` and `#` comments,
-`Deck` / `Sideboard` section headers, and set code stripping.
+Provides:
+- `RepoPaths` — centralised directory-name configuration (auto-detects repo root)
+- `parse_decklist(path)` — MTGA-format decklist parser (handles `//` and `#` comments, `Deck`/`Sideboard` section headers, set code stripping)
 
 ---
 
