@@ -626,22 +626,41 @@ def _wizard_prompts() -> argparse.Namespace:
     if len(valid_archetypes) % 4 != 0:
         print()
     print()
-    archetype_raw = input("  Choice (number or name): ").strip().lower()
+    print("  Pick one or more (comma-separated numbers or names, e.g. 5,7 or lifegain,mill)")
+
+    def _parse_archetype_input(raw: str) -> Optional[List[str]]:
+        """Parse a multi-archetype input string. Returns list or None if invalid."""
+        parts = [p.strip().lower() for p in raw.replace(" ", ",").split(",") if p.strip()]
+        if not parts:
+            return None
+        resolved = []
+        for p in parts:
+            if p in valid_archetypes:
+                resolved.append(p)
+            elif p.isdigit() and 1 <= int(p) <= len(valid_archetypes):
+                resolved.append(valid_archetypes[int(p) - 1])
+            else:
+                return None  # invalid token
+        return list(dict.fromkeys(resolved))  # deduplicate, preserve order
+
+    archetype_raw = input("  Choice(s): ").strip()
+    archetypes: List[str] = []
     while True:
-        if archetype_raw in valid_archetypes:
-            archetype = archetype_raw
+        result = _parse_archetype_input(archetype_raw)
+        if result:
+            archetypes = result
             break
-        if archetype_raw.isdigit() and 1 <= int(archetype_raw) <= len(valid_archetypes):
-            archetype = valid_archetypes[int(archetype_raw) - 1]
-            break
-        print(f"  Invalid — enter a number 1-{len(valid_archetypes)} or type the name")
-        archetype_raw = input("  Choice: ").strip().lower()
+        print(f"  Invalid — use numbers 1-{len(valid_archetypes)} or archetype names, comma-separated")
+        archetype_raw = input("  Choice(s): ").strip()
+
+    # For backwards compat, single archetype stored as string too
+    archetype = ",".join(archetypes)
     print()
 
     # ── Step 4: Tribe (only if tribal) ───────────────────────
     tribe: Optional[str] = None
-    if archetype == "tribal":
-        print("  Step 4 — Creature Subtype")
+    if "tribal" in archetypes:
+        print("  Step 4 — Creature Subtype (Tribal selected)")
         print("  Examples: Frog, Angel, Elf, Vampire, Merfolk, Dragon, Goblin")
         tribe = input("  Subtype: ").strip() or None
         while not tribe:
@@ -671,7 +690,8 @@ def _wizard_prompts() -> argparse.Namespace:
     print("  SUMMARY")
     print(f"  Name:       {name}")
     print(f"  Colors:     {colors}")
-    print(f"  Archetype:  {archetype}" + (f" ({tribe} Tribal)" if tribe else ""))
+    archetype_label = ", ".join(archetypes) if len(archetypes) > 1 else archetype
+    print(f"  Archetype:  {archetype_label}" + (f" ({tribe} Tribal)" if tribe else ""))
     print(f"  Extra tags: {extra_tags or 'none'}")
     print(f"  Run queries: {'no (offline template)' if skip_queries else 'yes'}")
     print(f"  Output:     Decks/{preview_date}_{sanitize_folder_name(name)}/")
@@ -685,7 +705,7 @@ def _wizard_prompts() -> argparse.Namespace:
     return argparse.Namespace(
         name=name,
         colors=colors,
-        archetype=archetype,
+        archetype=archetypes,
         tribe=tribe,
         date=None,
         output_dir=None,
@@ -705,8 +725,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--colors", default=None, help="Color identity (e.g. WB, GU, WUR)")
     p.add_argument(
         "--archetype", default=None,
+        nargs="+",
         choices=sorted(ARCHETYPE_QUERIES.keys()),
-        help="Deck archetype",
+        metavar="ARCHETYPE",
+        help=f"Deck archetype(s), one or more of: {', '.join(sorted(ARCHETYPE_QUERIES.keys()))}",
     )
     p.add_argument("--interactive", "-i", action="store_true", help="Launch interactive wizard mode")
     p.add_argument("--tribe", help="Creature subtype for tribal (e.g. Frog, Angel, Elf)")
@@ -733,6 +755,9 @@ def main() -> None:
         missing = [f"--{f}" for f, v in [("name", args.name), ("colors", args.colors), ("archetype", args.archetype)] if not v]
         if missing:
             build_parser().error(f"the following arguments are required: {', '.join(missing)}")
+        # Normalize: always store archetype as a list internally
+        if isinstance(args.archetype, str):
+            args.archetype = [args.archetype]
 
     paths = RepoPaths()
     repo_root = paths.root
@@ -755,14 +780,25 @@ def main() -> None:
     print(f"  DECK SCAFFOLD GENERATOR")
     print(f"  Name:      {args.name}")
     print(f"  Colors:    {args.colors.upper()}")
-    print(f"  Archetype: {args.archetype}")
+    archetype_list = args.archetype if isinstance(args.archetype, list) else [args.archetype]
+    print(f"  Archetype: {', '.join(archetype_list)}")
     if args.tribe:
         print(f"  Tribe:     {args.tribe}")
     print(f"  Output:    {deck_dir}/")
     print(f"{'='*70}\n")
 
-    # Run queries
-    query_plan = ARCHETYPE_QUERIES[args.archetype]
+    # Build merged query plan from all chosen archetypes (deduplicate by label)
+    archetype_list = args.archetype if isinstance(args.archetype, list) else [args.archetype]
+    seen_labels: dict = {}
+    for arch in archetype_list:
+        for q in ARCHETYPE_QUERIES.get(arch, []):
+            if q["label"] not in seen_labels:
+                seen_labels[q["label"]] = q
+    # Always put Lands last
+    lands = seen_labels.pop("Lands", None)
+    query_plan = list(seen_labels.values())
+    if lands:
+        query_plan.append(lands)
     query_results: List[Dict] = []
 
     if args.skip_queries:
@@ -804,7 +840,7 @@ def main() -> None:
         deck_date=deck_date,
         deck_name=args.name,
         colors=args.colors.upper(),
-        archetype=args.archetype,
+        archetype=", ".join(archetype_list),
         query_results=query_results,
         tribe=args.tribe,
     )
