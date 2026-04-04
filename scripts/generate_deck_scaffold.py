@@ -52,6 +52,59 @@ from datetime import date
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+# ─── Complete MTG creature type list (Scryfall catalog, 325 types) ─────────────
+ALL_CREATURE_TYPES: List[str] = [
+    "Advisor", "Aetherborn", "Alien", "Ally", "Angel", "Antelope", "Ape",
+    "Archer", "Archon", "Armadillo", "Army", "Artifact", "Artificer",
+    "Assassin", "Assembly-Worker", "Astartes", "Atog", "Aurochs", "Automaton",
+    "Avatar", "Azra", "Badger", "Balloon", "Barbarian", "Bard", "Basilisk",
+    "Bat", "Bear", "Beast", "Beaver", "Beeble", "Beholder", "Berserker",
+    "Bird", "Bison", "Blinkmoth", "Boar", "Brainiac", "Bringer", "Brushwagg",
+    "C'tan", "Camarid", "Camel", "Capybara", "Caribou", "Carrier", "Cat",
+    "Centaur", "Chicken", "Child", "Chimera", "Citizen", "Cleric", "Clown",
+    "Cockatrice", "Construct", "Coward", "Coyote", "Crab", "Crocodile",
+    "Custodes", "Cyberman", "Cyclops", "Dalek", "Dauthi", "Demigod", "Demon",
+    "Deserter", "Detective", "Devil", "Dinosaur", "Djinn", "Doctor", "Dog",
+    "Dragon", "Drake", "Dreadnought", "Drix", "Drone", "Druid", "Dryad",
+    "Dwarf", "Echidna", "Efreet", "Egg", "Elder", "Eldrazi", "Elemental",
+    "Elephant", "Elf", "Elk", "Employee", "Eye", "Faerie", "Ferret", "Fish",
+    "Flagbearer", "Fox", "Fractal", "Frog", "Fungus", "Gamer", "Gargoyle",
+    "Germ", "Giant", "Gith", "Glimmer", "Gnoll", "Gnome", "Goat", "Goblin",
+    "God", "Golem", "Gorgon", "Graveborn", "Gremlin", "Griffin", "Guest",
+    "Hag", "Halfling", "Hamster", "Harpy", "Head", "Hedgehog", "Hellion",
+    "Hero", "Hippo", "Hippogriff", "Homarid", "Homunculus", "Hornet",
+    "Horror", "Horse", "Human", "Hydra", "Hyena", "Illusion", "Imp",
+    "Incarnation", "Inkling", "Inquisitor", "Insect", "Jackal", "Jellyfish",
+    "Juggernaut", "Kangaroo", "Kavu", "Kirin", "Kithkin", "Knight", "Kobold",
+    "Kor", "Kraken", "Lamia", "Lammasu", "Leech", "Lemur", "Leviathan",
+    "Lhurgoyf", "Licid", "Lizard", "Lobster", "Manticore", "Masticore",
+    "Mercenary", "Merfolk", "Metathran", "Minion", "Minotaur", "Mite",
+    "Mole", "Monger", "Mongoose", "Monk", "Monkey", "Moogle", "Moonfolk",
+    "Mount", "Mouse", "Mutant", "Myr", "Mystic", "Naga", "Nautilus",
+    "Necron", "Nephilim", "Nightmare", "Nightstalker", "Ninja", "Noble",
+    "Noggle", "Nomad", "Nymph", "Octopus", "Ogre", "Ooze", "Orb", "Orc",
+    "Orgg", "Otter", "Ouphe", "Ox", "Oyster", "Pangolin", "Peasant",
+    "Pegasus", "Pentavite", "Performer", "Pest", "Phelddagrif", "Phoenix",
+    "Phyrexian", "Pilot", "Pincher", "Pirate", "Plant", "Porcupine",
+    "Possum", "Praetor", "Primarch", "Prism", "Processor", "Qu", "Rabbit",
+    "Raccoon", "Ranger", "Rat", "Rebel", "Reflection", "Reveler", "Rhino",
+    "Rigger", "Robot", "Rogue", "Rukh", "Sable", "Salamander", "Samurai",
+    "Sand", "Saproling", "Satyr", "Scarecrow", "Scientist", "Scion",
+    "Scorpion", "Scout", "Sculpture", "Seal", "Serf", "Serpent", "Servo",
+    "Shade", "Shaman", "Shapeshifter", "Shark", "Sheep", "Siren", "Skeleton",
+    "Skunk", "Slith", "Sliver", "Sloth", "Slug", "Snail", "Snake", "Soldier",
+    "Soltari", "Spawn", "Specter", "Spellshaper", "Sphinx", "Spider", "Spike",
+    "Spirit", "Splinter", "Sponge", "Spy", "Squid", "Squirrel", "Starfish",
+    "Surrakar", "Survivor", "Symbiote", "Synth", "Teddy", "Tentacle",
+    "Tetravite", "Thalakos", "Thopter", "Thrull", "Tiefling", "Time Lord",
+    "Toy", "Treefolk", "Trilobite", "Triskelavite", "Troll", "Turtle",
+    "Tyranid", "Unicorn", "Urzan", "Vampire", "Varmint", "Vedalken",
+    "Villain", "Volver", "Wall", "Walrus", "Warlock", "Warrior", "Wasp",
+    "Weasel", "Weird", "Werewolf", "Whale", "Wizard", "Wolf", "Wolverine",
+    "Wombat", "Worm", "Wraith", "Wurm", "Yeti", "Zombie", "Zubera",
+]
+_CREATURE_TYPES_LOWER: Dict[str, str] = {t.lower(): t for t in ALL_CREATURE_TYPES}
+
 
 # ─── Archetype → query plan mapping ──────────────────────────────────────────
 
@@ -661,11 +714,32 @@ def _wizard_prompts() -> argparse.Namespace:
     tribe: Optional[str] = None
     if "tribal" in archetypes:
         print("  Step 4 — Creature Subtype (Tribal selected)")
-        print("  Examples: Frog, Angel, Elf, Vampire, Merfolk, Dragon, Goblin")
-        tribe = input("  Subtype: ").strip() or None
-        while not tribe:
-            print("  (subtype is required for tribal)")
-            tribe = input("  Subtype: ").strip() or None
+        print(f"  {len(ALL_CREATURE_TYPES)} types available. Type a name or partial name to search.")
+        print()
+        while True:
+            raw_tribe = input("  Search subtype: ").strip()
+            if not raw_tribe:
+                print("  (subtype is required for tribal — type at least 1 character)")
+                continue
+            # Exact match (case-insensitive)
+            exact = _CREATURE_TYPES_LOWER.get(raw_tribe.lower())
+            if exact:
+                tribe = exact
+                print(f"  Selected: {tribe}")
+                break
+            # Partial match
+            matches = [t for t in ALL_CREATURE_TYPES if raw_tribe.lower() in t.lower()]
+            if not matches:
+                print(f"  No types match '{raw_tribe}'. Try again.")
+            elif len(matches) == 1:
+                tribe = matches[0]
+                print(f"  Selected: {tribe}")
+                break
+            elif len(matches) <= 10:
+                print(f"  Matches: {', '.join(matches)}")
+                print("  Type the full name to confirm, or refine your search.")
+            else:
+                print(f"  {len(matches)} matches — too many to list. Refine your search.")
         print()
 
     # ── Step 5: Extra tags (optional) ────────────────────────
@@ -731,7 +805,10 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Deck archetype(s), one or more of: {', '.join(sorted(ARCHETYPE_QUERIES.keys()))}",
     )
     p.add_argument("--interactive", "-i", action="store_true", help="Launch interactive wizard mode")
-    p.add_argument("--tribe", help="Creature subtype for tribal (e.g. Frog, Angel, Elf)")
+    p.add_argument(
+        "--tribe",
+        help=f"Creature subtype for tribal — any of the {len(ALL_CREATURE_TYPES)} official MTG types (e.g. Frog, Angel, Elf, Vampire)",
+    )
     p.add_argument("--date", help="Date override (YYYY-MM-DD, default: today)")
     p.add_argument("--output-dir", help="Output directory (default: Decks/)")
     p.add_argument("--extra-tags", help="Additional search tags, comma-separated")
