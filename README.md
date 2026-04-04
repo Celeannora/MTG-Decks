@@ -51,7 +51,7 @@ MTG-Decks/
 ├── scripts/
 │   ├── fetch_and_categorize_cards.py  # Regenerates card database from Scryfall
 │   ├── search_cards.py                # 🔍 AI card search with strategy tag filtering
-│   ├── validate_decklist.py           # Validator (online CSV or offline --local mode)
+│   ├── validate_decklist.py           # Validator (CSV default, or --db json/sqlite)
 │   ├── build_local_database.py        # Builds local_db/ for fast offline validation
 │   ├── generate_deck_scaffold.py      # 📝 Local workflow: single-file session generator
 │   ├── index_decks.py                 # Regenerates Decks/_INDEX.md registry
@@ -99,17 +99,20 @@ python scripts/validate_decklist.py Decks/my_deck/decklist.txt
 python scripts/build_local_database.py
 
 # Then validate quickly
-python scripts/validate_decklist.py --local Decks/my_deck/decklist.txt
-python scripts/validate_decklist.py --local --sqlite Decks/my_deck/decklist.txt
+python scripts/validate_decklist.py --db json Decks/my_deck/decklist.txt
+python scripts/validate_decklist.py --db sqlite Decks/my_deck/decklist.txt
 ```
 
 ### Validation flags
 
 ```bash
---quiet    # Summary only (good for CI/CD)
---verbose  # Print source CSV for each card
---local    # Use pre-built local_db/ instead of scanning CSVs
---sqlite   # (with --local) Use SQLite DB instead of JSON index
+--db csv      # Read cards_by_category/ CSVs directly (default, no setup)
+--db json     # Use pre-built local_db/card_index.json
+--db sqlite   # Use pre-built local_db/card_details.db
+--quiet       # Suppress info-level logging
+--verbose     # Print source CSV for each card
+--strict      # Extra checks (land count sanity warnings)
+--show-tags   # Print synergy tag summary for the deck
 ```
 
 ### Exit codes

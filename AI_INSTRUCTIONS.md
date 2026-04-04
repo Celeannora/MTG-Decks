@@ -89,14 +89,14 @@ python scripts/search_cards.py --name "Sheoldred"
 ### `validate_decklist.py` — Legality checker
 
 ```bash
-# Standard (CSV scan)
+# Default — reads cards_by_category/ CSVs directly (no setup needed)
 python scripts/validate_decklist.py Decks/my_deck/decklist.txt
 
-# Fast offline (requires build_local_database.py first)
-python scripts/validate_decklist.py --local Decks/my_deck/decklist.txt
-python scripts/validate_decklist.py --local --sqlite Decks/my_deck/decklist.txt
+# Faster offline backends (run build_local_database.py first)
+python scripts/validate_decklist.py --db json Decks/my_deck/decklist.txt
+python scripts/validate_decklist.py --db sqlite Decks/my_deck/decklist.txt
 
-# Flags: --quiet (summary only) · --verbose (print source CSV per card)
+# Flags: --quiet (summary only) · --verbose (source CSV per card) · --strict (land warnings) · --show-tags
 ```
 
 | Exit Code | Meaning |
