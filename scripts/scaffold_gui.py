@@ -527,12 +527,18 @@ class ScaffoldApp(ctk.CTk):
 
     def _run_scaffold(self, cmd: list):
         try:
+            import os
+            env = os.environ.copy()
+            env["PYTHONIOENCODING"] = "utf-8"
             proc = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 cwd=str(RepoPaths().root),
+                env=env,
             )
             output_lines = []
             for line in proc.stdout:

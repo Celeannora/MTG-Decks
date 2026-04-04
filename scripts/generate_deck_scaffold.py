@@ -932,7 +932,7 @@ def main() -> None:
                 "count": count,
             })
             total_candidates += count
-            print(f"         → {count} candidates")
+            print(f"         -> {count} candidates")
 
         print(f"\n  Total candidates across all queries: {total_candidates}")
 
@@ -949,12 +949,12 @@ def main() -> None:
     # Write files
     session_path = deck_dir / "session.md"
     session_path.write_text(session_content, encoding="utf-8")
-    print(f"\n  ✅ session.md written ({len(session_content):,} bytes)")
+    print(f"\n  [OK] session.md written ({len(session_content):,} bytes)")
 
     decklist_path = deck_dir / "decklist.txt"
     if not decklist_path.exists():
         decklist_path.write_text(generate_decklist_template(), encoding="utf-8")
-        print(f"  ✅ decklist.txt template created")
+        print(f"  [OK] decklist.txt template created")
 
     # Copy analysis template if it exists
     analysis_template = paths.templates / "analysis.md"
@@ -966,7 +966,7 @@ def main() -> None:
             )
         else:
             analysis_path.write_text("# Deck Analysis\n\n(fill in after completing all gates)\n", encoding="utf-8")
-        print(f"  ✅ analysis.md template created")
+        print(f"  [OK] analysis.md template created")
 
     sb_template = paths.templates / "sideboard_guide.md"
     sb_path = deck_dir / "sideboard_guide.md"
@@ -977,7 +977,7 @@ def main() -> None:
             )
         else:
             sb_path.write_text("# Sideboard Guide\n\n(fill in after completing Gate 5)\n", encoding="utf-8")
-        print(f"  ✅ sideboard_guide.md template created")
+        print(f"  [OK] sideboard_guide.md template created")
 
     # Display paths — use relative if inside repo, absolute otherwise
     try:
