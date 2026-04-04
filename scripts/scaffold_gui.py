@@ -359,7 +359,7 @@ class ScaffoldApp(ctk.CTk):
                 command=lambda name=t: self._toggle_tribe(name),
             ).pack(side="left", padx=(0, 4))
 
-        def _build_options(self):
+    def _build_options(self):
         frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
         frame.pack(fill="x", padx=24, pady=(0, 4))
         self.skip_queries_var = ctk.BooleanVar(value=False)
