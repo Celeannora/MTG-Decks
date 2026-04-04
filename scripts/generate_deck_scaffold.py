@@ -214,11 +214,14 @@ def run_query(
     else:
         cmd_parts += ["--colors", colors]
 
-    # For tribal, add --oracle filter for the tribe name(s) on creature queries
+    # For tribal, filter creature queries by subtype name (--name is safer than
+    # --oracle which doesn't support | OR syntax). Only filter if a single tribe
+    # is given to avoid over-constraining; for multi-tribe the scaffold emits
+    # one query per tribe via the TRIBAL_CREATURE_QUERIES expansion below.
     if tribe and "--type creature" in base_args and "--oracle" not in base_args:
-        # Multiple tribes: join with | for OR matching in oracle text search
-        tribe_str = "|".join(tribe) if isinstance(tribe, list) else tribe
-        cmd_parts += ["--oracle", tribe_str]
+        tribe_list = tribe if isinstance(tribe, list) else [tribe]
+        if len(tribe_list) == 1:
+            cmd_parts += ["--name", tribe_list[0]]
 
     cmd_parts += ["--show-tags", "--format", "table", "--limit", "100"]
 
@@ -839,6 +842,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--skip-queries", action="store_true",
         help="Generate scaffold without running queries (offline template)",
     )
+    p.add_argument(
+        "--focus-cards", nargs="+", metavar="CARD",
+        help="Specific card names to guarantee in the candidate pool (one per arg or comma-separated)",
+    )
     return p
 
 
@@ -898,9 +905,37 @@ def main() -> None:
     # Always put Lands last
     lands = seen_labels.pop("Lands", None)
     query_plan = list(seen_labels.values())
+
+    # For tribal with multiple tribes, expand the generic creature query into
+    # one per tribe (avoids the broken | OR syntax)
+    tribe_arg = getattr(args, "tribe", None)
+    if tribe_arg:
+        tribe_list = tribe_arg if isinstance(tribe_arg, list) else [tribe_arg]
+        if len(tribe_list) > 1:
+            # Remove the generic tribal creature query; replace with per-tribe queries
+            query_plan = [q for q in query_plan if q["label"] != "Tribal creatures (by subtype)"]
+            for t in tribe_list:
+                query_plan.insert(0, {
+                    "label": f"{t} creatures",
+                    "args": f"--type creature --name \"{t}\"",
+                })
+
     if lands:
         query_plan.append(lands)
     query_results: List[Dict] = []
+
+    # Inject focus-card queries (guarantee specific cards appear in pool)
+    focus_cards = getattr(args, "focus_cards", None)
+    if focus_cards:
+        # Flatten any comma-separated values passed as single args
+        flat: List[str] = []
+        for item in focus_cards:
+            flat.extend(c.strip() for c in item.split(",") if c.strip())
+        for card_name in flat:
+            query_plan.append({
+                "label": f"Focus card: {card_name}",
+                "args": f"--name \"{card_name}\"",
+            })
 
     if args.skip_queries:
         print("  --skip-queries: Generating template without query results.\n")

@@ -302,9 +302,14 @@ def score_pairwise(cards: Dict[str, Dict]) -> Dict[str, Dict]:
                         )
 
     # Finalize counts
+    pool_size = len(cards)
+    max_possible = max(pool_size - 1, 1)  # maximum partners any card could have
+
     for name in scores:
         sc = scores[name]
         sc["synergy_count"] = len(sc["synergy_partners"])
+        # Normalized density: fraction of pool this card interacts with (0.0-1.0)
+        sc["synergy_density"] = sc["synergy_count"] / max_possible
         sc["role_breadth"] = len(sc["role_breadth_types"])
         # Dependency heuristic: cards with 0 tags that produce value alone = 0 dependency
         # Cards whose only tags are "protection" or "pump" (need target) = 1
@@ -323,44 +328,79 @@ def score_pairwise(cards: Dict[str, Dict]) -> Dict[str, Dict]:
 # Report generation
 # ---------------------------------------------------------------------------
 
+# Density-based thresholds (pool-size invariant).
+# A synergy_density of X means a card interacts with X fraction of the pool.
+# Thresholds are calibrated so a 10-card, 60-card, or 300-card pool all
+# use the same bar — cards must actually fit the deck strategy, not just
+# exist in a large pool.
+DENSITY_THRESHOLDS = {
+    "min_avg_density":    0.30,   # average card interacts with >= 30% of pool
+    "max_isolated_frac":  0.10,   # at most 10% of pool may have density <= 0.05
+    "min_hub_density":    0.50,   # hub = card interacts with >= 50% of pool
+    "min_hub_count":      2,      # at least 2 such hub cards required
+}
+
+
 def check_thresholds(scores: Dict[str, Dict], min_avg: float) -> Tuple[bool, List[str]]:
-    """Check all Gate 2.5 thresholds. Returns (all_passed, list_of_messages)."""
+    """Check all Gate 2.5 thresholds using pool-size-normalized density. Returns (all_passed, list_of_messages)."""
     msgs = []
     passed = True
 
-    counts = [s["synergy_count"] for s in scores.values()]
-    if not counts:
+    if not scores:
         return False, ["No cards to evaluate."]
 
-    avg = sum(counts) / len(counts)
-    low_synergy = [n for n, s in scores.items() if s["synergy_count"] <= 1]
-    hubs = [n for n, s in scores.items() if s["synergy_count"] >= 8]
+    pool_size = len(scores)
+    densities = [s["synergy_density"] for s in scores.values()]
+    avg_density = sum(densities) / len(densities)
+
+    dt = DENSITY_THRESHOLDS
+
+    # T1: average density >= 30%
+    if avg_density >= dt["min_avg_density"]:
+        msgs.append(
+            f"[PASS] T1: Avg Synergy Density = {avg_density:.1%} "
+            f"(pool={pool_size}, threshold >= {dt['min_avg_density']:.0%})"
+        )
+    else:
+        msgs.append(
+            f"[FAIL] T1: Avg Synergy Density = {avg_density:.1%} "
+            f"(pool={pool_size}, need >= {dt['min_avg_density']:.0%})"
+        )
+        passed = False
+
+    # T2: at most 10% of pool may be isolated (density <= 5%)
+    isolated = [n for n, s in scores.items() if s["synergy_density"] <= 0.05]
+    max_isolated = max(1, int(pool_size * dt["max_isolated_frac"]))
+    if len(isolated) <= max_isolated:
+        msgs.append(
+            f"[PASS] T2: {len(isolated)} isolated cards (density <= 5%) — "
+            f"max allowed {max_isolated} ({dt['max_isolated_frac']:.0%} of {pool_size})"
+        )
+    else:
+        msgs.append(
+            f"[FAIL] T2: {len(isolated)} isolated cards (density <= 5%) — "
+            f"max allowed {max_isolated}: {', '.join(isolated[:5])}"
+        )
+        passed = False
+
+    # T3: at least 2 hub cards with density >= 50%
+    hubs = [n for n, s in scores.items() if s["synergy_density"] >= dt["min_hub_density"]]
+    if len(hubs) >= dt["min_hub_count"]:
+        msgs.append(
+            f"[PASS] T3: {len(hubs)} hub cards (density >= {dt['min_hub_density']:.0%}): "
+            f"{', '.join(hubs[:4])}{'...' if len(hubs) > 4 else ''}"
+        )
+    else:
+        msgs.append(
+            f"[FAIL] T3: Only {len(hubs)} hub card(s) with density >= {dt['min_hub_density']:.0%} "
+            f"(need {dt['min_hub_count']}+)"
+        )
+        passed = False
+
+    # T4: no high-dependency cards
     high_dep = [n for n, s in scores.items() if s["dependency"] >= 3]
-
-    # T1
-    if avg >= min_avg:
-        msgs.append(f"[PASS] T1: Average Synergy Count = {avg:.1f} (>= {min_avg})")
-    else:
-        msgs.append(f"[FAIL] T1: Average Synergy Count = {avg:.1f} (need >= {min_avg})")
-        passed = False
-
-    # T2
-    if len(low_synergy) <= 4:
-        msgs.append(f"[PASS] T2: {len(low_synergy)} cards with Synergy Count <= 1 (max 4)")
-    else:
-        msgs.append(f"[FAIL] T2: {len(low_synergy)} cards with Synergy Count <= 1 (max 4): {', '.join(low_synergy[:5])}")
-        passed = False
-
-    # T3
-    if len(hubs) >= 2:
-        msgs.append(f"[PASS] T3: {len(hubs)} hub cards with Synergy Count >= 8: {', '.join(hubs[:4])}")
-    else:
-        msgs.append(f"[FAIL] T3: Only {len(hubs)} hub card(s) with Synergy Count >= 8 (need 2+)")
-        passed = False
-
-    # T4
     if not high_dep:
-        msgs.append(f"[PASS] T4: No cards with Dependency >= 3")
+        msgs.append("[PASS] T4: No cards with Dependency >= 3")
     else:
         msgs.append(f"[FAIL] T4: {len(high_dep)} card(s) with Dependency >= 3: {', '.join(high_dep)}")
         passed = False
@@ -385,7 +425,7 @@ def build_report(
         "",
         "## Synergy Scores",
         "",
-        "| Card | Tags | Synergy Count | Role Breadth | Dependency | Key Interactions |",
+        "| Card | Tags | Synergy Count (Density) | Role Breadth | Dependency | Key Interactions |",
         "|------|------|:---:|:---:|:---:|-----------------|",
     ]
 
@@ -394,8 +434,9 @@ def build_report(
         tags_str = ", ".join(sorted(sc["tags"])) or "—"
         partners = list(sc["synergy_partners"])[:3]
         partner_str = ", ".join(partners) + ("..." if len(sc["synergy_partners"]) > 3 else "")
+        density_str = f"{sc['synergy_density']:.0%}"
         lines.append(
-            f"| {name} | {tags_str} | {sc['synergy_count']} "
+            f"| {name} | {tags_str} | {sc['synergy_count']} ({density_str}) "
             f"| {sc['role_breadth']} | {sc['dependency']} | {partner_str or '—'} |"
         )
 
@@ -406,16 +447,22 @@ def build_report(
             f"> {', '.join(not_found[:10])}{'...' if len(not_found) > 10 else ''}",
         ]
 
+    pool_size = len(scores)
     counts = [s["synergy_count"] for s in scores.values()]
+    densities = [s["synergy_density"] for s in scores.values()]
     avg = sum(counts) / len(counts) if counts else 0
-    hubs = [n for n, s in scores.items() if s["synergy_count"] >= 8]
+    avg_density = sum(densities) / len(densities) if densities else 0.0
+    isolated = [n for n, s in scores.items() if s["synergy_density"] <= 0.05]
+    max_isolated = max(1, int(pool_size * DENSITY_THRESHOLDS["max_isolated_frac"]))
+    hubs = [n for n, s in scores.items() if s["synergy_density"] >= DENSITY_THRESHOLDS["min_hub_density"]]
 
     lines += [
         "",
-        f"**Average Synergy Count:** {avg:.1f} (threshold: >= 3.0)",
-        f"**Cards with Synergy Count 0-1:** {sum(1 for c in counts if c <= 1)} (max: 4)",
-        f"**Hub cards (Synergy Count >= 8):** {len(hubs)} (min: 2)"
-        + (f" — {', '.join(hubs)}" if hubs else ""),
+        f"**Pool size:** {pool_size}",
+        f"**Avg Synergy Count (raw):** {avg:.1f}  |  **Avg Synergy Density:** {avg_density:.1%} (threshold: >= {DENSITY_THRESHOLDS['min_avg_density']:.0%})",
+        f"**Isolated cards (density <= 5%):** {len(isolated)} (max: {max_isolated})",
+        f"**Hub cards (density >= 50%):** {len(hubs)} (min: {DENSITY_THRESHOLDS['min_hub_count']})"
+        + (f" — {', '.join(hubs[:6])}{'...' if len(hubs) > 6 else ''}" if hubs else ""),
         "",
         "---",
         "",
@@ -492,9 +539,9 @@ def build_report(
         "## Gate 2.5 Checklist",
         "",
         f"- [{'x' if all_passed else ' '}] All candidates scored (Synergy Count, Role Breadth, Dependency)",
-        f"- [{'x' if counts and sum(counts)/len(counts) >= 3.0 else ' '}] Average Synergy Count >= 3.0",
-        f"- [{'x' if sum(1 for c in counts if c <= 1) <= 4 else ' '}] <= 4 cards with Synergy Count 0-1",
-        f"- [{'x' if len(hubs) >= 2 else ' '}] >= 2 hub cards with Synergy Count >= 8",
+        f"- [{'x' if avg_density >= DENSITY_THRESHOLDS['min_avg_density'] else ' '}] Avg Synergy Density >= {DENSITY_THRESHOLDS['min_avg_density']:.0%}",
+        f"- [{'x' if len(isolated) <= max_isolated else ' '}] <= {max_isolated} isolated cards (density <= 5%)",
+        f"- [{'x' if len(hubs) >= DENSITY_THRESHOLDS['min_hub_count'] else ' '}] >= {DENSITY_THRESHOLDS['min_hub_count']} hub cards (density >= 50%)",
         "- [ ] No card with Dependency >= 3  *(verify manually)*",
         "- [ ] All REDUNDANT pairs justified  *(fill in above)*",
         "- [ ] 2-3 synergy chains mapped  *(fill in above)*",

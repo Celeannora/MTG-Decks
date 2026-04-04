@@ -42,7 +42,7 @@ ARCHETYPES = sorted(ARCHETYPE_QUERIES.keys())
 COLORS_MAP = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"}
 COLOR_ORDER = "WUBRG"
 APP_TITLE = "MTG Deck Scaffold Generator"
-WIN_W, WIN_H = 800, 740
+WIN_W, WIN_H = 800, 880
 
 # MTG color accent hex (loosely inspired by card frame colors)
 ACCENT = "#4F98A3"
@@ -132,6 +132,9 @@ class ScaffoldApp(ctk.CTk):
         self._build_run_queries_tab()
         self._build_synergy_tab()
 
+        # Inline log panel (collapsed by default)
+        self._build_log_panel()
+
         # Shared footer
         self._build_footer()
 
@@ -155,10 +158,13 @@ class ScaffoldApp(ctk.CTk):
         self._section("5  Extra Search Tags  (optional)")
         self._build_tag_grid()
 
-        self._section("6  Options")
+        self._section("6  Focus Cards  (optional)")
+        self._build_focus_cards()
+
+        self._section("7  Options")
         self._build_options()
 
-        self._section("7  Output Directory")
+        self._section("8  Output Directory")
         self._build_output_dir()
 
     def _build_run_queries_tab(self):
@@ -547,6 +553,30 @@ class ScaffoldApp(ctk.CTk):
             self._selected_tags.add(tag)
             btn.configure(fg_color=ACCENT, text_color="#FFFFFF", border_color=ACCENT)
 
+    def _build_focus_cards(self):
+        """Text area for specific cards to guarantee in the candidate pool."""
+        ctk.CTkLabel(
+            self.scroll,
+            text="One card name per line. These are looked up by exact name and added to the pool regardless of archetype queries.",
+            font=ctk.CTkFont(size=11),
+            text_color=TEXT_MUTED,
+            wraplength=700,
+            justify="left",
+        ).pack(anchor="w", padx=24, pady=(0, 4))
+        self.focus_cards_box = ctk.CTkTextbox(
+            self.scroll,
+            fg_color=SURFACE,
+            border_color=BORDER,
+            text_color=TEXT,
+            font=ctk.CTkFont(family="Courier New", size=12),
+            border_width=1,
+            corner_radius=6,
+            height=90,
+            wrap="word",
+        )
+        self.focus_cards_box.pack(fill="x", padx=24, pady=(0, 4))
+        self.focus_cards_box.insert("end", "")  # placeholder handled by hint label above
+
     def _build_options(self):
         frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
         frame.pack(fill="x", padx=24, pady=(0, 4))
@@ -680,10 +710,11 @@ class ScaffoldApp(ctk.CTk):
         threading.Thread(target=self._run_tool, args=(cmd,), daemon=True).start()
 
     def _run_tool(self, cmd: list):
-        """Generic subprocess runner for the non-scaffold tools."""
+        """Generic subprocess runner — streams output into the inline log."""
         import os
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
+        self.after(0, self._clear_log)
         try:
             proc = subprocess.Popen(
                 cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -695,7 +726,7 @@ class ScaffoldApp(ctk.CTk):
                 lines.append(line)
                 stripped = line.strip()
                 if stripped:
-                    self.after(0, self._set_status, stripped[:90], ACCENT)
+                    self.after(0, self._append_log, stripped, ACCENT)
             proc.wait()
             output = "".join(lines).strip()
             success = proc.returncode == 0
@@ -703,6 +734,80 @@ class ScaffoldApp(ctk.CTk):
             output = str(e)
             success = False
         self.after(0, self._on_done, success, output)
+
+    def _build_log_panel(self):
+        """Inline collapsible log panel — replaces the popup."""
+        self._log_visible = False
+
+        self._log_toggle_frame = ctk.CTkFrame(self, fg_color=SURFACE_ALT, corner_radius=0, height=28)
+        self._log_toggle_frame.pack(fill="x")
+        self._log_toggle_frame.pack_propagate(False)
+
+        self._log_toggle_btn = ctk.CTkButton(
+            self._log_toggle_frame,
+            text="▶  Log",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color=TEXT_MUTED,
+            fg_color="transparent",
+            hover_color=BORDER,
+            anchor="w",
+            height=28,
+            corner_radius=0,
+            command=self._toggle_log,
+        )
+        self._log_toggle_btn.pack(side="left", fill="y", padx=8)
+
+        self._log_status_inline = ctk.CTkLabel(
+            self._log_toggle_frame,
+            text="",
+            font=ctk.CTkFont(size=11),
+            text_color=TEXT_MUTED,
+        )
+        self._log_status_inline.pack(side="left", padx=4)
+
+        self._log_panel = ctk.CTkFrame(self, fg_color=SURFACE, corner_radius=0, height=0)
+        self._log_panel.pack(fill="x")
+        self._log_panel.pack_propagate(False)
+
+        self._log_box = ctk.CTkTextbox(
+            self._log_panel,
+            fg_color=SURFACE,
+            text_color=TEXT,
+            font=ctk.CTkFont(family="Courier New", size=11),
+            border_width=0,
+            corner_radius=0,
+            wrap="word",
+            state="disabled",
+        )
+        self._log_box.pack(fill="both", expand=True, padx=0, pady=0)
+
+    def _toggle_log(self):
+        self._log_visible = not self._log_visible
+        if self._log_visible:
+            self._log_panel.configure(height=160)
+            self._log_toggle_btn.configure(text="▼  Log")
+        else:
+            self._log_panel.configure(height=0)
+            self._log_toggle_btn.configure(text="▶  Log")
+
+    def _append_log(self, text: str, color: str = TEXT):
+        """Append a line to the inline log and auto-expand it."""
+        self._log_box.configure(state="normal")
+        self._log_box.insert("end", text if text.endswith("\n") else text + "\n")
+        self._log_box.see("end")
+        self._log_box.configure(state="disabled")
+        # Auto-expand on first write
+        if not self._log_visible:
+            self._toggle_log()
+        # Mirror latest line to the toggle bar
+        short = text.strip()[:80]
+        self._log_status_inline.configure(text=short, text_color=color)
+
+    def _clear_log(self):
+        self._log_box.configure(state="normal")
+        self._log_box.delete("1.0", "end")
+        self._log_box.configure(state="disabled")
+        self._log_status_inline.configure(text="")
 
     def _build_footer(self):
         sep = ctk.CTkFrame(self, height=1, fg_color=BORDER, corner_radius=0)
@@ -778,6 +883,13 @@ class ScaffoldApp(ctk.CTk):
         output_dir = self.output_entry.get().strip()
         if output_dir:
             cmd += ["--output-dir", output_dir]
+
+        # Focus cards
+        focus_text = self.focus_cards_box.get("1.0", "end").strip()
+        if focus_text:
+            focus_names = [ln.strip() for ln in focus_text.splitlines() if ln.strip()]
+            if focus_names:
+                cmd += ["--focus-cards"] + focus_names
 
         if self.skip_queries_var.get():
             cmd.append("--skip-queries")
@@ -859,86 +971,29 @@ class ScaffoldApp(ctk.CTk):
 
     def _on_done(self, success: bool, output: str, synergy_output=None):
         self.run_btn.configure(state="normal", text="Generate Scaffold")
+        self._clear_log()
+        if output:
+            for line in output.splitlines():
+                self._append_log(line, TEXT)
+        if synergy_output:
+            self._append_log("", TEXT)
+            self._append_log("── Gate 2.5 Synergy Report ─────────────────────", ACCENT)
+            for line in synergy_output.splitlines():
+                color = ERROR if "[FAIL]" in line else SUCCESS if "[PASS]" in line else TEXT
+                self._append_log(line, color)
         if success:
             path_hint = ""
-            for line in output.splitlines():
+            for line in (output or "").splitlines():
                 if "Output:" in line:
                     path_hint = line.split("Output:")[-1].strip()
                     break
-            msg = f"Done! Scaffold created at {path_hint}" if path_hint else "Scaffold generated successfully."
+            msg = f"Done — {path_hint}" if path_hint else "Done."
             if synergy_output:
-                msg += "  |  Synergy report ready."
+                pass_fail = "PASS" if "[FAIL]" not in (synergy_output or "") else "FAIL"
+                msg += f"  |  Synergy: {pass_fail}"
             self._set_status(msg, SUCCESS)
-            self._show_output_popup(output, synergy_output=synergy_output)
         else:
-            self._set_status(f"Error: {output[:120]}", ERROR)
-            self._show_output_popup(output, error=True)
-
-    def _show_output_popup(self, output: str, error: bool = False, synergy_output: str = None):
-        win = ctk.CTkToplevel(self)
-        has_synergy = bool(synergy_output and not error)
-        win.title("Error" if error else "Scaffold Output")
-        win.geometry("720x560" if has_synergy else "680x420")
-        win.configure(fg_color=BG)
-        win.lift()
-        win.focus()
-
-        ctk.CTkLabel(
-            win,
-            text="Error" if error else "Scaffold Complete" + (" + Synergy Report" if has_synergy else ""),
-            font=ctk.CTkFont(size=15, weight="bold"),
-            text_color=ERROR if error else SUCCESS,
-        ).pack(anchor="w", padx=20, pady=(16, 4))
-
-        def _make_textbox(parent, content: str):
-            box = ctk.CTkTextbox(
-                parent,
-                fg_color=SURFACE,
-                text_color=TEXT,
-                font=ctk.CTkFont(family="Courier New", size=11),
-                border_color=BORDER,
-                border_width=1,
-                corner_radius=6,
-                wrap="word",
-            )
-            box.pack(fill="both", expand=True, padx=4, pady=4)
-            box.insert("end", content)
-            box.configure(state="disabled")
-            return box
-
-        if has_synergy:
-            tabs = ctk.CTkTabview(
-                win,
-                fg_color=BG,
-                segmented_button_fg_color=SURFACE,
-                segmented_button_selected_color=ACCENT,
-                segmented_button_selected_hover_color=ACCENT_HOVER,
-                segmented_button_unselected_color=SURFACE,
-                segmented_button_unselected_hover_color=SURFACE_ALT,
-                text_color=TEXT,
-            )
-            tabs.pack(fill="both", expand=True, padx=20, pady=(0, 4))
-            tabs.add("Scaffold Log")
-            tabs.add("Gate 2.5 Synergy")
-            _make_textbox(tabs.tab("Scaffold Log"), output)
-            _make_textbox(tabs.tab("Gate 2.5 Synergy"), synergy_output)
-
-            # Determine pass/fail from synergy output for tab label color
-            if "[FAIL]" in synergy_output:
-                tabs._segmented_button.configure()  # noop — CTK doesn't support per-tab color
-        else:
-            _make_textbox(win, output)
-
-        ctk.CTkButton(
-            win,
-            text="Close",
-            fg_color=SURFACE_ALT,
-            hover_color=BORDER,
-            text_color=TEXT,
-            corner_radius=6,
-            command=win.destroy,
-        ).pack(pady=(0, 16))
-
+            self._set_status(f"Error — see log below.", ERROR)
 
 # ─────────────────────────────────────────────────────────────────────────────
 
