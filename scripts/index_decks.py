@@ -238,12 +238,12 @@ def write_index(entries: List[Dict], output_path: Path) -> None:
 
 
 def main() -> None:
-    script_dir = Path(__file__).parent
-    repo_root = script_dir.parent
-    decks_dir = repo_root / "Decks"
+    from mtg_utils import RepoPaths
+    paths = RepoPaths()
+    decks_dir = paths.decks_dir
 
     if not decks_dir.exists():
-        print("ERROR: Decks/ directory not found.", file=sys.stderr)
+        print(f"ERROR: {RepoPaths.DECKS_DIR_NAME}/ directory not found.", file=sys.stderr)
         sys.exit(1)
 
     entries = scan_decks(decks_dir)

@@ -97,9 +97,10 @@ class UniversalCardFetcher:
     MAX_FILE_SIZE_BYTES = 80 * 1024
     REQUEST_TIMEOUT = 60  # seconds
 
-    def __init__(self, output_dir: str = "cards_by_category"):
+    def __init__(self, output_dir: str | None = None):
+        from mtg_utils import RepoPaths
         self.bulk_data_url = "https://api.scryfall.com/bulk-data"
-        self.output_dir = output_dir
+        self.output_dir = output_dir or str(RepoPaths().cards_dir)
 
     def get_bulk_data_download_url(self) -> str | None:
         print("Fetching bulk data information from Scryfall...")

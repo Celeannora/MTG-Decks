@@ -29,9 +29,11 @@ CARD_TYPES = [
 
 class LocalDatabaseBuilder:
     def __init__(self, repo_root: Path) -> None:
+        from mtg_utils import RepoPaths
+        paths = RepoPaths(root=repo_root)
         self.repo_root = repo_root
-        self.cards_dir = repo_root / "cards_by_category"
-        self.output_dir = repo_root / "local_db"
+        self.cards_dir = paths.cards_dir
+        self.output_dir = paths.local_db
         # Populated by scan_database(); reused by all export methods
         self.card_index: Dict[str, Dict] = {}
         self.card_names: Set[str] = set()
@@ -223,9 +225,9 @@ class LocalDatabaseBuilder:
 
 
 def main() -> None:
-    script_dir = Path(__file__).parent
-    repo_root = script_dir.parent
-    builder = LocalDatabaseBuilder(repo_root)
+    from mtg_utils import RepoPaths
+    paths = RepoPaths()
+    builder = LocalDatabaseBuilder(paths.root)
     builder.build()
 
 

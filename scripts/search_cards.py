@@ -170,10 +170,12 @@ def load_cards(
     repo_root: Path,
     types: Optional[List[str]],
 ) -> List[Dict]:
-    """Load all cards of the requested types from cards_by_category/."""
-    cards_dir = repo_root / "cards_by_category"
+    """Load all cards of the requested types from the card database directory."""
+    from mtg_utils import RepoPaths
+    paths = RepoPaths(root=repo_root)
+    cards_dir = paths.cards_dir
     if not cards_dir.exists():
-        print(f"ERROR: cards_by_category/ not found at {cards_dir}", file=sys.stderr)
+        print(f"ERROR: {RepoPaths.CARDS_DIR_NAME}/ not found at {cards_dir}", file=sys.stderr)
         sys.exit(2)
 
     target_types = types if types else CARD_TYPES
@@ -377,8 +379,9 @@ def main() -> None:
     args = parser.parse_args()
 
     # Resolve paths
-    script_dir = Path(__file__).parent
-    repo_root = script_dir.parent
+    from mtg_utils import RepoPaths
+    paths = RepoPaths()
+    repo_root = paths.root
 
     # Parse type list
     types: Optional[List[str]] = None
@@ -410,7 +413,8 @@ def main() -> None:
     all_cards = load_cards(repo_root, types)
 
     if not all_cards:
-        print("No cards loaded. Check that cards_by_category/ exists and is populated.", file=sys.stderr)
+        from mtg_utils import RepoPaths
+        print(f"No cards loaded. Check that {RepoPaths.CARDS_DIR_NAME}/ exists and is populated.", file=sys.stderr)
         sys.exit(2)
 
     results = filter_cards(

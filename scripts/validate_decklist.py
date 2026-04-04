@@ -51,11 +51,13 @@ BASIC_LAND_NAMES = {
 # ---------------------------------------------------------------------------
 
 class CSVBackend:
-    """Load card index from cards_by_category/ CSV files (online mode)."""
+    """Load card index from card database CSV files (online mode)."""
 
     def __init__(self, repo_root: Path) -> None:
+        from mtg_utils import RepoPaths
+        paths = RepoPaths(root=repo_root)
         self.card_database: Dict[str, Dict] = {}
-        cards_dir = repo_root / "cards_by_category"
+        cards_dir = paths.cards_dir
         if not cards_dir.exists():
             logging.error("Card database directory not found: %s", cards_dir)
             sys.exit(2)
@@ -96,11 +98,13 @@ class CSVBackend:
 
 
 class JSONBackend:
-    """Load card index from pre-built local_db/card_index.json (offline mode)."""
+    """Load card index from pre-built local database JSON index (offline mode)."""
 
     def __init__(self, repo_root: Path) -> None:
+        from mtg_utils import RepoPaths
+        paths = RepoPaths(root=repo_root)
         self.card_database: Dict[str, Dict] = {}
-        index_file = repo_root / "local_db" / "card_index.json"
+        index_file = paths.local_db / "card_index.json"
         if not index_file.exists():
             logging.error(
                 "Local database not found: %s\n"
@@ -127,11 +131,13 @@ class JSONBackend:
 
 
 class SQLiteBackend:
-    """Load card index from pre-built local_db/card_details.db (offline SQLite mode)."""
+    """Load card index from pre-built local database SQLite file (offline mode)."""
 
     def __init__(self, repo_root: Path) -> None:
+        from mtg_utils import RepoPaths
+        paths = RepoPaths(root=repo_root)
         self.card_database: Dict[str, Dict] = {}
-        db_file = repo_root / "local_db" / "card_details.db"
+        db_file = paths.local_db / "card_details.db"
         if not db_file.exists():
             logging.error(
                 "SQLite database not found: %s\n"
@@ -304,8 +310,9 @@ def main() -> None:
     log_level = logging.WARNING if args.quiet else logging.INFO
     logging.basicConfig(format="%(levelname)s: %(message)s", level=log_level)
 
-    script_dir = Path(__file__).parent
-    repo_root = script_dir.parent
+    from mtg_utils import RepoPaths
+    paths = RepoPaths()
+    repo_root = paths.root
 
     decklist_path = Path(args.decklist)
     if not decklist_path.is_absolute():
