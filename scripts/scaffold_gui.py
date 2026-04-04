@@ -92,6 +92,7 @@ class ScaffoldApp(ctk.CTk):
         # State
         self.selected_colors: set = set()
         self.selected_archetypes: set = set()
+        self.wildcard_var = ctk.BooleanVar(value=False)
         self.tribe_var = ctk.StringVar()
         self._tribes: list = []  # multiple tribes supported
 
@@ -606,6 +607,34 @@ class ScaffoldApp(ctk.CTk):
             checkmark_color="#FFFFFF",
         ).pack(anchor="w", pady=(6, 0))
 
+        ctk.CTkCheckBox(
+            frame,
+            text="Wildcard  (no color filter — queries return cards of any color)",
+            variable=self.wildcard_var,
+            font=ctk.CTkFont(size=12),
+            text_color=TEXT,
+            fg_color=WARNING,
+            hover_color=ACCENT_HOVER,
+            border_color=BORDER,
+            checkmark_color="#FFFFFF",
+            command=self._on_wildcard_toggle,
+        ).pack(anchor="w", pady=(6, 0))
+
+    def _on_wildcard_toggle(self):
+        """Gray out color buttons when wildcard is active; restore when off."""
+        active = self.wildcard_var.get()
+        for c, (btn, active_color, active_text) in self._color_buttons.items():
+            if active:
+                # Dim all color buttons regardless of selection state
+                btn.configure(state="disabled", fg_color=SURFACE_ALT,
+                              text_color=TEXT_MUTED, border_color=BORDER)
+            else:
+                btn.configure(state="normal")
+                # Restore selected state
+                if c in self.selected_colors:
+                    btn.configure(fg_color=active_color, text_color=active_text,
+                                  border_color=active_color)
+
     def _build_output_dir(self):
         frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
         frame.pack(fill="x", padx=24, pady=(0, 8))
@@ -853,10 +882,13 @@ class ScaffoldApp(ctk.CTk):
             self._set_status("Deck name is required.", ERROR)
             return
 
+        wildcard = self.wildcard_var.get()
         colors = normalize_colors("".join(self.selected_colors))
-        if not colors:
-            self._set_status("Select at least one color.", ERROR)
+        if not colors and not wildcard:
+            self._set_status("Select at least one color (or enable Wildcard).", ERROR)
             return
+        if not colors:
+            colors = "WUBRG"  # metadata only — not passed as filter in wildcard mode
 
         if not self.selected_archetypes:
             self._set_status("Select at least one archetype.", ERROR)
@@ -874,6 +906,8 @@ class ScaffoldApp(ctk.CTk):
             "--colors", colors,
             "--archetype", *sorted(self.selected_archetypes),
         ]
+        if wildcard:
+            cmd.append("--wildcard")
         if self._tribes:
             cmd += ["--tribe"] + self._tribes
 

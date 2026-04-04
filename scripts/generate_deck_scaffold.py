@@ -197,10 +197,12 @@ def run_query(
     colors: str,
     tribe: Optional[str] = None,
     extra_tags: Optional[str] = None,
+    wildcard: bool = False,
 ) -> Tuple[str, str, int]:
     """
     Run a search_cards.py query. Returns (command_string, output, result_count).
     Adds --colors and --show-tags automatically.
+    If wildcard=True, the --colors filter is omitted so all colors are returned.
     """
     from mtg_utils import RepoPaths
     paths = RepoPaths(root=repo_root)
@@ -209,20 +211,14 @@ def run_query(
     cmd_parts = [sys.executable, str(script)]
     cmd_parts += shlex.split(base_args)
 
-    # Add colors if not a land query (lands should search across all colors)
-    if "--type land" not in base_args:
-        cmd_parts += ["--colors", colors]
-    else:
+    # Add color filter unless wildcard mode is active
+    if not wildcard:
         cmd_parts += ["--colors", colors]
 
-    # For tribal, filter creature queries by subtype name (--name is safer than
-    # --oracle which doesn't support | OR syntax). Only filter if a single tribe
-    # is given to avoid over-constraining; for multi-tribe the scaffold emits
-    # one query per tribe via the TRIBAL_CREATURE_QUERIES expansion below.
-    if tribe and "--type creature" in base_args and "--oracle" not in base_args:
-        tribe_list = tribe if isinstance(tribe, list) else [tribe]
-        if len(tribe_list) == 1:
-            cmd_parts += ["--name", tribe_list[0]]
+    # Tribe is NOT used as a filter on existing queries — it only adds
+    # supplemental per-tribe creature queries to the query plan (see main()).
+    # Filtering here would exclude non-tribal cards (Changelings, support spells)
+    # from the candidate pool, which breaks non-creature archetypes.
 
     cmd_parts += ["--show-tags", "--format", "table", "--limit", "100"]
 
@@ -779,6 +775,12 @@ def _wizard_prompts() -> argparse.Namespace:
     print("  Queries search your local card pool and embed results in the scaffold.")
     run_q = input("  Run queries? [Y/n]: ").strip().lower()
     skip_queries = run_q in ("n", "no")
+
+    print("  Step 6b — Wildcard Mode  (optional)")
+    print("  Disable color filter so queries return cards of any color.")
+    wc = input("  Wildcard? [y/N]: ").strip().lower()
+    wildcard = wc in ("y", "yes")
+    print()
     print()
 
     # ── Step 7: Confirmation ──────────────────────────────────
@@ -847,6 +849,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--focus-cards", nargs="+", metavar="CARD",
         help="Specific card names to guarantee in the candidate pool (one per arg or comma-separated)",
     )
+    p.add_argument(
+        "--wildcard", action="store_true",
+        help="Disable color identity filter — queries return cards of any color (useful for broad exploration)",
+    )
     return p
 
 
@@ -871,6 +877,7 @@ def main() -> None:
     repo_root = paths.root
 
     # Validate card database exists
+    # Wildcard: colors still recorded in metadata but not used as a filter
     if not paths.cards_dir.exists() and not args.skip_queries:
         print(f"ERROR: {RepoPaths.CARDS_DIR_NAME}/ not found.", file=sys.stderr)
         print(f"Run 'python {RepoPaths.SCRIPTS_DIR_NAME}/fetch_and_categorize_cards.py' first.", file=sys.stderr)
@@ -889,7 +896,10 @@ def main() -> None:
     print(f"  Name:      {args.name}")
     print(f"  Colors:    {args.colors.upper()}")
     archetype_list = args.archetype if isinstance(args.archetype, list) else [args.archetype]
+    wildcard_active = getattr(args, "wildcard", False)
     print(f"  Archetype: {', '.join(archetype_list)}")
+    if wildcard_active:
+        print(f"  Colors:    {args.colors.upper()}  [WILDCARD — color filter disabled]")
     if args.tribe:
         tribe_str = " / ".join(args.tribe) if isinstance(args.tribe, list) else args.tribe
         print(f"  Tribe:     {tribe_str}")
@@ -907,19 +917,22 @@ def main() -> None:
     lands = seen_labels.pop("Lands", None)
     query_plan = list(seen_labels.values())
 
-    # For tribal with multiple tribes, expand the generic creature query into
-    # one per tribe (avoids the broken | OR syntax)
+    # For tribal builds, add one supplemental creature query per tribe by name.
+    # These are ADDITIVE — they run alongside the archetype's existing creature
+    # queries so non-tribal creatures (Changelings, support creatures) still
+    # appear in the pool. The generic "Tribal creatures (by subtype)" placeholder
+    # query is removed since per-tribe queries cover it more precisely.
     tribe_arg = getattr(args, "tribe", None)
     if tribe_arg:
         tribe_list = tribe_arg if isinstance(tribe_arg, list) else [tribe_arg]
-        if len(tribe_list) > 1:
-            # Remove the generic tribal creature query; replace with per-tribe queries
-            query_plan = [q for q in query_plan if q["label"] != "Tribal creatures (by subtype)"]
-            for t in tribe_list:
-                query_plan.insert(0, {
-                    "label": f"{t} creatures",
-                    "args": f"--type creature --name \"{t}\"",
-                })
+        # Remove the generic placeholder (if present) — replaced by per-tribe below
+        query_plan = [q for q in query_plan if q["label"] != "Tribal creatures (by subtype)"]
+        # Insert per-tribe name queries at the front, one per tribe
+        for t in reversed(tribe_list):
+            query_plan.insert(0, {
+                "label": f"{t} creatures",
+                "args": f"--type creature --name \"{t}\"",
+            })
 
     if lands:
         query_plan.append(lands)
@@ -959,6 +972,7 @@ def main() -> None:
                 args.colors.upper(),
                 tribe=args.tribe,
                 extra_tags=args.extra_tags,
+                wildcard=getattr(args, "wildcard", False),
             )
 
             query_results.append({
