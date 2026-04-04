@@ -215,6 +215,33 @@ See [LOCAL_WORKFLOW.md](../LOCAL_WORKFLOW.md) for the full local deck-building g
 
 ---
 
+### `scaffold_gui.py`
+
+A graphical desktop interface for `generate_deck_scaffold.py`. Same wizard flow, presented as a dark-mode GUI window — no terminal required.
+
+**Install the GUI dependency first (one-time):**
+```bash
+pip install customtkinter
+```
+
+**Launch:**
+```bash
+python scripts/scaffold_gui.py
+```
+
+**Features:**
+- Click-to-toggle color identity buttons (styled per MTG card frame colors)
+- Multi-select archetype grid
+- Live creature type search across all 325 official MTG types
+- Optional extra tags field with available tag hints
+- Skip queries checkbox for offline use
+- Output directory browser
+- Runs scaffold in the background with a result popup on completion
+
+All scaffold logic is delegated to `generate_deck_scaffold.py` — the GUI is a pure UI layer.
+
+---
+
 ### `hypergeometric_analysis.py`
 
 Runs hypergeometric probability calculations for draw consistency analysis. Computes the probability of drawing specific cards or card types by a given turn.
