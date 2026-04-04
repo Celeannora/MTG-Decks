@@ -33,6 +33,7 @@ This repository contains rigorously analyzed, format-legal Magic: The Gathering 
 MTG-Decks/
 ├── Decks/                           # All generated decks
 │   └── YYYY-MM-DD_Archetype_Name/
+│       ├── session.md               # Consolidated build session (local workflow)
 │       ├── decklist.txt             # MTGA-importable decklist
 │       ├── analysis.md              # Card-by-card reasoning and strategy
 │       └── sideboard_guide.md       # Matchup-specific boarding plans
@@ -52,10 +53,12 @@ MTG-Decks/
 │   ├── search_cards.py                # 🔍 AI card search with strategy tag filtering
 │   ├── validate_decklist.py           # Validator (online CSV or offline --local mode)
 │   ├── build_local_database.py        # Builds local_db/ for fast offline validation
+│   ├── generate_deck_scaffold.py      # 📝 Local workflow: single-file session generator
 │   ├── index_decks.py                 # Regenerates Decks/_INDEX.md registry
 │   └── mtg_utils.py                   # Shared utilities (parser, etc.)
 ├── .github/DECK_TEMPLATE/           # Template for new decks
 ├── AI_INSTRUCTIONS.md               # 🔴 SINGLE SOURCE OF TRUTH for AI deck building
+├── LOCAL_WORKFLOW.md                 # 💻 Guide for running the process on your own machine
 ├── Changelog.md
 ├── requirements.txt
 └── README.md
@@ -180,6 +183,23 @@ python scripts/search_cards.py --type land --colors WU
 
 ---
 
+## Local workflow (no tool access required)
+
+If your AI tool has limited tool access or rate limits, you can run the entire deck-building process on your own machine. The scaffold generator creates a **single `session.md` file** with all query results embedded, so the AI only needs to read one file and fill in the gates.
+
+```bash
+# Generate a session scaffold (runs all queries, embeds results)
+python scripts/generate_deck_scaffold.py --name "Orzhov Lifegain" --colors WB --archetype lifegain
+
+# Output: Decks/2026-04-03_Orzhov_Lifegain/session.md (single file with everything)
+```
+
+Supported archetypes: `aggro`, `midrange`, `control`, `combo`, `mill`, `lifegain`, `tribal`, `ramp`, `tempo`, `burn`
+
+See **[`LOCAL_WORKFLOW.md`](LOCAL_WORKFLOW.md)** for the full guide.
+
+---
+
 ## For deck builders (human)
 
 1. Browse `Decks/` organized by date and archetype
@@ -204,5 +224,5 @@ Every card choice is mathematically justified. Every strategic decision is rigor
 ---
 
 **Maintained by**: Celeannora  
-**Last updated**: March 10, 2026  
-**Version**: 7.1
+**Last updated**: April 3, 2026  
+**Version**: 9.1
