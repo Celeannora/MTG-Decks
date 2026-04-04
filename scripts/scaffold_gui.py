@@ -93,7 +93,7 @@ class ScaffoldApp(ctk.CTk):
         self.selected_colors: set = set()
         self.selected_archetypes: set = set()
         self.tribe_var = ctk.StringVar()
-        self._tribe_confirmed: str = ""
+        self._tribes: list = []  # multiple tribes supported
 
         self._build_ui()
 
@@ -233,11 +233,17 @@ class ScaffoldApp(ctk.CTk):
         else:
             self.selected_archetypes.add(arch)
             btn.configure(fg_color=ACCENT, text_color="#FFFFFF", border_color=ACCENT)
-        # Show/hide tribe section
+        # Enable/disable tribe section
         tribal_active = "tribal" in self.selected_archetypes
         self._tribe_frame.configure(fg_color="transparent" if tribal_active else BG)
         for w in self._tribe_widgets:
             w.configure(state="normal" if tribal_active else "disabled")
+        if not tribal_active:
+            # Clear all tribe selections when tribal is deselected
+            self._tribes.clear()
+            self._refresh_tribe_chips()
+            for w in self._tribe_results.winfo_children():
+                w.destroy()
 
     def _build_tribe_search(self):
         self._tribe_frame = ctk.CTkFrame(self.scroll, fg_color=BG)
@@ -245,14 +251,14 @@ class ScaffoldApp(ctk.CTk):
 
         ctk.CTkLabel(
             self._tribe_frame,
-            text="Enabled when Tribal archetype is selected above.",
+            text="Enabled when Tribal archetype is selected above. Multiple subtypes supported.",
             font=ctk.CTkFont(size=11),
             text_color=TEXT_MUTED,
         ).pack(anchor="w", pady=(0, 4))
 
         search_entry = ctk.CTkEntry(
             self._tribe_frame,
-            placeholder_text="Type to search creature types (e.g. ang → Angel)",
+            placeholder_text="Type to search (e.g. ang → Angel, Changeling...)",
             textvariable=self.tribe_var,
             fg_color=SURFACE,
             border_color=BORDER,
@@ -269,22 +275,15 @@ class ScaffoldApp(ctk.CTk):
         self._tribe_results = ctk.CTkFrame(self._tribe_frame, fg_color=SURFACE, corner_radius=6)
         self._tribe_results.pack(fill="x")
 
-        self._tribe_confirmed_label = ctk.CTkLabel(
-            self._tribe_frame,
-            text="",
-            font=ctk.CTkFont(size=12, weight="bold"),
-            text_color=SUCCESS,
-        )
-        self._tribe_confirmed_label.pack(anchor="w", pady=(4, 0))
+        # Chip row for selected tribes
+        self._tribe_chips_frame = ctk.CTkFrame(self._tribe_frame, fg_color="transparent")
+        self._tribe_chips_frame.pack(fill="x", pady=(6, 0))
 
         self._tribe_widgets = [search_entry]
 
     def _on_tribe_search(self, *_):
-        # Clear previous results
         for w in self._tribe_results.winfo_children():
             w.destroy()
-        self._tribe_confirmed = ""
-        self._tribe_confirmed_label.configure(text="")
 
         query = self.tribe_var.get()
         if not query.strip():
@@ -302,17 +301,18 @@ class ScaffoldApp(ctk.CTk):
 
         show = matches[:12]
         for t in show:
+            already = t in self._tribes
             btn = ctk.CTkButton(
                 self._tribe_results,
-                text=t,
-                fg_color="transparent",
+                text=f"✓ {t}" if already else t,
+                fg_color=ACCENT if already else "transparent",
                 hover_color=SURFACE_ALT,
-                text_color=TEXT,
+                text_color="#FFFFFF" if already else TEXT,
                 font=ctk.CTkFont(size=12),
                 anchor="w",
                 height=28,
                 corner_radius=4,
-                command=lambda name=t: self._select_tribe(name),
+                command=lambda name=t: self._toggle_tribe(name),
             )
             btn.pack(fill="x", padx=4, pady=1)
 
@@ -324,14 +324,42 @@ class ScaffoldApp(ctk.CTk):
                 font=ctk.CTkFont(size=11),
             ).pack(anchor="w", padx=8, pady=(2, 4))
 
-    def _select_tribe(self, name: str):
-        self._tribe_confirmed = name
-        self.tribe_var.set(name)
-        for w in self._tribe_results.winfo_children():
-            w.destroy()
-        self._tribe_confirmed_label.configure(text=f"✓ {name} selected")
+    def _toggle_tribe(self, name: str):
+        if name in self._tribes:
+            self._tribes.remove(name)
+        else:
+            self._tribes.append(name)
+        self._refresh_tribe_chips()
+        self._on_tribe_search()  # refresh dropdown checkmarks
 
-    def _build_options(self):
+    def _refresh_tribe_chips(self):
+        for w in self._tribe_chips_frame.winfo_children():
+            w.destroy()
+        if not self._tribes:
+            return
+        for t in self._tribes:
+            chip = ctk.CTkFrame(self._tribe_chips_frame, fg_color=SURFACE_ALT, corner_radius=14)
+            chip.pack(side="left", padx=(0, 6), pady=2)
+            ctk.CTkLabel(
+                chip,
+                text=t,
+                font=ctk.CTkFont(size=12),
+                text_color=TEXT,
+            ).pack(side="left", padx=(10, 4), pady=4)
+            ctk.CTkButton(
+                chip,
+                text="×",
+                width=22,
+                height=22,
+                fg_color="transparent",
+                hover_color=BORDER,
+                text_color=TEXT_MUTED,
+                font=ctk.CTkFont(size=13, weight="bold"),
+                corner_radius=11,
+                command=lambda name=t: self._toggle_tribe(name),
+            ).pack(side="left", padx=(0, 4))
+
+        def _build_options(self):
         frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
         frame.pack(fill="x", padx=24, pady=(0, 4))
         self.skip_queries_var = ctk.BooleanVar(value=False)
@@ -435,8 +463,8 @@ class ScaffoldApp(ctk.CTk):
             self._set_status("Select at least one archetype.", ERROR)
             return
 
-        if "tribal" in self.selected_archetypes and not self._tribe_confirmed:
-            self._set_status("Tribal selected — confirm a creature subtype.", WARNING)
+        if "tribal" in self.selected_archetypes and not self._tribes:
+            self._set_status("Tribal selected — add at least one creature subtype.", WARNING)
             return
 
         # Build CLI args
@@ -447,8 +475,8 @@ class ScaffoldApp(ctk.CTk):
             "--colors", colors,
             "--archetype", *sorted(self.selected_archetypes),
         ]
-        if self._tribe_confirmed:
-            cmd += ["--tribe", self._tribe_confirmed]
+        if self._tribes:
+            cmd += ["--tribe"] + self._tribes
 
         tags = self.tags_entry.get().strip()
         if tags:

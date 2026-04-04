@@ -214,9 +214,11 @@ def run_query(
     else:
         cmd_parts += ["--colors", colors]
 
-    # For tribal, add --oracle filter for the tribe name on creature queries
+    # For tribal, add --oracle filter for the tribe name(s) on creature queries
     if tribe and "--type creature" in base_args and "--oracle" not in base_args:
-        cmd_parts += ["--oracle", tribe]
+        # Multiple tribes: join with | for OR matching in oracle text search
+        tribe_str = "|".join(tribe) if isinstance(tribe, list) else tribe
+        cmd_parts += ["--oracle", tribe_str]
 
     cmd_parts += ["--show-tags", "--format", "table", "--limit", "100"]
 
@@ -278,7 +280,12 @@ def generate_session_file(
     """Generate the consolidated session.md content."""
     from mtg_utils import RepoPaths
 
-    archetype_display = f"{archetype.title()} ({tribe} Tribal)" if tribe else archetype.title()
+    if tribe:
+        tribe_list = tribe if isinstance(tribe, list) else [tribe]
+        tribe_display = " / ".join(tribe_list) + " Tribal"
+    else:
+        tribe_display = None
+    archetype_display = f"{archetype.title()} ({tribe_display})" if tribe_display else archetype.title()
     color_display = "/".join(colors.upper())
 
     lines = [
@@ -711,36 +718,49 @@ def _wizard_prompts() -> argparse.Namespace:
     print()
 
     # ── Step 4: Tribe (only if tribal) ───────────────────────
-    tribe: Optional[str] = None
+    tribes: List[str] = []
     if "tribal" in archetypes:
-        print("  Step 4 — Creature Subtype (Tribal selected)")
-        print(f"  {len(ALL_CREATURE_TYPES)} types available. Type a name or partial name to search.")
+        print("  Step 4 — Creature Subtypes (Tribal selected)")
+        print(f"  {len(ALL_CREATURE_TYPES)} types available. You may add multiple (e.g. Angel + Warrior).")
         print()
+
+        def _pick_one_tribe() -> Optional[str]:
+            while True:
+                raw = input("  Search subtype: ").strip()
+                if not raw:
+                    return None
+                exact = _CREATURE_TYPES_LOWER.get(raw.lower())
+                if exact:
+                    return exact
+                matches = [t for t in ALL_CREATURE_TYPES if raw.lower() in t.lower()]
+                if not matches:
+                    print(f"  No types match '{raw}'. Try again (or Enter to stop adding).")
+                elif len(matches) == 1:
+                    return matches[0]
+                elif len(matches) <= 10:
+                    print(f"  Matches: {', '.join(matches)}")
+                    print("  Type the full name to confirm, or refine your search.")
+                else:
+                    print(f"  {len(matches)} matches — too many to list. Refine your search.")
+
         while True:
-            raw_tribe = input("  Search subtype: ").strip()
-            if not raw_tribe:
-                print("  (subtype is required for tribal — type at least 1 character)")
-                continue
-            # Exact match (case-insensitive)
-            exact = _CREATURE_TYPES_LOWER.get(raw_tribe.lower())
-            if exact:
-                tribe = exact
-                print(f"  Selected: {tribe}")
+            picked = _pick_one_tribe()
+            if picked is None:
+                if not tribes:
+                    print("  (at least one subtype is required for tribal)")
+                    continue
                 break
-            # Partial match
-            matches = [t for t in ALL_CREATURE_TYPES if raw_tribe.lower() in t.lower()]
-            if not matches:
-                print(f"  No types match '{raw_tribe}'. Try again.")
-            elif len(matches) == 1:
-                tribe = matches[0]
-                print(f"  Selected: {tribe}")
-                break
-            elif len(matches) <= 10:
-                print(f"  Matches: {', '.join(matches)}")
-                print("  Type the full name to confirm, or refine your search.")
+            if picked in tribes:
+                print(f"  '{picked}' already added.")
             else:
-                print(f"  {len(matches)} matches — too many to list. Refine your search.")
+                tribes.append(picked)
+                print(f"  Added: {picked}  |  Selected so far: {', '.join(tribes)}")
+            more = input("  Add another subtype? [y/N]: ").strip().lower()
+            if more not in ("y", "yes"):
+                break
         print()
+
+    tribe = tribes if tribes else None  # keep as list or None
 
     # ── Step 5: Extra tags (optional) ────────────────────────
     print("  Step 5 — Extra Search Tags (optional)")
@@ -765,7 +785,8 @@ def _wizard_prompts() -> argparse.Namespace:
     print(f"  Name:       {name}")
     print(f"  Colors:     {colors}")
     archetype_label = ", ".join(archetypes) if len(archetypes) > 1 else archetype
-    print(f"  Archetype:  {archetype_label}" + (f" ({tribe} Tribal)" if tribe else ""))
+    tribe_label = " / ".join(tribes) + " Tribal" if tribes else ""
+    print(f"  Archetype:  {archetype_label}" + (f" ({tribe_label})" if tribe_label else ""))
     print(f"  Extra tags: {extra_tags or 'none'}")
     print(f"  Run queries: {'no (offline template)' if skip_queries else 'yes'}")
     print(f"  Output:     Decks/{preview_date}_{sanitize_folder_name(name)}/")
@@ -807,7 +828,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--interactive", "-i", action="store_true", help="Launch interactive wizard mode")
     p.add_argument(
         "--tribe",
-        help=f"Creature subtype for tribal — any of the {len(ALL_CREATURE_TYPES)} official MTG types (e.g. Frog, Angel, Elf, Vampire)",
+        nargs="+",
+        metavar="SUBTYPE",
+        help=f"Creature subtype(s) for tribal — one or more of the {len(ALL_CREATURE_TYPES)} official MTG types (e.g. --tribe Angel Warrior)",
     )
     p.add_argument("--date", help="Date override (YYYY-MM-DD, default: today)")
     p.add_argument("--output-dir", help="Output directory (default: Decks/)")
@@ -860,7 +883,8 @@ def main() -> None:
     archetype_list = args.archetype if isinstance(args.archetype, list) else [args.archetype]
     print(f"  Archetype: {', '.join(archetype_list)}")
     if args.tribe:
-        print(f"  Tribe:     {args.tribe}")
+        tribe_str = " / ".join(args.tribe) if isinstance(args.tribe, list) else args.tribe
+        print(f"  Tribe:     {tribe_str}")
     print(f"  Output:    {deck_dir}/")
     print(f"{'='*70}\n")
 
