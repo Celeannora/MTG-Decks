@@ -128,15 +128,7 @@ class ScaffoldApp(ctk.CTk):
         self._build_tribe_search()
 
         self._section("5  Extra Search Tags  (optional)")
-        self.tags_entry = self._entry(placeholder="e.g. lifegain,draw,removal")
-        ctk.CTkLabel(
-            self.scroll,
-            text="lifegain · removal · draw · counter · ramp · haste · flying · trample · mill · wipe · pump · bounce · etb · tutor · flash · tribal · protection · deathtouch",
-            font=ctk.CTkFont(size=11),
-            text_color=TEXT_MUTED,
-            wraplength=680,
-            justify="left",
-        ).pack(anchor="w", padx=24, pady=(0, 8))
+        self._build_tag_grid()
 
         self._section("6  Options")
         self._build_options()
@@ -359,6 +351,45 @@ class ScaffoldApp(ctk.CTk):
                 command=lambda name=t: self._toggle_tribe(name),
             ).pack(side="left", padx=(0, 4))
 
+    def _build_tag_grid(self):
+        ALL_TAGS = [
+            "lifegain", "removal", "draw", "counter", "ramp", "haste",
+            "flying", "trample", "mill", "wipe", "pump", "bounce",
+            "etb", "tutor", "flash", "tribal", "protection", "deathtouch",
+        ]
+        self._selected_tags: set = set()
+        self._tag_buttons: dict = {}
+
+        frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
+        frame.pack(fill="x", padx=24, pady=(0, 8))
+
+        for i, tag in enumerate(ALL_TAGS):
+            btn = ctk.CTkButton(
+                frame,
+                text=tag,
+                width=110,
+                height=32,
+                corner_radius=16,
+                fg_color=SURFACE_ALT,
+                hover_color=ACCENT_HOVER,
+                text_color=TEXT_MUTED,
+                border_color=BORDER,
+                border_width=1,
+                font=ctk.CTkFont(size=12),
+                command=lambda t=tag: self._toggle_tag(t),
+            )
+            btn.grid(row=i // 6, column=i % 6, padx=(0, 6), pady=(0, 6), in_=frame)
+            self._tag_buttons[tag] = btn
+
+    def _toggle_tag(self, tag: str):
+        btn = self._tag_buttons[tag]
+        if tag in self._selected_tags:
+            self._selected_tags.discard(tag)
+            btn.configure(fg_color=SURFACE_ALT, text_color=TEXT_MUTED, border_color=BORDER)
+        else:
+            self._selected_tags.add(tag)
+            btn.configure(fg_color=ACCENT, text_color="#FFFFFF", border_color=ACCENT)
+
     def _build_options(self):
         frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
         frame.pack(fill="x", padx=24, pady=(0, 4))
@@ -478,9 +509,8 @@ class ScaffoldApp(ctk.CTk):
         if self._tribes:
             cmd += ["--tribe"] + self._tribes
 
-        tags = self.tags_entry.get().strip()
-        if tags:
-            cmd += ["--extra-tags", tags]
+        if self._selected_tags:
+            cmd += ["--extra-tags", ",".join(sorted(self._selected_tags))]
 
         output_dir = self.output_entry.get().strip()
         if output_dir:
