@@ -243,6 +243,13 @@ class ScaffoldApp(ctk.CTk):
         self._tribe_frame = ctk.CTkFrame(self.scroll, fg_color=BG)
         self._tribe_frame.pack(fill="x", padx=24, pady=(0, 4))
 
+        ctk.CTkLabel(
+            self._tribe_frame,
+            text="Enabled when Tribal archetype is selected above.",
+            font=ctk.CTkFont(size=11),
+            text_color=TEXT_MUTED,
+        ).pack(anchor="w", pady=(0, 4))
+
         search_entry = ctk.CTkEntry(
             self._tribe_frame,
             placeholder_text="Type to search creature types (e.g. ang → Angel)",
