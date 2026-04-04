@@ -831,10 +831,12 @@ class ScaffoldApp(ctk.CTk):
                     session_path = RepoPaths().root / session_path
                 if session_path.exists():
                     self.after(0, self._set_status, "Running synergy analysis...", ACCENT)
+                    synergy_report_path = session_path.parent / "synergy_report.md"
                     syn_cmd = [
                         sys.executable,
                         str(_scripts_dir / "synergy_analysis.py"),
                         str(session_path),
+                        "--output", str(synergy_report_path),
                     ]
                     import os
                     env2 = os.environ.copy()
@@ -845,7 +847,11 @@ class ScaffoldApp(ctk.CTk):
                             encoding="utf-8", errors="replace",
                             cwd=str(RepoPaths().root), env=env2, timeout=120,
                         )
-                        synergy_output = syn_proc.stdout.strip() or syn_proc.stderr.strip()
+                        # --output writes to file; read it back for the popup
+                        if synergy_report_path.exists():
+                            synergy_output = synergy_report_path.read_text(encoding="utf-8").strip()
+                        else:
+                            synergy_output = syn_proc.stdout.strip() or syn_proc.stderr.strip() or "(no output)"
                     except Exception as e:
                         synergy_output = f"Synergy analysis failed: {e}"
 
