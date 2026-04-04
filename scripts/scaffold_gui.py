@@ -491,23 +491,29 @@ class ScaffoldApp(ctk.CTk):
 
         # Run in background thread so UI stays responsive
         self.run_btn.configure(state="disabled", text="Running...")
-        self._set_status("Generating scaffold — this may take a moment...", ACCENT)
+        self._set_status("Starting...", ACCENT)
+        self._output_lines: list = []
         threading.Thread(target=self._run_scaffold, args=(cmd,), daemon=True).start()
 
     def _run_scaffold(self, cmd: list):
         try:
-            result = subprocess.run(
+            proc = subprocess.Popen(
                 cmd,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
                 cwd=str(RepoPaths().root),
-                timeout=120,
             )
-            output = result.stdout.strip() or result.stderr.strip()
-            success = result.returncode == 0
-        except subprocess.TimeoutExpired:
-            output = "Timed out after 120s."
-            success = False
+            output_lines = []
+            for line in proc.stdout:
+                output_lines.append(line)
+                # Stream progress to status bar on the main thread
+                stripped = line.strip()
+                if stripped:
+                    self.after(0, self._set_status, stripped[:90], ACCENT)
+            proc.wait()
+            output = "".join(output_lines).strip()
+            success = proc.returncode == 0
         except Exception as e:
             output = str(e)
             success = False
