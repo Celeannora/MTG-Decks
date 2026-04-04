@@ -564,19 +564,63 @@ def generate_decklist_template() -> str:
     ])
 
 
+def run_interactive_wizard() -> argparse.Namespace:
+    """Prompt the user for deck parameters interactively."""
+    print("=" * 70)
+    print("  DECK SCAFFOLD GENERATOR — Interactive Wizard")
+    print("=" * 70)
+    print()
+
+    name = input("  Deck name: ").strip()
+    while not name:
+        name = input("  Deck name (required): ").strip()
+
+    colors = input("  Colors (e.g. WB, GU, WUR): ").strip().upper()
+    while not colors:
+        colors = input("  Colors (required, e.g. WB, GU, WUR): ").strip().upper()
+
+    valid_archetypes = sorted(ARCHETYPE_QUERIES.keys())
+    print(f"  Available archetypes: {', '.join(valid_archetypes)}")
+    archetype = input("  Archetype: ").strip().lower()
+    while archetype not in valid_archetypes:
+        archetype = input(f"  Archetype (choose from: {', '.join(valid_archetypes)}): ").strip().lower()
+
+    tribe = input("  Tribe (optional, press Enter to skip): ").strip() or None
+    extra_tags = input("  Extra tags (optional, comma-separated, press Enter to skip): ").strip() or None
+    deck_date = input("  Date override (YYYY-MM-DD, press Enter for today): ").strip() or None
+    output_dir = input("  Output directory (press Enter for default): ").strip() or None
+    skip_queries_input = input("  Skip queries? (y/N): ").strip().lower()
+    skip_queries = skip_queries_input in ("y", "yes")
+
+    print()
+
+    return argparse.Namespace(
+        name=name,
+        colors=colors,
+        archetype=archetype,
+        tribe=tribe,
+        date=deck_date,
+        output_dir=output_dir,
+        extra_tags=extra_tags,
+        skip_queries=skip_queries,
+        interactive=True,
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Generate a deck-building session scaffold with embedded query results.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    p.add_argument("--name", required=True, help="Deck name (e.g. 'Orzhov Lifegain')")
-    p.add_argument("--colors", required=True, help="Color identity (e.g. WB, GU, WUR)")
+    p.add_argument("--name", default=None, help="Deck name (e.g. 'Orzhov Lifegain')")
+    p.add_argument("--colors", default=None, help="Color identity (e.g. WB, GU, WUR)")
     p.add_argument(
-        "--archetype", required=True,
+        "--archetype", default=None,
         choices=sorted(ARCHETYPE_QUERIES.keys()),
         help="Deck archetype",
     )
+    p.add_argument("--interactive", "-i", action="store_true", help="Launch interactive wizard mode")
     p.add_argument("--tribe", help="Creature subtype for tribal (e.g. Frog, Angel, Elf)")
     p.add_argument("--date", help="Date override (YYYY-MM-DD, default: today)")
     p.add_argument("--output-dir", help="Output directory (default: Decks/)")
@@ -592,6 +636,16 @@ def main() -> None:
     from mtg_utils import RepoPaths
 
     args = build_parser().parse_args()
+
+    # Launch interactive wizard if no core args provided, or if --interactive flag set
+    if args.interactive or not any([args.name, args.colors, args.archetype]):
+        args = run_interactive_wizard()
+    else:
+        # Validate required args for non-interactive mode
+        missing = [f"--{f}" for f, v in [("name", args.name), ("colors", args.colors), ("archetype", args.archetype)] if not v]
+        if missing:
+            build_parser().error(f"the following arguments are required: {', '.join(missing)}")
+
     paths = RepoPaths()
     repo_root = paths.root
 
