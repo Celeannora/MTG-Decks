@@ -42,7 +42,7 @@ ARCHETYPES = sorted(ARCHETYPE_QUERIES.keys())
 COLORS_MAP = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"}
 COLOR_ORDER = "WUBRG"
 APP_TITLE = "MTG Deck Scaffold Generator"
-WIN_W, WIN_H = 760, 700
+WIN_W, WIN_H = 800, 740
 
 # MTG color accent hex (loosely inspired by card frame colors)
 ACCENT = "#4F98A3"
@@ -111,9 +111,34 @@ class ScaffoldApp(ctk.CTk):
             text_color=TEXT,
         ).pack(side="left", padx=20, pady=14)
 
-        # Scrollable content
-        self.scroll = ctk.CTkScrollableFrame(self, fg_color=BG, scrollbar_button_color=BORDER)
-        self.scroll.pack(fill="both", expand=True, padx=0, pady=0)
+        # Tab view
+        self.tabs = ctk.CTkTabview(
+            self,
+            fg_color=BG,
+            segmented_button_fg_color=SURFACE,
+            segmented_button_selected_color=ACCENT,
+            segmented_button_selected_hover_color=ACCENT_HOVER,
+            segmented_button_unselected_color=SURFACE,
+            segmented_button_unselected_hover_color=SURFACE_ALT,
+            text_color=TEXT,
+            text_color_disabled=TEXT_MUTED,
+        )
+        self.tabs.pack(fill="both", expand=True, padx=0, pady=0)
+        self.tabs.add("New Scaffold")
+        self.tabs.add("Run Queries")
+        self.tabs.add("Synergy Analysis")
+
+        self._build_scaffold_tab()
+        self._build_run_queries_tab()
+        self._build_synergy_tab()
+
+        # Shared footer
+        self._build_footer()
+
+    def _build_scaffold_tab(self):
+        tab = self.tabs.tab("New Scaffold")
+        self.scroll = ctk.CTkScrollableFrame(tab, fg_color=BG, scrollbar_button_color=BORDER)
+        self.scroll.pack(fill="both", expand=True)
 
         self._section("1  Deck Name")
         self.name_entry = self._entry(placeholder="e.g. Orzhov Lifegain")
@@ -136,8 +161,140 @@ class ScaffoldApp(ctk.CTk):
         self._section("7  Output Directory")
         self._build_output_dir()
 
-        # Status + Run button
-        self._build_footer()
+    def _build_run_queries_tab(self):
+        tab = self.tabs.tab("Run Queries")
+        frame = ctk.CTkScrollableFrame(tab, fg_color=BG, scrollbar_button_color=BORDER)
+        frame.pack(fill="both", expand=True)
+
+        ctk.CTkLabel(
+            frame,
+            text="Execute pending search_cards.py queries in a session.md",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=ACCENT,
+        ).pack(anchor="w", padx=24, pady=(18, 2))
+        ctk.CTkLabel(
+            frame,
+            text="Finds all (run this query and paste results here) placeholders, runs them, and fills the results in-place.",
+            font=ctk.CTkFont(size=11),
+            text_color=TEXT_MUTED,
+            wraplength=700,
+            justify="left",
+        ).pack(anchor="w", padx=24, pady=(0, 14))
+
+        # Session file picker
+        ctk.CTkLabel(frame, text="session.md", font=ctk.CTkFont(size=12, weight="bold"),
+                     text_color=TEXT).pack(anchor="w", padx=24)
+        rq_row = ctk.CTkFrame(frame, fg_color="transparent")
+        rq_row.pack(fill="x", padx=24, pady=(4, 12))
+        self.rq_path_entry = ctk.CTkEntry(
+            rq_row, placeholder_text="Path to session.md",
+            fg_color=SURFACE, border_color=BORDER, text_color=TEXT,
+            placeholder_text_color=TEXT_MUTED, font=ctk.CTkFont(size=13), height=38, corner_radius=6,
+        )
+        self.rq_path_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        ctk.CTkButton(
+            rq_row, text="Browse", width=80, height=38,
+            fg_color=SURFACE_ALT, hover_color=BORDER, text_color=TEXT,
+            corner_radius=6, font=ctk.CTkFont(size=12),
+            command=self._browse_session_file,
+        ).pack(side="left")
+
+        # Options
+        self.rq_force_var = ctk.BooleanVar(value=False)
+        self.rq_dryrun_var = ctk.BooleanVar(value=False)
+        opts = ctk.CTkFrame(frame, fg_color="transparent")
+        opts.pack(anchor="w", padx=24, pady=(0, 16))
+        ctk.CTkCheckBox(opts, text="Force re-run all queries (even completed ones)",
+                        variable=self.rq_force_var, font=ctk.CTkFont(size=12),
+                        text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_HOVER,
+                        border_color=BORDER, checkmark_color="#FFFFFF").pack(anchor="w", pady=2)
+        ctk.CTkCheckBox(opts, text="Dry run (show what would run, no changes)",
+                        variable=self.rq_dryrun_var, font=ctk.CTkFont(size=12),
+                        text_color=TEXT, fg_color=ACCENT, hover_color=ACCENT_HOVER,
+                        border_color=BORDER, checkmark_color="#FFFFFF").pack(anchor="w", pady=2)
+
+        ctk.CTkButton(
+            frame, text="Run Queries", height=44, corner_radius=8,
+            fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color="#FFFFFF",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=self._on_run_queries,
+        ).pack(anchor="w", padx=24)
+
+    def _build_synergy_tab(self):
+        tab = self.tabs.tab("Synergy Analysis")
+        frame = ctk.CTkScrollableFrame(tab, fg_color=BG, scrollbar_button_color=BORDER)
+        frame.pack(fill="both", expand=True)
+
+        ctk.CTkLabel(
+            frame,
+            text="Gate 2.5 — Synergy Analysis",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color=ACCENT,
+        ).pack(anchor="w", padx=24, pady=(18, 2))
+        ctk.CTkLabel(
+            frame,
+            text="Scores pairwise tag-based interactions for all cards in a session.md or decklist.txt. "
+                 "Checks all 5 Gate 2.5 thresholds and generates a pre-filled report.",
+            font=ctk.CTkFont(size=11),
+            text_color=TEXT_MUTED,
+            wraplength=700,
+            justify="left",
+        ).pack(anchor="w", padx=24, pady=(0, 14))
+
+        # Input file
+        ctk.CTkLabel(frame, text="Input file  (session.md or decklist.txt)",
+                     font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT).pack(anchor="w", padx=24)
+        syn_row = ctk.CTkFrame(frame, fg_color="transparent")
+        syn_row.pack(fill="x", padx=24, pady=(4, 12))
+        self.syn_input_entry = ctk.CTkEntry(
+            syn_row, placeholder_text="Path to session.md or decklist.txt",
+            fg_color=SURFACE, border_color=BORDER, text_color=TEXT,
+            placeholder_text_color=TEXT_MUTED, font=ctk.CTkFont(size=13), height=38, corner_radius=6,
+        )
+        self.syn_input_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        ctk.CTkButton(
+            syn_row, text="Browse", width=80, height=38,
+            fg_color=SURFACE_ALT, hover_color=BORDER, text_color=TEXT,
+            corner_radius=6, font=ctk.CTkFont(size=12),
+            command=self._browse_synergy_input,
+        ).pack(side="left")
+
+        # Output file
+        ctk.CTkLabel(frame, text="Output report  (optional — leave blank to show in popup)",
+                     font=ctk.CTkFont(size=12, weight="bold"), text_color=TEXT).pack(anchor="w", padx=24)
+        syn_out_row = ctk.CTkFrame(frame, fg_color="transparent")
+        syn_out_row.pack(fill="x", padx=24, pady=(4, 12))
+        self.syn_output_entry = ctk.CTkEntry(
+            syn_out_row, placeholder_text="e.g. Decks/my_deck/synergy_report.md",
+            fg_color=SURFACE, border_color=BORDER, text_color=TEXT,
+            placeholder_text_color=TEXT_MUTED, font=ctk.CTkFont(size=13), height=38, corner_radius=6,
+        )
+        self.syn_output_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        ctk.CTkButton(
+            syn_out_row, text="Browse", width=80, height=38,
+            fg_color=SURFACE_ALT, hover_color=BORDER, text_color=TEXT,
+            corner_radius=6, font=ctk.CTkFont(size=12),
+            command=self._browse_synergy_output,
+        ).pack(side="left")
+
+        # Min synergy threshold
+        thresh_row = ctk.CTkFrame(frame, fg_color="transparent")
+        thresh_row.pack(anchor="w", padx=24, pady=(0, 16))
+        ctk.CTkLabel(thresh_row, text="Min avg synergy threshold:",
+                     font=ctk.CTkFont(size=12), text_color=TEXT).pack(side="left", padx=(0, 8))
+        self.syn_threshold_entry = ctk.CTkEntry(
+            thresh_row, width=60, fg_color=SURFACE, border_color=BORDER,
+            text_color=TEXT, font=ctk.CTkFont(size=13), height=32, corner_radius=6,
+        )
+        self.syn_threshold_entry.insert(0, "3.0")
+        self.syn_threshold_entry.pack(side="left")
+
+        ctk.CTkButton(
+            frame, text="Analyze Synergy", height=44, corner_radius=8,
+            fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color="#FFFFFF",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=self._on_synergy,
+        ).pack(anchor="w", padx=24)
 
     def _section(self, label: str):
         ctk.CTkLabel(
@@ -440,6 +597,99 @@ class ScaffoldApp(ctk.CTk):
         if d:
             self.output_entry.delete(0, "end")
             self.output_entry.insert(0, d)
+
+    def _browse_session_file(self):
+        from tkinter import filedialog
+        f = filedialog.askopenfilename(title="Select session.md", filetypes=[("Markdown", "*.md"), ("All", "*.*")])
+        if f:
+            self.rq_path_entry.delete(0, "end")
+            self.rq_path_entry.insert(0, f)
+
+    def _browse_synergy_input(self):
+        from tkinter import filedialog
+        f = filedialog.askopenfilename(
+            title="Select input file",
+            filetypes=[("Markdown / Text", "*.md *.txt"), ("All", "*.*")],
+        )
+        if f:
+            self.syn_input_entry.delete(0, "end")
+            self.syn_input_entry.insert(0, f)
+
+    def _browse_synergy_output(self):
+        from tkinter import filedialog
+        f = filedialog.asksaveasfilename(
+            title="Save synergy report as",
+            defaultextension=".md",
+            filetypes=[("Markdown", "*.md"), ("All", "*.*")],
+        )
+        if f:
+            self.syn_output_entry.delete(0, "end")
+            self.syn_output_entry.insert(0, f)
+
+    def _on_run_queries(self):
+        session_file = self.rq_path_entry.get().strip()
+        if not session_file:
+            self._set_status("Select a session.md file first.", ERROR)
+            return
+        cmd = [
+            sys.executable,
+            str(_scripts_dir / "run_session_queries.py"),
+            session_file,
+        ]
+        if self.rq_force_var.get():
+            cmd.append("--force")
+        if self.rq_dryrun_var.get():
+            cmd.append("--dry-run")
+        self.run_btn.configure(state="disabled", text="Running...")
+        self._set_status("Running session queries...", ACCENT)
+        import threading
+        threading.Thread(target=self._run_tool, args=(cmd,), daemon=True).start()
+
+    def _on_synergy(self):
+        input_file = self.syn_input_entry.get().strip()
+        if not input_file:
+            self._set_status("Select an input file first.", ERROR)
+            return
+        cmd = [
+            sys.executable,
+            str(_scripts_dir / "synergy_analysis.py"),
+            input_file,
+        ]
+        threshold = self.syn_threshold_entry.get().strip()
+        if threshold and threshold != "3.0":
+            cmd += ["--min-synergy", threshold]
+        output_file = self.syn_output_entry.get().strip()
+        if output_file:
+            cmd += ["--output", output_file]
+        self.run_btn.configure(state="disabled", text="Running...")
+        self._set_status("Analyzing synergy...", ACCENT)
+        import threading
+        threading.Thread(target=self._run_tool, args=(cmd,), daemon=True).start()
+
+    def _run_tool(self, cmd: list):
+        """Generic subprocess runner for the non-scaffold tools."""
+        import os
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+        try:
+            proc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, encoding="utf-8", errors="replace",
+                cwd=str(RepoPaths().root), env=env,
+            )
+            lines = []
+            for line in proc.stdout:
+                lines.append(line)
+                stripped = line.strip()
+                if stripped:
+                    self.after(0, self._set_status, stripped[:90], ACCENT)
+            proc.wait()
+            output = "".join(lines).strip()
+            success = proc.returncode == 0
+        except Exception as e:
+            output = str(e)
+            success = False
+        self.after(0, self._on_done, success, output)
 
     def _build_footer(self):
         sep = ctk.CTkFrame(self, height=1, fg_color=BORDER, corner_radius=0)

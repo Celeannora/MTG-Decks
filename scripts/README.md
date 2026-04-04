@@ -242,6 +242,65 @@ All scaffold logic is delegated to `generate_deck_scaffold.py` — the GUI is a 
 
 ---
 
+### `run_session_queries.py`
+
+Executes all pending `search_cards.py` query placeholders in a `session.md` and fills results in-place. Use this after generating a scaffold with `--skip-queries` (offline mode), or to re-run stale queries.
+
+```bash
+# Run all pending queries
+python scripts/run_session_queries.py Decks/2026-04-03_My_Deck/session.md
+
+# Preview what would run without making changes
+python scripts/run_session_queries.py Decks/2026-04-03_My_Deck/session.md --dry-run
+
+# Force re-run all queries (even ones with existing results)
+python scripts/run_session_queries.py Decks/2026-04-03_My_Deck/session.md --force
+```
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Show pending queries without running them |
+| `--force` | Re-run all queries, overwriting existing results |
+| `--timeout N` | Per-query timeout in seconds (default: 60) |
+
+**Exit codes:** `0` = success, `1` = file not found, `2` = search_cards.py missing, `3` = one or more queries failed
+
+---
+
+### `synergy_analysis.py`
+
+Gate 2.5 automation. Reads cards from a `session.md`, `decklist.txt`, or plain name list, computes tag-based pairwise synergy scores, checks all 5 Gate 2.5 thresholds, and writes a pre-populated markdown report ready to paste into `session.md`.
+
+```bash
+# Analyze candidate pool from a session.md
+python scripts/synergy_analysis.py Decks/2026-04-03_My_Deck/session.md
+
+# Analyze a finished decklist
+python scripts/synergy_analysis.py Decks/2026-04-03_My_Deck/decklist.txt
+
+# Write report to file instead of stdout
+python scripts/synergy_analysis.py session.md --output synergy_report.md
+```
+
+| Flag | Description |
+|------|-------------|
+| `--format` | Input format: `auto` (default), `session`, `decklist`, `names` |
+| `--output FILE` | Write report to file (default: stdout) |
+| `--min-synergy N` | Override avg synergy threshold (default: 3.0) |
+
+**What it automates (~60-70% of Gate 2.5):**
+- Tag computation for every card (oracle text + keywords)
+- Pairwise FEEDS, TRIGGERS, ENABLES, AMPLIFIES, PROTECTS, REDUNDANT detection
+- Synergy Count, Role Breadth, Dependency scores
+- All 5 threshold checks (avg >= 3.0, <= 4 isolates, >= 2 hubs, no Dep >= 3, REDUNDANT pairs)
+- Pre-filled synergy score table and chain scaffold
+
+**What still requires AI/human review:** Fine-grained ENABLES/TRIGGERS that require reading oracle text semantically, synergy chain descriptions, REDUNDANT pair justifications.
+
+**Exit codes:** `0` = all thresholds passed, `1` = threshold(s) failed, `2` = file not found or no cards extracted
+
+---
+
 ### `hypergeometric_analysis.py`
 
 Runs hypergeometric probability calculations for draw consistency analysis. Computes the probability of drawing specific cards or card types by a given turn.
