@@ -79,7 +79,15 @@ Work through the gates in order. All work stays in `session.md`:
 ### Step 4: Run validation
 
 ```bash
+# Default — reads cards_by_category/ CSVs directly (no extra setup)
 python scripts/validate_decklist.py Decks/2026-04-03_Orzhov_Lifegain/decklist.txt --verbose
+
+# With synergy tag summary and land-count sanity check
+python scripts/validate_decklist.py Decks/2026-04-03_Orzhov_Lifegain/decklist.txt --strict --show-tags
+
+# Faster offline backends (run build_local_database.py first)
+python scripts/validate_decklist.py --db json Decks/2026-04-03_Orzhov_Lifegain/decklist.txt
+python scripts/validate_decklist.py --db sqlite Decks/2026-04-03_Orzhov_Lifegain/decklist.txt
 ```
 
 Paste the output into the "Validation Output" section of `session.md`.
