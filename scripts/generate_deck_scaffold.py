@@ -564,34 +564,122 @@ def generate_decklist_template() -> str:
     ])
 
 
+# Canonical WUBRG color order for normalization
+_COLOR_ORDER = "WUBRG"
+_COLOR_NAMES = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"}
+
+
+def _normalize_colors(raw: str) -> str:
+    """Uppercase, deduplicate, and sort into WUBRG canonical order."""
+    seen = dict.fromkeys(c for c in raw.upper() if c in _COLOR_ORDER)
+    return "".join(c for c in _COLOR_ORDER if c in seen)
+
+
+def _valid_colors(raw: str) -> bool:
+    """Return True if raw contains only valid color letters and at least one."""
+    upper = raw.upper()
+    return bool(upper) and all(c in _COLOR_ORDER for c in upper)
+
+
 def run_interactive_wizard() -> argparse.Namespace:
     """Prompt the user for deck parameters interactively."""
-    print("=" * 70)
+    try:
+        return _wizard_prompts()
+    except KeyboardInterrupt:
+        print("\n  Aborted.")
+        raise SystemExit(0)
+
+
+def _wizard_prompts() -> argparse.Namespace:
+    print("=" * 60)
     print("  DECK SCAFFOLD GENERATOR — Interactive Wizard")
-    print("=" * 70)
+    print("=" * 60)
     print()
 
-    name = input("  Deck name: ").strip()
+    # ── Step 1: Deck name ─────────────────────────────────────
+    print("  Step 1 — Deck Name")
+    name = input("  Name: ").strip()
     while not name:
-        name = input("  Deck name (required): ").strip()
+        print("  (name is required)")
+        name = input("  Name: ").strip()
+    print()
 
-    colors = input("  Colors (e.g. WB, GU, WUR): ").strip().upper()
-    while not colors:
-        colors = input("  Colors (required, e.g. WB, GU, WUR): ").strip().upper()
+    # ── Step 2: Colors ────────────────────────────────────────
+    print("  Step 2 — Color Identity")
+    print("  " + "  ".join(f"{k} {v}" for k, v in _COLOR_NAMES.items()))
+    print("  Combine freely: W, WB, GU, WUR, WUBRG, etc.")
+    print("  Colorless decks: enter C")
+    raw_colors = input("  Colors: ").strip()
+    while not raw_colors or (raw_colors.upper() != "C" and not _valid_colors(raw_colors)):
+        print("  Invalid — use letters W U B R G only (e.g. WB, GU, WUBRG)")
+        raw_colors = input("  Colors: ").strip()
+    colors = "C" if raw_colors.upper() == "C" else _normalize_colors(raw_colors)
+    print()
 
+    # ── Step 3: Archetype ─────────────────────────────────────
     valid_archetypes = sorted(ARCHETYPE_QUERIES.keys())
-    print(f"  Available archetypes: {', '.join(valid_archetypes)}")
-    archetype = input("  Archetype: ").strip().lower()
-    while archetype not in valid_archetypes:
-        archetype = input(f"  Archetype (choose from: {', '.join(valid_archetypes)}): ").strip().lower()
+    print("  Step 3 — Archetype")
+    # Print in 2-column rows
+    for i, a in enumerate(valid_archetypes, 1):
+        end = "\n" if i % 4 == 0 or i == len(valid_archetypes) else ""
+        print(f"  {i:2}. {a:<12}", end=end)
+    if len(valid_archetypes) % 4 != 0:
+        print()
+    print()
+    archetype_raw = input("  Choice (number or name): ").strip().lower()
+    while True:
+        if archetype_raw in valid_archetypes:
+            archetype = archetype_raw
+            break
+        if archetype_raw.isdigit() and 1 <= int(archetype_raw) <= len(valid_archetypes):
+            archetype = valid_archetypes[int(archetype_raw) - 1]
+            break
+        print(f"  Invalid — enter a number 1-{len(valid_archetypes)} or type the name")
+        archetype_raw = input("  Choice: ").strip().lower()
+    print()
 
-    tribe = input("  Tribe (optional, press Enter to skip): ").strip() or None
-    extra_tags = input("  Extra tags (optional, comma-separated, press Enter to skip): ").strip() or None
-    deck_date = input("  Date override (YYYY-MM-DD, press Enter for today): ").strip() or None
-    output_dir = input("  Output directory (press Enter for default): ").strip() or None
-    skip_queries_input = input("  Skip queries? (y/N): ").strip().lower()
-    skip_queries = skip_queries_input in ("y", "yes")
+    # ── Step 4: Tribe (only if tribal) ───────────────────────
+    tribe: Optional[str] = None
+    if archetype == "tribal":
+        print("  Step 4 — Creature Subtype")
+        print("  Examples: Frog, Angel, Elf, Vampire, Merfolk, Dragon, Goblin")
+        tribe = input("  Subtype: ").strip() or None
+        while not tribe:
+            print("  (subtype is required for tribal)")
+            tribe = input("  Subtype: ").strip() or None
+        print()
 
+    # ── Step 5: Extra tags (optional) ────────────────────────
+    print("  Step 5 — Extra Search Tags (optional)")
+    print("  Available tags: lifegain, removal, draw, counter, ramp, haste,")
+    print("                  flying, trample, mill, wipe, pump, bounce, etb,")
+    print("                  tutor, flash, tribal, protection, deathtouch")
+    extra_tags = input("  Tags (comma-separated, or Enter to skip): ").strip() or None
+    print()
+
+    # ── Step 6: Run queries? ──────────────────────────────────
+    print("  Step 6 — Run Queries Now?")
+    print("  Queries search your local card pool and embed results in the scaffold.")
+    run_q = input("  Run queries? [Y/n]: ").strip().lower()
+    skip_queries = run_q in ("n", "no")
+    print()
+
+    # ── Step 7: Confirmation ──────────────────────────────────
+    from datetime import date as _date
+    preview_date = _date.today().isoformat()
+    print("=" * 60)
+    print("  SUMMARY")
+    print(f"  Name:       {name}")
+    print(f"  Colors:     {colors}")
+    print(f"  Archetype:  {archetype}" + (f" ({tribe} Tribal)" if tribe else ""))
+    print(f"  Extra tags: {extra_tags or 'none'}")
+    print(f"  Run queries: {'no (offline template)' if skip_queries else 'yes'}")
+    print(f"  Output:     Decks/{preview_date}_{sanitize_folder_name(name)}/")
+    print("=" * 60)
+    confirm = input("  Confirm? [Y/n]: ").strip().lower()
+    if confirm in ("n", "no"):
+        print("  Aborted.")
+        raise SystemExit(0)
     print()
 
     return argparse.Namespace(
@@ -599,8 +687,8 @@ def run_interactive_wizard() -> argparse.Namespace:
         colors=colors,
         archetype=archetype,
         tribe=tribe,
-        date=deck_date,
-        output_dir=output_dir,
+        date=None,
+        output_dir=None,
         extra_tags=extra_tags,
         skip_queries=skip_queries,
         interactive=True,
