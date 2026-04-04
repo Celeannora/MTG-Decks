@@ -162,8 +162,27 @@ Queries run:
   search_cards.py --type land --colors WB                             → 89 candidates
 ```
 
+**Zero-result queries — mandatory recovery procedure**
+
+If any query returns 0 candidates, you MUST fix it before proceeding. Do not
+skip the card type or treat the missing pool as acceptable.
+
+Common causes and fixes:
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `--type land` returns 0 | Extra `--tags` filter on lands | Remove all `--tags` from land queries — lands rarely have strategy tags |
+| `--type creature --oracle "Dog\|Angel"` returns 0 | `\|` is not OR syntax | Use `--name Dog` and `--name Angel` as separate queries |
+| Any query returns 0 | Too many filters combined | Remove one filter at a time until results appear |
+
+**If a session.md is provided with a 0-result query, do not halt.** Run a
+corrected version of that query and add the output to the session's
+"Additional Queries" section. Then proceed using that output as the pool
+for that card type.
+
 **Gate 1 is complete ONLY when:**
 - Every needed card type has been queried
+- Every query returned at least 1 result (or was corrected until it did)
 - A complete candidate pool exists from those queries
 - Zero cards have been named from memory or web sources
 
@@ -570,6 +589,7 @@ Workflow runs one direction only: database query → candidate pool → card sel
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 9.3 | 2026-04-04 | Added zero-result query recovery procedure to Gate 1: mandatory fix steps for common 0-result causes (land tag filter, pipe-OR oracle syntax), explicit instruction to correct and re-run rather than halt |
 | 9.2 | 2026-04-04 | Added dual-mode SESSION ACKNOWLEDGMENT: Mode A (no session.md, start from Gate 1) and Mode B (session.md provided, resume from first incomplete gate); added tribal hard constraint enforcement in Mode B; added synergy_report.md reference guidance; added prompt templates for both modes |
 | 9.1 | 2026-04-03 | Added Gate 2.5 (Synergy Evaluation): mandatory pairwise synergy classification, scoring (Synergy Count, Role Breadth, Dependency), universal thresholds, and synergy chain mapping before card selection; added synergy evaluation section to analysis.md template; added Gate 2.5 skip to prohibited actions table |
 | 9.0 | 2026-03-21 | Search-first protocol: replaced manual file-sweep with `search_cards.py`; added strategic tags column to CSV schema; unified validators into single script with `--local` flag; added `index_decks.py` for deck registry; removed deprecated stub files; CI now re-validates all decks on database changes; added clarifying questions to Gate 1; added interaction justification requirement to Gate 3 |
