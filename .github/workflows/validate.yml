@@ -3,12 +3,15 @@ name: Validate Decklists
 on:
   push:
     paths:
-      - 'Decks/**/decklist.txt'
-      - 'cards_by_category/**'   # re-validate all decks after any rotation/DB update
+      - 'cards_by_category/**'   # re-validate if card database changes
+      - 'scripts/validate_decklist.py'
+      - 'scripts/mtg_utils.py'
   pull_request:
     paths:
-      - 'Decks/**/decklist.txt'
       - 'cards_by_category/**'
+      - 'scripts/validate_decklist.py'
+      - 'scripts/mtg_utils.py'
+  workflow_dispatch:              # allow manual trigger
 
 permissions:
   contents: write
@@ -33,8 +36,13 @@ jobs:
       - name: Find and validate all decklists
         run: |
           set -e
+          FOUND=$(find Decks -name 'decklist.txt' 2>/dev/null || true)
+          if [ -z "$FOUND" ]; then
+            echo "No decklists found in Decks/ — nothing to validate."
+            exit 0
+          fi
           FAIL=0
-          for f in $(find Decks -name 'decklist.txt' 2>/dev/null); do
+          for f in $FOUND; do
             echo "--- Validating $f ---"
             python scripts/validate_decklist.py --quiet "$f" || FAIL=1
           done
@@ -50,8 +58,12 @@ jobs:
       - name: Commit updated deck index (if changed)
         if: github.event_name == 'push'
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Decks/_INDEX.md
-          git diff --cached --quiet || git commit -m "chore: regenerate Decks/_INDEX.md [skip ci]"
-          git push
+          if [ -d "Decks" ] && [ -f "Decks/_INDEX.md" ]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add Decks/_INDEX.md
+            git diff --cached --quiet || git commit -m "chore: regenerate Decks/_INDEX.md [skip ci]"
+            git push
+          else
+            echo "No Decks/_INDEX.md to commit — skipping."
+          fi
