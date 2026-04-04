@@ -205,8 +205,9 @@ def run_query(
     from mtg_utils import RepoPaths
     paths = RepoPaths(root=repo_root)
     script = paths.scripts_dir / "search_cards.py"
+    import shlex
     cmd_parts = [sys.executable, str(script)]
-    cmd_parts += base_args.split()
+    cmd_parts += shlex.split(base_args)
 
     # Add colors if not a land query (lands should search across all colors)
     if "--type land" not in base_args:
