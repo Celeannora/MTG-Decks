@@ -563,6 +563,19 @@ class ScaffoldApp(ctk.CTk):
             checkmark_color="#FFFFFF",
         ).pack(anchor="w")
 
+        self.run_synergy_var = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(
+            frame,
+            text="Run synergy analysis after scaffold  (generates Gate 2.5 report from session.md)",
+            variable=self.run_synergy_var,
+            font=ctk.CTkFont(size=12),
+            text_color=TEXT,
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            border_color=BORDER,
+            checkmark_color="#FFFFFF",
+        ).pack(anchor="w", pady=(6, 0))
+
     def _build_output_dir(self):
         frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
         frame.pack(fill="x", padx=24, pady=(0, 8))
@@ -804,52 +817,111 @@ class ScaffoldApp(ctk.CTk):
             output = str(e)
             success = False
 
-        self.after(0, self._on_done, success, output)
+        synergy_output = None
+        if success and self.run_synergy_var.get():
+            # Find the session.md path from scaffold output
+            deck_dir = None
+            for line in output.splitlines():
+                if "Output:" in line:
+                    deck_dir = line.split("Output:")[-1].strip().rstrip("/\\").rstrip()
+                    break
+            if deck_dir:
+                session_path = Path(deck_dir) / "session.md"
+                if not session_path.is_absolute():
+                    session_path = RepoPaths().root / session_path
+                if session_path.exists():
+                    self.after(0, self._set_status, "Running synergy analysis...", ACCENT)
+                    syn_cmd = [
+                        sys.executable,
+                        str(_scripts_dir / "synergy_analysis.py"),
+                        str(session_path),
+                    ]
+                    import os
+                    env2 = os.environ.copy()
+                    env2["PYTHONIOENCODING"] = "utf-8"
+                    try:
+                        syn_proc = subprocess.run(
+                            syn_cmd, capture_output=True, text=True,
+                            encoding="utf-8", errors="replace",
+                            cwd=str(RepoPaths().root), env=env2, timeout=120,
+                        )
+                        synergy_output = syn_proc.stdout.strip() or syn_proc.stderr.strip()
+                    except Exception as e:
+                        synergy_output = f"Synergy analysis failed: {e}"
 
-    def _on_done(self, success: bool, output: str):
+        self.after(0, self._on_done, success, output, synergy_output)
+
+    def _on_done(self, success: bool, output: str, synergy_output=None):
         self.run_btn.configure(state="normal", text="Generate Scaffold")
         if success:
-            # Extract output path from the script's stdout
             path_hint = ""
             for line in output.splitlines():
                 if "Output:" in line:
                     path_hint = line.split("Output:")[-1].strip()
                     break
             msg = f"Done! Scaffold created at {path_hint}" if path_hint else "Scaffold generated successfully."
+            if synergy_output:
+                msg += "  |  Synergy report ready."
             self._set_status(msg, SUCCESS)
-            self._show_output_popup(output)
+            self._show_output_popup(output, synergy_output=synergy_output)
         else:
             self._set_status(f"Error: {output[:120]}", ERROR)
             self._show_output_popup(output, error=True)
 
-    def _show_output_popup(self, output: str, error: bool = False):
+    def _show_output_popup(self, output: str, error: bool = False, synergy_output: str = None):
         win = ctk.CTkToplevel(self)
+        has_synergy = bool(synergy_output and not error)
         win.title("Error" if error else "Scaffold Output")
-        win.geometry("680x420")
+        win.geometry("720x560" if has_synergy else "680x420")
         win.configure(fg_color=BG)
         win.lift()
         win.focus()
 
         ctk.CTkLabel(
             win,
-            text="Error" if error else "Scaffold Generated",
+            text="Error" if error else "Scaffold Complete" + (" + Synergy Report" if has_synergy else ""),
             font=ctk.CTkFont(size=15, weight="bold"),
             text_color=ERROR if error else SUCCESS,
         ).pack(anchor="w", padx=20, pady=(16, 4))
 
-        box = ctk.CTkTextbox(
-            win,
-            fg_color=SURFACE,
-            text_color=TEXT,
-            font=ctk.CTkFont(family="Courier New", size=12),
-            border_color=BORDER,
-            border_width=1,
-            corner_radius=6,
-            wrap="word",
-        )
-        box.pack(fill="both", expand=True, padx=20, pady=(0, 12))
-        box.insert("end", output)
-        box.configure(state="disabled")
+        def _make_textbox(parent, content: str):
+            box = ctk.CTkTextbox(
+                parent,
+                fg_color=SURFACE,
+                text_color=TEXT,
+                font=ctk.CTkFont(family="Courier New", size=11),
+                border_color=BORDER,
+                border_width=1,
+                corner_radius=6,
+                wrap="word",
+            )
+            box.pack(fill="both", expand=True, padx=4, pady=4)
+            box.insert("end", content)
+            box.configure(state="disabled")
+            return box
+
+        if has_synergy:
+            tabs = ctk.CTkTabview(
+                win,
+                fg_color=BG,
+                segmented_button_fg_color=SURFACE,
+                segmented_button_selected_color=ACCENT,
+                segmented_button_selected_hover_color=ACCENT_HOVER,
+                segmented_button_unselected_color=SURFACE,
+                segmented_button_unselected_hover_color=SURFACE_ALT,
+                text_color=TEXT,
+            )
+            tabs.pack(fill="both", expand=True, padx=20, pady=(0, 4))
+            tabs.add("Scaffold Log")
+            tabs.add("Gate 2.5 Synergy")
+            _make_textbox(tabs.tab("Scaffold Log"), output)
+            _make_textbox(tabs.tab("Gate 2.5 Synergy"), synergy_output)
+
+            # Determine pass/fail from synergy output for tab label color
+            if "[FAIL]" in synergy_output:
+                tabs._segmented_button.configure()  # noop — CTK doesn't support per-tab color
+        else:
+            _make_textbox(win, output)
 
         ctk.CTkButton(
             win,
