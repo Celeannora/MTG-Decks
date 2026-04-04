@@ -197,12 +197,11 @@ def run_query(
     colors: str,
     tribe: Optional[str] = None,
     extra_tags: Optional[str] = None,
-    wildcard: bool = False,
+    suppress_tribe: bool = False,
 ) -> Tuple[str, str, int]:
     """
     Run a search_cards.py query. Returns (command_string, output, result_count).
     Adds --colors and --show-tags automatically.
-    If wildcard=True, the --colors filter is omitted so all colors are returned.
     """
     from mtg_utils import RepoPaths
     paths = RepoPaths(root=repo_root)
@@ -211,9 +210,7 @@ def run_query(
     cmd_parts = [sys.executable, str(script)]
     cmd_parts += shlex.split(base_args)
 
-    # Add color filter unless wildcard mode is active
-    if not wildcard:
-        cmd_parts += ["--colors", colors]
+    cmd_parts += ["--colors", colors]
 
     # Tribe is NOT used as a filter on existing queries — it only adds
     # supplemental per-tribe creature queries to the query plan (see main()).
@@ -777,9 +774,13 @@ def _wizard_prompts() -> argparse.Namespace:
     skip_queries = run_q in ("n", "no")
 
     print("  Step 6b — Wildcard Mode  (optional)")
-    print("  Disable color filter so queries return cards of any color.")
-    wc = input("  Wildcard? [y/N]: ").strip().lower()
-    wildcard = wc in ("y", "yes")
+    if tribes:
+        print("  Skip tribal --name filters so all archetype creatures appear in the pool.")
+        print("  The tribe(s) will be noted in the session as an AI hint only.")
+        wc = input("  Wildcard? [y/N]: ").strip().lower()
+        wildcard = wc in ("y", "yes")
+    else:
+        wildcard = False
     print()
     print()
 
@@ -851,7 +852,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--wildcard", action="store_true",
-        help="Disable color identity filter — queries return cards of any color (useful for broad exploration)",
+        help="Suppress tribal --name creature queries — tribe becomes an AI hint at Gate 3 only, not a pool filter. Use when you want the full archetype pool with tribal preference, not tribal-only creatures.",
     )
     return p
 
@@ -877,7 +878,6 @@ def main() -> None:
     repo_root = paths.root
 
     # Validate card database exists
-    # Wildcard: colors still recorded in metadata but not used as a filter
     if not paths.cards_dir.exists() and not args.skip_queries:
         print(f"ERROR: {RepoPaths.CARDS_DIR_NAME}/ not found.", file=sys.stderr)
         print(f"Run 'python {RepoPaths.SCRIPTS_DIR_NAME}/fetch_and_categorize_cards.py' first.", file=sys.stderr)
@@ -898,11 +898,12 @@ def main() -> None:
     archetype_list = args.archetype if isinstance(args.archetype, list) else [args.archetype]
     wildcard_active = getattr(args, "wildcard", False)
     print(f"  Archetype: {', '.join(archetype_list)}")
-    if wildcard_active:
-        print(f"  Colors:    {args.colors.upper()}  [WILDCARD — color filter disabled]")
     if args.tribe:
         tribe_str = " / ".join(args.tribe) if isinstance(args.tribe, list) else args.tribe
-        print(f"  Tribe:     {tribe_str}")
+        if wildcard_active:
+            print(f"  Tribe:     {tribe_str}  [WILDCARD — hint only, --name filter suppressed]")
+        else:
+            print(f"  Tribe:     {tribe_str}")
     print(f"  Output:    {deck_dir}/")
     print(f"{'='*70}\n")
 
@@ -927,11 +928,13 @@ def main() -> None:
         tribe_list = tribe_arg if isinstance(tribe_arg, list) else [tribe_arg]
         # Remove the generic placeholder (if present) — replaced by per-tribe below
         query_plan = [q for q in query_plan if q["label"] != "Tribal creatures (by subtype)"]
-        # Insert per-tribe name queries at the front, one per tribe
+        # Insert per-tribe name queries at the front, one per tribe.
+        # Marked with is_tribe_query so --wildcard can suppress them.
         for t in reversed(tribe_list):
             query_plan.insert(0, {
                 "label": f"{t} creatures",
                 "args": f"--type creature --name \"{t}\"",
+                "is_tribe_query": True,
             })
 
     if lands:
@@ -966,13 +969,22 @@ def main() -> None:
             label = q["label"]
             print(f"  [{i}/{len(query_plan)}] {label}...")
 
+            wildcard_active = getattr(args, "wildcard", False)
+            if wildcard_active and q.get("is_tribe_query", False):
+                print(f"         -> skipped (wildcard mode)")
+                query_results.append({
+                    "label": q["label"],
+                    "command": f"# skipped — wildcard mode active",
+                    "output": "(skipped — wildcard mode: tribe label used as AI hint only, not as a pool filter)",
+                    "count": 0,
+                })
+                continue
             cmd, output, count = run_query(
                 repo_root,
                 q["args"],
                 args.colors.upper(),
                 tribe=args.tribe,
                 extra_tags=args.extra_tags,
-                wildcard=getattr(args, "wildcard", False),
             )
 
             query_results.append({

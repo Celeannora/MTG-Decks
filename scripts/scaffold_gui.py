@@ -609,7 +609,7 @@ class ScaffoldApp(ctk.CTk):
 
         ctk.CTkCheckBox(
             frame,
-            text="Wildcard  (no color filter — queries return cards of any color)",
+            text="Wildcard  (tribe as hint only — skips tribal --name filter, returns full archetype pool)",
             variable=self.wildcard_var,
             font=ctk.CTkFont(size=12),
             text_color=TEXT,
@@ -617,23 +617,7 @@ class ScaffoldApp(ctk.CTk):
             hover_color=ACCENT_HOVER,
             border_color=BORDER,
             checkmark_color="#FFFFFF",
-            command=self._on_wildcard_toggle,
         ).pack(anchor="w", pady=(6, 0))
-
-    def _on_wildcard_toggle(self):
-        """Gray out color buttons when wildcard is active; restore when off."""
-        active = self.wildcard_var.get()
-        for c, (btn, active_color, active_text) in self._color_buttons.items():
-            if active:
-                # Dim all color buttons regardless of selection state
-                btn.configure(state="disabled", fg_color=SURFACE_ALT,
-                              text_color=TEXT_MUTED, border_color=BORDER)
-            else:
-                btn.configure(state="normal")
-                # Restore selected state
-                if c in self.selected_colors:
-                    btn.configure(fg_color=active_color, text_color=active_text,
-                                  border_color=active_color)
 
     def _build_output_dir(self):
         frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
@@ -884,11 +868,9 @@ class ScaffoldApp(ctk.CTk):
 
         wildcard = self.wildcard_var.get()
         colors = normalize_colors("".join(self.selected_colors))
-        if not colors and not wildcard:
-            self._set_status("Select at least one color (or enable Wildcard).", ERROR)
-            return
         if not colors:
-            colors = "WUBRG"  # metadata only — not passed as filter in wildcard mode
+            self._set_status("Select at least one color.", ERROR)
+            return
 
         if not self.selected_archetypes:
             self._set_status("Select at least one archetype.", ERROR)
