@@ -1,5 +1,5 @@
 # AI DECK BUILDING INSTRUCTIONS
-## Version 9.0 — Search-First Protocol
+## Version 9.1 — Synergy Evaluation Protocol
 
 ---
 
@@ -188,6 +188,109 @@ Using only cards from your Gate 1 candidate pool:
 
 ---
 
+### ✅ GATE 2.5: SYNERGY EVALUATION (Required before card slots are filled)
+
+Using the candidate pool from Gate 1 and the strategy from Gate 2, evaluate pairwise card synergies for every candidate under serious consideration. This gate replaces vague claims of "good synergy" with a structured, auditable assessment.
+
+**This gate applies identically to every archetype. The synergy types and thresholds below are mechanical — they describe how cards interact, not what strategy they serve.**
+
+#### Step 1: Classify Pairwise Interactions
+
+For each pair of candidates being considered for inclusion, determine whether a directional interaction exists. An interaction is exactly one of:
+
+| Type | Definition | How to Identify |
+|------|-----------|----------------|
+| `ENABLES` | A makes B functional, cheaper, or castable | A produces mana B needs; A meets a condition B checks; A reduces B's cost |
+| `TRIGGERS` | A causes B's triggered/activated ability to fire | A's action (casting, entering, attacking, gaining life, etc.) matches B's trigger condition |
+| `AMPLIFIES` | A multiplies or scales B's output | A doubles counters B places; A adds to a quantity B already produces; A copies B |
+| `PROTECTS` | A defends B from removal or disruption | A counters spells targeting B; A grants hexproof/indestructible/ward to B |
+| `FEEDS` | A's output becomes B's input | A produces resource X (life, tokens, counters, cards in graveyard); B consumes or cares about resource X |
+| `REDUNDANT` | A and B fill the same role with diminishing returns when drawn together | Two cards that both serve as finisher, board wipe, or narrow answer — drawing both is worse than drawing one plus a different role |
+
+**Rules for classification:**
+- A card can interact with the same partner through multiple types (e.g., A both TRIGGERS and FEEDS B). Count each type once.
+- Generic "both are good cards" is not a synergy. The interaction must be mechanical — traceable to specific oracle text, keywords, or type lines.
+- Use the oracle text and tags from your Gate 1 query results. Do not reason about cards from memory.
+
+#### Step 2: Score Each Candidate
+
+For every candidate card being considered for a mainboard slot, record three scores:
+
+| Metric | Definition | How to Calculate |
+|--------|-----------|------------------|
+| **Synergy Count** | Number of other candidates this card has at least one non-REDUNDANT interaction with | Count distinct partner cards |
+| **Role Breadth** | Number of distinct interaction types this card participates in | Count how many of ENABLES / TRIGGERS / AMPLIFIES / PROTECTS / FEEDS apply across all partners |
+| **Dependency** | Number of other specific cards that must be on the battlefield for this card to function at all | 0 = standalone value; 1 = needs one enabler; 2+ = highly conditional |
+
+Output a summary table sorted by Synergy Count descending:
+
+```markdown
+### Synergy Scores
+
+| Card | Synergy Count | Role Breadth | Dependency | Notes |
+|------|--------------|-------------|------------|-------|
+| [Highest-synergy card] | N | N | N | [1-line: which types, which key partners] |
+| ... | ... | ... | ... | ... |
+| [Lowest-synergy card] | N | N | N | ... |
+```
+
+#### Step 3: Apply Thresholds
+
+Before proceeding to Gate 3, the candidate list must satisfy all of the following. These apply regardless of archetype:
+
+1. **Average Synergy Count across all non-land candidates ≥ 3.0** — Every card interacts mechanically with at least 3 others on average. A deck of individually powerful but disconnected cards fails this.
+
+2. **No more than 4 non-land cards with Synergy Count 0–1** — These are "good stuff" inclusions with no mechanical ties to the rest of the deck. A small number is acceptable (e.g., a universally strong removal spell). More than 4 means the deck lacks cohesion.
+
+3. **At least 2 cards with Synergy Count ≥ 8** — These are the "hub" cards that tie the deck together. Every archetype needs at least two high-connectivity cards. If the deck has only one, losing it collapses the entire strategy.
+
+4. **No card with Dependency ≥ 3 makes the final cut** — A card that needs 3+ other specific cards on board to function is too fragile for competitive play. Either find a less conditional alternative from the candidate pool, or rethink the strategy.
+
+5. **Every REDUNDANT pair is acknowledged** — If two cards are flagged REDUNDANT, justify why both deserve slots (e.g., "4 copies of the effect is needed for consistency" or "one is better in early game, the other in late game"). If no justification exists, cut one.
+
+**If any threshold is not met:**
+- Revisit the candidate pool from Gate 1
+- Run additional `search_cards.py` queries if the pool lacks high-synergy options
+- Adjust the strategy (Gate 2) if the archetype fundamentally lacks internal synergy in the available card pool
+- Document which threshold failed and how you resolved it
+
+#### Step 4: Map Synergy Chains
+
+Identify the 2–3 most important multi-card sequences that execute the deck's game plan. A chain is an ordered sequence of cards where each card's output feeds the next card's input.
+
+```markdown
+### Synergy Chains
+
+**Chain 1 — [Name describing function, e.g., "Primary Win Condition"]:**
+[Card A] → [what A produces] → [Card B] → [what B produces] → [Card C] → [outcome]
+Redundancy: [which pieces have substitutes in the candidate pool]
+Minimum pieces to function: [N of M]
+
+**Chain 2 — [Name, e.g., "Defensive Engine" or "Card Advantage Loop"]:**
+[Card X] → ... → [outcome]
+Redundancy: ...
+Minimum pieces to function: ...
+```
+
+Each chain must meet two requirements:
+- **Redundancy**: At least one piece in the chain has a substitute in the deck (e.g., if Card B is removed, Card B2 can fill the same role). Chains with zero redundancy are single points of failure.
+- **Graceful degradation**: The chain still produces value (at reduced output) with one piece missing. If removing any single card makes the chain do nothing, the chain is too fragile.
+
+#### Gate 2.5 Completion Criteria
+
+- [ ] All candidates scored (Synergy Count, Role Breadth, Dependency)
+- [ ] Average Synergy Count ≥ 3.0
+- [ ] ≤ 4 cards with Synergy Count 0–1
+- [ ] ≥ 2 hub cards with Synergy Count ≥ 8
+- [ ] No card with Dependency ≥ 3
+- [ ] All REDUNDANT pairs justified
+- [ ] 2–3 synergy chains mapped with redundancy and degradation noted
+- [ ] All analysis based on Gate 1 query results (oracle text, tags, keywords) — not memory
+
+**If any item is unchecked, do not proceed to Gate 3.**
+
+---
+
 ### ✅ GATE 3: CARD SELECTION (From candidate pool only)
 
 For each card slot:
@@ -243,6 +346,7 @@ Before writing any output files:
 - [ ] Zero cards sourced from web searches or memory
 - [ ] Set codes and collector numbers recorded
 - [ ] Mana base math validated
+- [ ] Synergy evaluation completed (Gate 2.5 thresholds met, chains documented)
 - [ ] Meaningful card interactions documented
 - [ ] Validation script run: `python scripts/validate_decklist.py Decks/[deck_name]/decklist.txt`
 - [ ] Validation script returned exit code 0
@@ -273,6 +377,7 @@ Before writing any output files:
 | Adding a card without a query citation | Remove card, find database alternative |
 | Assuming card legality without verification | Restart from Gate 1 |
 | Building deck then validating after | Restart from Gate 1 |
+| Skipping Gate 2.5 synergy evaluation | Return to Gate 2.5 before proceeding |
 
 ONE illegal card = ENTIRE DECK REJECTED.
 
@@ -419,6 +524,7 @@ Workflow runs one direction only: database query → candidate pool → card sel
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 9.1 | 2026-04-03 | Added Gate 2.5 (Synergy Evaluation): mandatory pairwise synergy classification, scoring (Synergy Count, Role Breadth, Dependency), universal thresholds, and synergy chain mapping before card selection; added synergy evaluation section to analysis.md template; added Gate 2.5 skip to prohibited actions table |
 | 9.0 | 2026-03-21 | Search-first protocol: replaced manual file-sweep with `search_cards.py`; added strategic tags column to CSV schema; unified validators into single script with `--local` flag; added `index_decks.py` for deck registry; removed deprecated stub files; CI now re-validates all decks on database changes; added clarifying questions to Gate 1; added interaction justification requirement to Gate 3 |
 | 8.2 | 2026-03-15 | Mandate exhaustive full-database sweep: ALL files for each needed card type must be opened before any selection; added partial-loading prohibition to zero-tolerance table; added file-opened checklist to Gate 1 |
 | 8.1 | 2026-03-15 | Fix critical file-naming misconception: letters are alphabetical, NOT thematic categories |
@@ -427,4 +533,4 @@ Workflow runs one direction only: database query → candidate pool → card sel
 | 7.0 | 2026-03-09 | Consolidated all instructions into single file |
 
 **Maintained by:** Celeannora
-**Last updated:** March 21, 2026
+**Last updated:** April 3, 2026

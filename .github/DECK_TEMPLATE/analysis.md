@@ -37,6 +37,38 @@ $ python scripts/validate_decklist.py Decks/YYYY-MM-DD_Archetype/decklist.txt
 
 ---
 
+## Synergy Evaluation
+
+### Synergy Scores
+
+| Card | Synergy Count | Role Breadth | Dependency | Notes |
+|------|--------------|-------------|------------|-------|
+| [Card Name] | N | N | N | [Key interaction types and partners] |
+
+**Average Synergy Count:** X.X (threshold: ≥ 3.0)  
+**Cards with Synergy Count 0–1:** N (max: 4)  
+**Hub cards (Synergy Count ≥ 8):** N (min: 2)
+
+### Synergy Chains
+
+**Chain 1 — [Function]:**  
+[Card A] → [output] → [Card B] → [output] → [Card C] → [outcome]  
+Redundancy: [substitutes available]  
+Minimum pieces to function: [N of M]
+
+**Chain 2 — [Function]:**  
+[Card X] → ... → [outcome]  
+Redundancy: ...  
+Minimum pieces to function: ...
+
+### Redundant Pairs
+
+| Card A | Card B | Justification for Both |
+|--------|--------|------------------------|
+| [Name] | [Name] | [Why both are included] |
+
+---
+
 ## Card-by-Card Breakdown
 
 ### Creatures
