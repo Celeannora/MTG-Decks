@@ -30,6 +30,14 @@ python scripts/fetch_and_categorize_cards.py
 
 ### Step 1: Generate a session scaffold
 
+**Interactive mode (recommended)** — just run with no arguments and follow the prompts:
+
+```bash
+python scripts/generate_deck_scaffold.py
+```
+
+Or use the CLI flags directly:
+
 ```bash
 python scripts/generate_deck_scaffold.py \
   --name "Orzhov Lifegain" \
