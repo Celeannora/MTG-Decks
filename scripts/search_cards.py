@@ -212,10 +212,12 @@ def filter_cards(
     oracle_filter: Optional[str],
     name_filter: Optional[str],
     tag_filters: Optional[List[str]],
+    tags_mode: str = "any",
     cmc_min: Optional[float],
     cmc_max: Optional[float],
     rarities: Optional[List[str]],
     keyword_filters: Optional[List[str]],
+    keywords_mode: str = "any",
 ) -> List[Tuple[Dict, Set[str]]]:
     """Apply all filters and return (card, tags) tuples."""
     results: List[Tuple[Dict, Set[str]]] = []
@@ -247,19 +249,27 @@ def filter_cards(
         if rarities and card.get("rarity", "").lower() not in rarities:
             continue
 
-        # Keyword filter (MTG mechanical keywords, not our tags)
+        # Keyword filter — OR logic by default; use keywords_mode='all' for AND
         if keyword_filters:
             card_kws = {k.strip().lower() for k in card.get("keywords", "").split(";")}
-            if not all(kf.lower() in card_kws for kf in keyword_filters):
-                continue
+            if keywords_mode == "all":
+                if not all(kf.lower() in card_kws for kf in keyword_filters):
+                    continue
+            else:
+                if not any(kf.lower() in card_kws for kf in keyword_filters):
+                    continue
 
         # Compute tags
         tags = compute_tags(card)
 
-        # Tag filter (must have ALL requested tags)
+        # Tag filter — OR logic by default; use tags_mode='all' for AND
         if tag_filters:
-            if not all(t in tags for t in tag_filters):
-                continue
+            if tags_mode == "all":
+                if not all(t in tags for t in tag_filters):
+                    continue
+            else:
+                if not any(t in tags for t in tag_filters):
+                    continue
 
         results.append((card, tags))
 
@@ -362,11 +372,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--colors", help="Color identity filter (e.g. WB, =WB, UB, C)")
     p.add_argument("--oracle", help="Substring match in oracle text")
     p.add_argument("--name", help="Substring match in card name")
-    p.add_argument("--tags", help="Strategy tags, comma-separated (e.g. lifegain,draw)")
+    p.add_argument("--tags", help="Strategy tags, comma-separated (e.g. lifegain,draw). OR logic by default.")
+    p.add_argument("--tags-mode", choices=["any", "all"], default="any",
+                   help="How to match multiple --tags: 'any' (OR, default) or 'all' (AND)")
     p.add_argument("--cmc-max", type=float, help="Max CMC (inclusive)")
     p.add_argument("--cmc-min", type=float, help="Min CMC (inclusive)")
     p.add_argument("--rarity", help="Rarity filter: common,uncommon,rare,mythic")
-    p.add_argument("--keywords", help="MTG keyword(s), comma-separated (e.g. Flying,Lifelink)")
+    p.add_argument("--keywords", help="MTG keyword(s), comma-separated (e.g. Flying,Lifelink). OR logic by default.")
+    p.add_argument("--keywords-mode", choices=["any", "all"], default="any",
+                   help="How to match multiple --keywords: 'any' (OR, default) or 'all' (AND)")
     p.add_argument("--limit", type=int, default=200, help="Max results (default: 200)")
     p.add_argument("--show-tags", action="store_true", help="Show computed tags per card")
     p.add_argument("--format", choices=["table", "csv", "names"], default="table",
@@ -423,10 +437,12 @@ def main() -> None:
         oracle_filter=args.oracle,
         name_filter=args.name,
         tag_filters=tag_filters,
+        tags_mode=args.tags_mode,
         cmc_min=args.cmc_min,
         cmc_max=args.cmc_max,
         rarities=rarities,
         keyword_filters=keyword_filters,
+        keywords_mode=args.keywords_mode,
     )
 
     if not results:
