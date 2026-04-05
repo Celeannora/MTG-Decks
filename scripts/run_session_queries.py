@@ -21,6 +21,10 @@ Exit codes:
     1  session.md not found or unreadable
     2  search_cards.py not found
     3  One or more queries failed
+
+Note: All queries are normalized to --format csv and --limit 9999 before
+execution, so session.md always contains the full candidate pool in a
+compact, model-readable format regardless of the original query flags.
 """
 
 import argparse
@@ -62,6 +66,17 @@ def find_queries(content: str, force: bool = False):
 
 def run_query(command: str, repo_root: Path, timeout: int) -> tuple[str, bool]:
     """Execute a search_cards.py command string. Returns (output, success)."""
+    # Normalize to CSV format and unlimited results so session.md always
+    # contains the full candidate pool in a compact, model-readable form.
+    if "--format" in command:
+        command = re.sub(r"--format\s+\S+", "--format csv", command)
+    else:
+        command += " --format csv"
+    if "--limit" in command:
+        command = re.sub(r"--limit\s+\d+", "--limit 9999", command)
+    else:
+        command += " --limit 9999"
+
     # Replace 'python scripts/search_cards.py' with the actual path
     scripts_dir = repo_root / "scripts"
     cmd = command.replace(
