@@ -155,6 +155,12 @@ def main() -> None:
         print(f"Run without --dry-run to execute.")
         sys.exit(0)
 
+    # Detect session format
+    is_new_format = "## Candidate Pool Index" in content
+    pools_dir = session_path.parent / "pools"
+    if is_new_format:
+        pools_dir.mkdir(exist_ok=True)
+
     failures = 0
     new_content = content
 
@@ -167,20 +173,55 @@ def main() -> None:
             failures += 1
             print(f"           FAILED")
         else:
-            # Count result lines for feedback
             result_lines = [l for l in output.splitlines() if l.strip() and not l.startswith("-")]
             print(f"           -> {len(result_lines)} lines of output")
 
-        # Replace the block body in content
-        old_block = match.group(0)
-        new_block = (
-            match.group(1)          # ```\n$ command\n
-            + "\n"
-            + output
-            + "\n"
-            + match.group(4)        # ```
-        )
-        new_content = new_content.replace(old_block, new_block, 1)
+        if is_new_format:
+            # Derive a safe label from the command for the filename
+            type_match = re.search(r"--type\s+(\S+)", cmd)
+            tag_match = re.search(r"--tags\s+(\S+)", cmd)
+            raw_label = (tag_match.group(1) if tag_match else "") or (type_match.group(1) if type_match else f"query_{i:02d}")
+            safe_label = re.sub(r"[^a-z0-9]+", "_", raw_label.lower())[:24].strip("_")
+            pool_filename = f"pool_{i:02d}_{safe_label}.csv"
+            pool_path = pools_dir / pool_filename
+
+            pool_path.write_text(output, encoding="utf-8")
+
+            # Count data rows (skip header, comment, empty lines)
+            card_count = len([
+                l for l in output.splitlines()
+                if l.strip() and not l.startswith(("#", "name", "No cards", "-"))
+            ])
+
+            # Update the pointer table row count for this query index
+            row_re = re.compile(
+                r"(\|\s*" + str(i) + r"\s*\|[^|]+\|[^|]+\|)\s*[^|\n]+(\s*\|)"
+            )
+            new_content = row_re.sub(
+                lambda m: f"{m.group(1)} {card_count} {m.group(2)}",
+                new_content, count=1
+            )
+
+            # Replace fenced block body with a pointer note (no inline data)
+            old_block = match.group(0)
+            new_block = (
+                match.group(1)
+                + f"\n(output written to pools/{pool_filename} — {card_count} cards)\n"
+                + match.group(4)
+            )
+            new_content = new_content.replace(old_block, new_block, 1)
+
+        else:
+            # Old format: embed output inline (backward compat)
+            old_block = match.group(0)
+            new_block = (
+                match.group(1)
+                + "\n"
+                + output
+                + "\n"
+                + match.group(4)
+            )
+            new_content = new_content.replace(old_block, new_block, 1)
 
     # Write updated session.md
     session_path.write_text(new_content, encoding="utf-8")

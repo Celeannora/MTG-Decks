@@ -217,14 +217,21 @@ def run_query(
     # Filtering here would exclude non-tribal cards (Changelings, support spells)
     # from the candidate pool, which breaks non-creature archetypes.
 
-    cmd_parts += ["--show-tags", "--format", "table", "--limit", "100"]
+    cmd_parts += ["--show-tags", "--format", "csv", "--limit", "9999"]
 
     # Add extra tags if provided
     if extra_tags:
-        # Check if --tags already in args
         if "--tags" in base_args:
-            # Merge: find existing --tags value and append
-            pass  # handled by user in base_args
+            # Merge extra_tags into the existing --tags value
+            def _merge_tags(m):
+                existing = m.group(1).rstrip(",")
+                return f"--tags {existing},{extra_tags}"
+            base_args = re.sub(r"--tags\s+(\S+)", _merge_tags, base_args, count=1)
+            # Rebuild cmd_parts from updated base_args
+            cmd_parts = [sys.executable, str(script)]
+            cmd_parts += shlex.split(base_args)
+            cmd_parts += ["--colors", colors]
+            cmd_parts += ["--show-tags", "--format", "csv", "--limit", "9999"]
         else:
             cmd_parts += ["--tags", extra_tags]
 
@@ -322,36 +329,45 @@ def generate_session_file(
 
     lines += [
         "",
-        "## Full Query Output",
+        "## Candidate Pool Index",
         "",
-        "> Below is the complete output from each query. This is your candidate pool.",
-        "> DO NOT add any card that does not appear below.",
+        "> Pool data is in separate CSV files under `pools/`. Read the relevant pool",
+        "> file(s) when selecting cards at each gate. Load only the file(s) for the",
+        "> card type you are currently selecting — not all pools at once.",
+        "> DO NOT add any card that does not appear in a pool file.",
         "",
+        "| # | Role | Pool File | Cards |",
+        "|---|------|-----------|-------|",
     ]
 
     for i, qr in enumerate(query_results, 1):
-        lines += [
-            f"### Query {i}: {qr['label']}",
-            "",
-            f"```",
-            f"$ {qr['command']}",
-            "",
-            qr["output"].rstrip(),
-            f"```",
-            "",
-        ]
+        pool_file = qr.get("pool_file", f"pools/pool_{i:02d}_unknown.csv")
+        count = qr["count"] if isinstance(qr.get("count"), int) and qr["count"] > 0 else (qr.get("count") or "—")
+        lines.append(f"| {i} | {qr['label']} | [`{pool_file}`]({pool_file}) | {count} |")
+
+    lines += [
+        "",
+        "### Query Commands (for reference / re-running)",
+        "",
+        "| # | Label | Command |",
+        "|---|-------|---------|",
+    ]
+
+    for i, qr in enumerate(query_results, 1):
+        cmd_short = qr["command"].replace("python ", "").strip()
+        lines.append(f"| {i} | {qr['label']} | `{cmd_short}` |")
+
+    lines += [""]
 
     lines += [
         "## Additional Queries",
         "",
-        "> If the queries above are insufficient, run more queries and paste results here.",
-        "> Every query must use `search_cards.py`. Document the command and output.",
-        "",
-        "```",
-        f"$ python {RepoPaths.SCRIPTS_DIR_NAME}/search_cards.py --type <type> --colors <colors> [flags...]",
-        "",
-        "(paste output here)",
-        "```",
+        "> If the pools above are insufficient, run additional queries:",
+        "> ```bash",
+        f"> python {RepoPaths.SCRIPTS_DIR_NAME}/search_cards.py --type <type> --colors <colors> [flags...]",
+        "> ```",
+        "> Write output to a new file in `pools/` (e.g. `pools/pool_07_extra.csv`)",
+        "> and add a row to the Candidate Pool Index table above.",
         "",
         "### Gate 1 Checklist",
         "",
@@ -999,6 +1015,21 @@ def main() -> None:
         print(f"\n  Total candidates across all queries: {total_candidates}")
 
     # Generate session file
+    # Write each query's output to a separate pool CSV file
+    import re as _re
+    pools_dir = deck_dir / "pools"
+    pools_dir.mkdir(exist_ok=True)
+    for i, qr in enumerate(query_results, 1):
+        safe_label = _re.sub(r"[^a-z0-9]+", "_", qr["label"].lower()).strip("_")
+        pool_filename = f"pool_{i:02d}_{safe_label}.csv"
+        pool_path = pools_dir / pool_filename
+        qr["pool_file"] = f"pools/{pool_filename}"
+        output = qr.get("output", "")
+        if output and not output.startswith("("):
+            pool_path.write_text(output, encoding="utf-8")
+        else:
+            pool_path.write_text(f"# No results for: {qr['label']}\n# Command: {qr['command']}\n", encoding="utf-8")
+
     session_content = generate_session_file(
         deck_date=deck_date,
         deck_name=args.name,

@@ -45,7 +45,9 @@ python scripts/search_cards.py --type <type> [filters...]
 |------|-------------|---------|
 | `--type` | Card type(s), comma-separated | `creature`, `instant,sorcery` |
 | `--colors` | Color identity filter | `WB`, `=WB` (exact), `C` (colorless) |
-| `--tags` | Strategy tags, comma-separated | `lifegain,draw` |
+| `--tags` | Strategy tags, comma-separated (OR logic — card matches any tag) | `lifegain,draw` |
+| `--tags-mode` | Match logic for `--tags`: `any` (OR, default) or `all` (AND) | `all` |
+| `--keywords-mode` | Match logic for `--keywords`: `any` (OR, default) or `all` (AND) | `all` |
 | `--oracle` | Substring in oracle text | `"mill"` |
 | `--name` | Substring in card name | `"Angel"` |
 | `--cmc-max` | Maximum converted mana cost | `3` |
@@ -156,10 +158,11 @@ If the requested archetype could go in multiple directions, ask before building:
 List each query run and the number of candidates found, e.g.:
 ```
 Queries run:
-  search_cards.py --type creature --colors WB --tags lifegain,etb   → 47 candidates
-  search_cards.py --type instant --colors WB --tags removal          → 28 candidates
-  search_cards.py --type enchantment --colors WB --tags lifegain      → 19 candidates
-  search_cards.py --type land --colors WB                             → 89 candidates
+  search_cards.py --type creature --colors WB --tags lifegain        → 47 candidates
+  search_cards.py --type creature --colors WB --tags etb              → 31 candidates
+  search_cards.py --type instant --colors WB --tags removal            → 28 candidates
+  search_cards.py --type enchantment --colors WB --tags lifegain       → 19 candidates
+  search_cards.py --type land --colors WB                              → 89 candidates
 ```
 
 **Zero-result queries — mandatory recovery procedure**
@@ -537,8 +540,10 @@ Use this when a `session.md` file has been attached. Gate 1 is already complete.
 
 > "I acknowledge this repository's database-first protocol. A session.md has been
 > provided. I will:
-> 1. Treat Gate 1 as complete — the candidate pool is the query output embedded
->    in session.md. I will not run new queries or add cards from outside it.
+> 1. Treat Gate 1 as complete — the candidate pool files are in the `pools/`
+>    directory alongside session.md. I will read only the pool file(s) relevant
+>    to the card type I am currently selecting. I will not run new queries or
+>    add any card that does not appear in a pool file.
 > 2. Read the deck's **Archetype** line at the top of session.md. If it specifies
 >    a tribe (e.g. "Tribal (Dog / Angel)"), that is a **hard constraint** — every
 >    creature selected in Gate 3 must be a member of that tribe or a Changeling.
@@ -551,8 +556,11 @@ Use this when a `session.md` file has been attached. Gate 1 is already complete.
 > 6. If a synergy_report.md has been provided alongside session.md, use it as a
 >    reference to inform Gate 2.5 — but I must still fill in the Gate 2.5 section
 >    of session.md myself. The report does not substitute for that work.
+> 7. When working at Gates 3–5, I will load pool files selectively by role
+>    (e.g. `pools/pool_01_lifegain_creatures.csv` for creatures,
+>    `pools/pool_05_removal.csv` for removal) rather than loading all pools at once.
 >
-> I will not name a card that does not appear in the Gate 1 query output."
+> I will not name a card that does not appear in a pool file."
 
 ---
 
@@ -589,6 +597,7 @@ Workflow runs one direction only: database query → candidate pool → card sel
 
 | Version | Date | Notes |
 |---------|------|-------|
+| 9.4 | 2026-04-06 | Separated candidate pool data into `pools/` directory: session.md now holds a Candidate Pool Index pointer table instead of raw inline output; updated Mode B to reference pool files and selective loading; fixed `--tags` OR-logic docs; added `--tags-mode` and `--keywords-mode` to tool reference |
 | 9.3 | 2026-04-04 | Added zero-result query recovery procedure to Gate 1: mandatory fix steps for common 0-result causes (land tag filter, pipe-OR oracle syntax), explicit instruction to correct and re-run rather than halt |
 | 9.2 | 2026-04-04 | Added dual-mode SESSION ACKNOWLEDGMENT: Mode A (no session.md, start from Gate 1) and Mode B (session.md provided, resume from first incomplete gate); added tribal hard constraint enforcement in Mode B; added synergy_report.md reference guidance; added prompt templates for both modes |
 | 9.1 | 2026-04-03 | Added Gate 2.5 (Synergy Evaluation): mandatory pairwise synergy classification, scoring (Synergy Count, Role Breadth, Dependency), universal thresholds, and synergy chain mapping before card selection; added synergy evaluation section to analysis.md template; added Gate 2.5 skip to prohibited actions table |
@@ -600,4 +609,4 @@ Workflow runs one direction only: database query → candidate pool → card sel
 | 7.0 | 2026-03-09 | Consolidated all instructions into single file |
 
 **Maintained by:** Celeannora
-**Last updated:** April 4, 2026
+**Last updated:** April 6, 2026
