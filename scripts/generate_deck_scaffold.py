@@ -46,6 +46,7 @@ Exit codes:
 
 import argparse
 import csv
+import re
 import subprocess
 import sys
 from datetime import date
