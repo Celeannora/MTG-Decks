@@ -883,12 +883,11 @@ def main() -> None:
         import io as _io
         top_n = args.top
 
-        # Composite score: density (0-1) + oracle weight + breadth bonus - dependency
-        def _composite(sc):
-            oracle_w = min(len(sc.get("oracle_interactions", [])), 10) * 0.05
-            return sc["synergy_density"] + oracle_w + sc["role_breadth"] * 0.05 - sc["dependency"] * 0.1
-
-        ranked = sorted(scores.items(), key=lambda x: -_composite(x[1]))
+        # Rank by synergy count (number of unique synergy partners)
+        ranked = sorted(
+            scores.items(),
+            key=lambda x: (-x[1]["synergy_count"], -x[1]["synergy_density"]),
+        )
         ranked = ranked[:top_n]
 
         # Build CSV with card data + synergy metrics
@@ -930,7 +929,7 @@ def main() -> None:
                 "oracle_text": oracle,
                 "tags": ", ".join(sorted(p.get("broad_tags", set()))),
                 "pool": pd.get("pool", ""),
-                "synergy_score": f"{_composite(sc):.3f}",
+                "synergy_score": sc["synergy_count"],
                 "synergy_density": f"{sc['synergy_density']:.1%}",
                 "role_breadth": sc["role_breadth"],
                 "oracle_interactions": len(sc.get("oracle_interactions", [])),
