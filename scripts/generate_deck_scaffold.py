@@ -369,7 +369,7 @@ ARCHETYPE_QUERIES: Dict[str, List[Dict[str, str]]] = {
 
 def run_query(
     repo_root: Path,
-    base_args: str,
+    base_args,
     colors: str,
     tribe: Optional[str] = None,
     extra_tags: Optional[str] = None,
@@ -379,13 +379,22 @@ def run_query(
     Run a search_cards.py query. Returns (command_string, output, result_count).
     color-agnostic: does NOT inject --colors — archetype queries search all colors.
     Adds --show-tags automatically.
+
+    base_args can be a string (dict-format queries) or a list (list-format queries).
     """
     from mtg_utils import RepoPaths
     paths = RepoPaths(root=repo_root)
     script = paths.scripts_dir / "search_cards.py"
     import shlex
-    cmd_parts = [sys.executable, str(script)]
-    cmd_parts += shlex.split(base_args)
+
+    # Normalise base_args: list-format queries are already a list of tokens;
+    # dict-format queries provide a single string that needs shlex splitting.
+    if isinstance(base_args, list):
+        arg_tokens = list(base_args)  # copy to avoid mutating the original
+    else:
+        arg_tokens = shlex.split(base_args)
+
+    cmd_parts = [sys.executable, str(script)] + arg_tokens
 
     # color-agnostic: no --colors injection; archetypes search across all colors
 
@@ -394,20 +403,32 @@ def run_query(
     # Filtering here would exclude non-tribal cards (Changelings, support spells)
     # from the candidate pool, which breaks non-creature archetypes.
 
-    cmd_parts += ["--show-tags", "--format", "csv", "--limit", "9999"]
+    # List-format queries already include --format/--limit; avoid duplicating.
+    if "--show-tags" not in arg_tokens:
+        cmd_parts += ["--show-tags"]
+    if "--format" not in arg_tokens:
+        cmd_parts += ["--format", "csv"]
+    if "--limit" not in arg_tokens:
+        cmd_parts += ["--limit", "9999"]
 
     # Add extra tags if provided
+    base_args_str = base_args if isinstance(base_args, str) else " ".join(base_args)
     if extra_tags:
-        if "--tags" in base_args:
+        if "--tags" in base_args_str:
             # Merge extra_tags into the existing --tags value
             def _merge_tags(m):
                 existing = m.group(1).rstrip(",")
                 return f"--tags {existing},{extra_tags}"
-            base_args = re.sub(r"--tags\s+(\S+)", _merge_tags, base_args, count=1)
+            merged = re.sub(r"--tags\s+(\S+)", _merge_tags, base_args_str, count=1)
             # Rebuild cmd_parts from updated base_args
             cmd_parts = [sys.executable, str(script)]
-            cmd_parts += shlex.split(base_args)
-            cmd_parts += ["--show-tags", "--format", "csv", "--limit", "9999"]
+            cmd_parts += shlex.split(merged)
+            if "--show-tags" not in merged:
+                cmd_parts += ["--show-tags"]
+            if "--format" not in merged:
+                cmd_parts += ["--format", "csv"]
+            if "--limit" not in merged:
+                cmd_parts += ["--limit", "9999"]
         else:
             cmd_parts += ["--tags", extra_tags]
 
@@ -1049,6 +1070,23 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _query_label(q) -> str:
+    """Extract a label from a query object (dict or list format)."""
+    if isinstance(q, dict):
+        return q["label"]
+    return " ".join(str(x) for x in q[:4])
+
+
+def _query_args(q):
+    """Extract args from a query object (dict or list format).
+
+    Returns a string for dict-format, a list for list-format.
+    """
+    if isinstance(q, dict):
+        return q["args"]
+    return q
+
+
 def main() -> None:
     from mtg_utils import RepoPaths
 
@@ -1104,8 +1142,9 @@ def main() -> None:
     seen_labels: dict = {}
     for arch in archetype_list:
         for q in ARCHETYPE_QUERIES.get(arch, []):
-            if q["label"] not in seen_labels:
-                seen_labels[q["label"]] = q
+            lbl = _query_label(q)
+            if lbl not in seen_labels:
+                seen_labels[lbl] = q
     # Always put Lands last
     lands = seen_labels.pop("Lands", None)
     query_plan = list(seen_labels.values())
@@ -1119,7 +1158,7 @@ def main() -> None:
     if tribe_arg:
         tribe_list = tribe_arg if isinstance(tribe_arg, list) else [tribe_arg]
         # Remove the generic placeholder (if present) — replaced by per-tribe below
-        query_plan = [q for q in query_plan if q["label"] != "Tribal creatures (by subtype)"]
+        query_plan = [q for q in query_plan if _query_label(q) != "Tribal creatures (by subtype)"]
         # Insert per-tribe name queries at the front, one per tribe.
         # Marked with is_tribe_query so --wildcard can suppress them.
         for t in reversed(tribe_list):
@@ -1149,23 +1188,27 @@ def main() -> None:
     if args.skip_queries:
         print("  --skip-queries: Generating template without query results.\n")
         for q in query_plan:
+            label = _query_label(q)
+            q_args = _query_args(q)
+            args_display = q_args if isinstance(q_args, str) else " ".join(q_args)
             query_results.append({
-                "label": q["label"],
-                "command": f"python {RepoPaths.SCRIPTS_DIR_NAME}/search_cards.py {q['args']} --show-tags",
+                "label": label,
+                "command": f"python {RepoPaths.SCRIPTS_DIR_NAME}/search_cards.py {args_display} --show-tags",
                 "output": "(run this query and paste results here)",
                 "count": "?",
             })
     else:
         total_candidates = 0
         for i, q in enumerate(query_plan, 1):
-            label = q["label"]
+            label = _query_label(q)
             print(f"  [{i}/{len(query_plan)}] {label}...")
 
             wildcard_active = getattr(args, "wildcard", False)
-            if wildcard_active and q.get("is_tribe_query", False):
+            is_tribe = q.get("is_tribe_query", False) if isinstance(q, dict) else False
+            if wildcard_active and is_tribe:
                 print(f"         -> skipped (wildcard mode)")
                 query_results.append({
-                    "label": q["label"],
+                    "label": label,
                     "command": f"# skipped — wildcard mode active",
                     "output": "(skipped — wildcard mode: tribe label used as AI hint only, not as a pool filter)",
                     "count": 0,
@@ -1173,7 +1216,7 @@ def main() -> None:
                 continue
             cmd, output, count = run_query(
                 repo_root,
-                q["args"],
+                _query_args(q),
                 args.colors.upper(),
                 tribe=args.tribe,
                 extra_tags=args.extra_tags,
