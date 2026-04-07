@@ -27,7 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from mtg_utils import RepoPaths
-from search_cards import CARD_TYPES
+from search_cards import CARD_TYPES, compute_tags
 
 # ── Static matchup weakness map ───────────────────────────────────────────────
 # For each meta archetype: what tags/oracle patterns answer it?
@@ -186,8 +186,6 @@ def search_sideboard_candidates(
             try:
                 with open(csv_file, encoding="utf-8") as f:
                     for row in csv.DictReader(f):
-                        if len(results) >= limit * 3:
-                            break
                         # Color identity check
                         if color_set:
                             card_ci = set((row.get("color_identity") or "").replace("[", "").replace("]", "").replace('"', "").replace("'", "").split(","))
@@ -205,7 +203,7 @@ def search_sideboard_candidates(
                         if "basic" in (row.get("type_line") or "").lower():
                             continue
                         # Tag match
-                        card_tags = set((row.get("tags") or "").split(";"))
+                        card_tags = compute_tags(row)
                         tag_match = any(t in card_tags for t in want_tags)
                         # Oracle match
                         oracle = (row.get("oracle_text") or "").lower()

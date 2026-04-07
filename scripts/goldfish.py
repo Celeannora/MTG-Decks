@@ -135,7 +135,7 @@ def simulate_goldfish(
                 seen_focus.add(card["name"].lower())
 
         # Simulate turns
-        mana_available = 0
+        lands_in_play = 0
         graveyard = []
         on_curve_turns = 0
 
@@ -155,18 +155,19 @@ def simulate_goldfish(
             land_to_play = next((c for c in hand if c["is_land"]), None)
             if land_to_play:
                 hand.remove(land_to_play)
-                mana_available += 1
+                lands_in_play += 1
 
-            results["lands_played_by_turn"][turn].append(mana_available)
+            # Mana resets each turn to total lands in play
+            mana_available = lands_in_play
+            results["lands_played_by_turn"][turn].append(lands_in_play)
 
             # Cast highest affordable spell (greedy)
             castable = [c for c in hand if not c["is_land"] and c["cmc"] <= mana_available and c["cmc"] > 0]
             if castable:
                 best = max(castable, key=lambda c: c["cmc"])
                 hand.remove(best)
-                mana_available -= int(best["cmc"])
                 results["avg_cmc_cast_by_turn"][turn].append(best["cmc"])
-                if best["cmc"] >= turn:
+                if best["cmc"] > 0 and lands_in_play >= turn:
                     on_curve_turns += 1
             else:
                 results["avg_cmc_cast_by_turn"][turn].append(0)
