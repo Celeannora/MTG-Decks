@@ -461,3 +461,183 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# ─── Synergy profile (used exclusively by synergy_analysis.py) ───────────────
+
+import re as _syn_re
+
+# Directional oracle text patterns: mechanic → {source patterns, payoff patterns}
+# source = card PRODUCES this resource
+# payoff = card REACTS TO / CONSUMES this resource
+_DIRECTIONAL: Dict[str, Dict[str, List[str]]] = {
+    "lifegain": {
+        "source": [
+            r"lifelink",
+            r"you gain \d+ life",
+            r"gains? \d+ life",
+            r"gain life equal",
+            r"you may gain \d+ life",
+        ],
+        "payoff": [
+            r"whenever you gain life",
+            r"each time you gain life",
+            r"whenever (a player |you |)gains? life",
+            r"if you (have |)gained life",
+            r"for each (1 |one )?life you (gained|gain)",
+        ],
+    },
+    "token": {
+        "source": [
+            r"create[sd]? [a\d]",
+            r"put[s]? .{0,20}token",
+            r"creates? \d+ token",
+            r"creates? a .{0,20}token",
+        ],
+        "payoff": [
+            r"whenever (a |another |you create a? )token",
+            r"for each token",
+            r"tokens (you control |)get",
+            r"whenever you create",
+        ],
+    },
+    "draw": {
+        "source": [
+            r"draw[s]? (a|[2-9]|\d+) card",
+            r"draw cards? equal",
+            r"you may draw",
+        ],
+        "payoff": [
+            r"whenever you draw",
+            r"each time you draw",
+            r"if you (have |)drawn",
+            r"for each card (drawn|you draw)",
+        ],
+    },
+    "etb": {
+        "source": [
+            r"when .{0,40} enters(?: the battlefield)?",
+        ],
+        "payoff": [
+            r"whenever (a |another )creature enters",
+            r"whenever .{0,30} enters the battlefield under your control",
+            r"each time a creature enters",
+        ],
+    },
+    "pump": {
+        "source": [
+            r"put[s]? [a\d].{0,10}\+1/\+1 counter",
+            r"put[s]? [a\d].{0,10}\+\d/\+\d counter",
+            r"gets? \+\d/\+\d until",
+        ],
+        "payoff": [
+            r"for each \+1/\+1 counter",
+            r"whenever .{0,20}\+1/\+1 counter (is )?placed",
+            r"number of \+1/\+1 counter",
+            r"with .{0,10}\+1/\+1 counter",
+        ],
+    },
+    "discard": {
+        "source": [
+            r"discard[s]? (a|[2-9]|\d+) card",
+            r"each player discards",
+            r"target player discards",
+        ],
+        "payoff": [
+            r"whenever (you |a player |an opponent )discards",
+            r"for each card discarded",
+        ],
+    },
+    "mill": {
+        "source": [
+            r"mill[s]? \d+",
+            r"put[s]? .{0,10}top .{0,10}of .{0,20}library .{0,10}graveyard",
+        ],
+        "payoff": [
+            r"whenever .{0,20}card .{0,20}put into .{0,20}graveyard from",
+            r"for each card in (your |their |a )?graveyard",
+            r"whenever a (creature |card )?card .{0,20}graveyard",
+        ],
+    },
+}
+
+_BASIC_TYPES = {
+    "plains", "island", "swamp", "mountain", "forest", "basic", "land",
+    "enchantment", "artifact", "creature", "instant", "sorcery",
+    "planeswalker", "legendary", "snow", "tribal", "battle",
+}
+_CREATURE_TYPE_RE = _syn_re.compile(
+    r"(?:Creature|Legendary Creature)[^—]*—\s*(.+?)(?:\s*//|\s*$)", _syn_re.IGNORECASE
+)
+
+
+def _parse_subtypes(type_line: str) -> Set[str]:
+    """Extract creature subtypes from a type line string."""
+    m = _CREATURE_TYPE_RE.search(type_line)
+    if not m:
+        return set()
+    raw = m.group(1).strip()
+    return {t.strip().lower() for t in raw.split() if t.strip().lower() not in _BASIC_TYPES}
+
+
+def compute_synergy_profile(card: Dict) -> Dict:
+    """
+    Return a rich synergy profile for use by synergy_analysis.py.
+
+    Keys:
+        broad_tags      set[str]  — existing compute_tags() output (broad, undirected)
+        source_tags     set[str]  — mechanics this card PRODUCES/ENABLES
+        payoff_tags     set[str]  — mechanics this card REACTS TO / CONSUMES
+        subtypes        set[str]  — parsed creature subtypes (lowercase)
+        keywords        set[str]  — MTG mechanical keywords (lowercase)
+        cmc             float     — converted mana cost
+        type_line       str       — raw type line
+        oracle_text     str       — oracle text (lowercased)
+        is_land         bool      — True if card is a land
+        name            str       — card name
+    """
+    oracle = card.get("oracle_text", "").lower()
+    type_line = card.get("type_line", "")
+    name = card.get("name", "")
+
+    broad = compute_tags(card)
+
+    source_tags: Set[str] = set()
+    payoff_tags: Set[str] = set()
+    for mechanic, patterns in _DIRECTIONAL.items():
+        for pat in patterns["source"]:
+            if _syn_re.search(pat, oracle, _syn_re.IGNORECASE):
+                source_tags.add(mechanic)
+                break
+        for pat in patterns["payoff"]:
+            if _syn_re.search(pat, oracle, _syn_re.IGNORECASE):
+                payoff_tags.add(mechanic)
+                break
+
+    # Lifelink in keywords = definitive lifegain source
+    kw_raw = card.get("keywords", "")
+    keywords = {k.strip().lower() for k in kw_raw.split(";") if k.strip()}
+    if "lifelink" in keywords:
+        source_tags.add("lifegain")
+
+    subtypes = _parse_subtypes(type_line)
+
+    try:
+        cmc = float(card.get("cmc", 0) or 0)
+    except (ValueError, TypeError):
+        cmc = 0.0
+
+    is_land = "land" in type_line.lower()
+
+    return {
+        "broad_tags":  broad,
+        "source_tags": source_tags,
+        "payoff_tags": payoff_tags,
+        "subtypes":    subtypes,
+        "keywords":    keywords,
+        "cmc":         cmc,
+        "type_line":   type_line,
+        "oracle_text": oracle,
+        "is_land":     is_land,
+        "name":        name,
+    }
