@@ -71,20 +71,40 @@ ARCHETYPE_LABELS = {
 COLORS_MAP = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"}
 COLOR_ORDER = "WUBRG"
 APP_TITLE = "MTG Deck Scaffold Generator"
-WIN_W, WIN_H = 800, 880
+WIN_W, WIN_H = 820, 920
 
-# MTG color accent hex (loosely inspired by card frame colors)
-ACCENT = "#4F98A3"
-ACCENT_HOVER = "#227F8B"
-BG = "#171614"
-SURFACE = "#1C1B19"
-SURFACE_ALT = "#201F1D"
-BORDER = "#393836"
-TEXT = "#CDCCCA"
-TEXT_MUTED = "#797876"
-SUCCESS = "#6DAA45"
-ERROR = "#D163A7"
+# ── Color Palette ─────────────────────────────────────────────────────────────
+ACCENT = "#00b4d8"
+ACCENT_HOVER = "#007a94"
+BG = "#1a1a2e"
+SURFACE = "#16213e"
+SURFACE_ALT = "#16213e"
+BORDER = "#2d4a6e"
+TEXT = "#e2e8f0"
+TEXT_MUTED = "#94a3b8"
+SUCCESS = "#22c55e"
+ERROR = "#ef4444"
 WARNING = "#BB653B"
+
+# ── Archetype Groups (7 themed categories) ────────────────────────────────────
+ARCHETYPE_GROUPS = {
+    "Aggro": ["aggro", "burn", "prowess", "infect"],
+    "Tempo / Midrange": ["midrange", "tempo", "blink", "lifegain", "tribal"],
+    "Control / Prison": ["control", "stax", "superfriends"],
+    "Combo": ["combo", "storm", "extra_turns"],
+    "Graveyard": ["graveyard", "reanimation", "flashback", "madness", "self_mill", "opp_mill"],
+    "Permanents": ["tokens", "aristocrats", "enchantress", "equipment", "artifacts", "vehicles", "voltron"],
+    "Ramp / Big Mana": ["ramp", "landfall", "lands", "domain", "eldrazi", "energy", "proliferate"],
+}
+
+# ── Mana Button Colors ────────────────────────────────────────────────────────
+MANA_COLORS = {
+    "W": {"bg": "#f5f0d0", "fg": "#333333", "bg_dim": "#a8a48e", "label": "W\nWhite"},
+    "U": {"bg": "#1a4a8a", "fg": "#ffffff", "bg_dim": "#122f5c", "label": "U\nBlue"},
+    "B": {"bg": "#2a1a3a", "fg": "#cccccc", "bg_dim": "#1a1024", "label": "B\nBlack"},
+    "R": {"bg": "#b91c1c", "fg": "#ffffff", "bg_dim": "#7a1313", "label": "R\nRed"},
+    "G": {"bg": "#166534", "fg": "#ffffff", "bg_dim": "#0e4022", "label": "G\nGreen"},
+}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -149,7 +169,7 @@ class ScaffoldApp(ctk.CTk):
             segmented_button_selected_color=ACCENT,
             segmented_button_selected_hover_color=ACCENT_HOVER,
             segmented_button_unselected_color=SURFACE,
-            segmented_button_unselected_hover_color=SURFACE_ALT,
+            segmented_button_unselected_hover_color="#1e3a5f",
             text_color=TEXT,
             text_color_disabled=TEXT_MUTED,
         )
@@ -165,7 +185,7 @@ class ScaffoldApp(ctk.CTk):
         # Inline log panel (collapsed by default)
         self._build_log_panel()
 
-        # Shared footer
+        # Shared footer (fixed bottom bar)
         self._build_footer()
 
     def _build_scaffold_tab(self):
@@ -173,28 +193,35 @@ class ScaffoldApp(ctk.CTk):
         self.scroll = ctk.CTkScrollableFrame(tab, fg_color=BG, scrollbar_button_color=BORDER)
         self.scroll.pack(fill="both", expand=True)
 
-        self._section("1  Deck Name")
+        self._section_badge("1", "Deck Name")
         self.name_entry = self._entry(placeholder="e.g. Orzhov Lifegain")
 
-        self._section("2  Color Identity")
+        self._section_badge("2", "Mana Base Colors")
+        # Subtitle
+        ctk.CTkLabel(
+            self.scroll,
+            text="Used for mana curve recommendations",
+            font=ctk.CTkFont(size=11),
+            text_color=TEXT_MUTED,
+        ).pack(anchor="w", padx=24, pady=(0, 8))
         self._build_color_pickers()
 
-        self._section("3  Archetype  (select one or more)")
+        self._section_badge("3", "Archetype  (select one or more)")
         self._build_archetype_grid()
 
-        self._section("4  Creature Subtype  (required for Tribal)")
+        self._section_badge("4", "Creature Subtype  (required for Tribal)")
         self._build_tribe_search()
 
-        self._section("5  Extra Search Tags  (optional)")
+        self._section_badge("5", "Extra Search Tags  (optional)")
         self._build_tag_grid()
 
-        self._section("6  Focus Cards  (optional)")
+        self._section_badge("6", "Focus Cards  (optional)")
         self._build_focus_cards()
 
-        self._section("7  Options")
+        self._section_badge("7", "Options")
         self._build_options()
 
-        self._section("8  Output Directory")
+        self._section_badge("8", "Output Directory")
         self._build_output_dir()
 
     def _build_run_queries_tab(self):
@@ -251,7 +278,7 @@ class ScaffoldApp(ctk.CTk):
 
         ctk.CTkButton(
             frame, text="Run Queries", height=44, corner_radius=8,
-            fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color="#FFFFFF",
+            fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color="#000000",
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self._on_run_queries,
         ).pack(anchor="w", padx=24)
@@ -351,18 +378,35 @@ class ScaffoldApp(ctk.CTk):
 
         ctk.CTkButton(
             frame, text="Analyze Synergy", height=44, corner_radius=8,
-            fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color="#FFFFFF",
+            fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color="#000000",
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self._on_synergy,
         ).pack(anchor="w", padx=24)
 
-    def _section(self, label: str):
-        ctk.CTkLabel(
-            self.scroll,
-            text=label,
+    # ── Section badge: teal circled number + bold label ───────────────────────
+
+    def _section_badge(self, number: str, label: str):
+        frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
+        frame.pack(fill="x", padx=24, pady=(16, 4))
+
+        badge = ctk.CTkLabel(
+            frame,
+            text=f" {number} ",
             font=ctk.CTkFont(size=13, weight="bold"),
-            text_color=ACCENT,
-        ).pack(anchor="w", padx=24, pady=(18, 4))
+            text_color="#000000",
+            fg_color=ACCENT,
+            corner_radius=12,
+            width=26,
+            height=26,
+        )
+        badge.pack(side="left", padx=(0, 10))
+
+        ctk.CTkLabel(
+            frame,
+            text=label,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=TEXT,
+        ).pack(side="left")
 
     def _entry(self, placeholder: str = "") -> ctk.CTkEntry:
         e = ctk.CTkEntry(
@@ -379,105 +423,104 @@ class ScaffoldApp(ctk.CTk):
         e.pack(fill="x", padx=24, pady=(0, 4))
         return e
 
+    # ── Mana color pickers with MTG-accurate colors ──────────────────────────
+
     def _build_color_pickers(self):
         frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
         frame.pack(fill="x", padx=24, pady=(0, 4))
         self._color_buttons = {}
-        color_hex = {"W": "#F5F0E8", "U": "#4A7FBF", "B": "#2D2D2D", "R": "#C94040", "G": "#3A7A3A"}
-        color_text = {"W": "#28251D", "U": "#FFFFFF", "B": "#CDCCCA", "R": "#FFFFFF", "G": "#FFFFFF"}
-        for c, name in COLORS_MAP.items():
+        for c in COLOR_ORDER:
+            mc = MANA_COLORS[c]
+            border_clr = BORDER if c != "B" else "#5a4a6a"  # B needs visible border
             btn = ctk.CTkButton(
                 frame,
-                text=f"{c}\n{name}",
-                width=108,
-                height=56,
+                text=mc["label"],
+                width=80,
+                height=50,
                 corner_radius=8,
-                fg_color=SURFACE_ALT,
-                hover_color=color_hex[c],
-                text_color=TEXT_MUTED,
-                border_color=BORDER,
+                fg_color=mc["bg_dim"],
+                hover_color=mc["bg"],
+                text_color=mc["fg"],
+                border_color=border_clr,
                 border_width=1,
                 font=ctk.CTkFont(size=12, weight="bold"),
                 command=lambda col=c: self._toggle_color(col),
             )
             btn.pack(side="left", padx=(0, 8))
-            self._color_buttons[c] = (btn, color_hex[c], color_text[c])
+            self._color_buttons[c] = btn
 
     def _toggle_color(self, c: str):
-        btn, active_color, active_text = self._color_buttons[c]
+        btn = self._color_buttons[c]
+        mc = MANA_COLORS[c]
         if c in self.selected_colors:
             self.selected_colors.discard(c)
-            btn.configure(fg_color=SURFACE_ALT, text_color=TEXT_MUTED, border_color=BORDER)
+            border_clr = BORDER if c != "B" else "#5a4a6a"
+            btn.configure(fg_color=mc["bg_dim"], text_color=mc["fg"], border_color=border_clr, border_width=1)
         else:
             self.selected_colors.add(c)
-            btn.configure(fg_color=active_color, text_color=active_text, border_color=active_color)
+            btn.configure(fg_color=mc["bg"], text_color=mc["fg"], border_color=ACCENT, border_width=2)
+
+    # ── Grouped archetype grid ───────────────────────────────────────────────
 
     def _build_archetype_grid(self):
-        frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
-        frame.pack(fill="x", padx=24, pady=(0, 4))
+        container = ctk.CTkFrame(self.scroll, fg_color="transparent")
+        container.pack(fill="x", padx=24, pady=(0, 4))
         self._arch_buttons = {}
-
-        # Custom sort: opp_mill immediately before self_mill, rest alphabetical
-        mill_keys = {"opp_mill", "self_mill"}
-        non_mill = [a for a in ARCHETYPES if a not in mill_keys]
-        ordered = []
-        for a in non_mill:
-            # Insert mill pair right before the first key that sorts after "opp_mill"
-            if not any(m in ordered for m in mill_keys) and a > "opp_mill":
-                ordered.extend(k for k in ["opp_mill", "self_mill"] if k in ARCHETYPES)
-            ordered.append(a)
-        if not any(m in ordered for m in mill_keys):
-            ordered.extend(k for k in ["opp_mill", "self_mill"] if k in ARCHETYPES)
-
-        row = 0
-        col = 0
         cols_per_row = 5
-        for arch in ordered:
-            # Insert mill group header before opp_mill
-            if arch == "opp_mill":
-                if col != 0:
-                    row += 1
-                    col = 0
-                ctk.CTkLabel(
-                    frame,
-                    text="── Mill ──",
-                    text_color=ACCENT,
-                    font=ctk.CTkFont(size=11),
-                ).grid(row=row, column=0, columnspan=cols_per_row, sticky="w",
-                       padx=(0, 8), pady=(4, 2), in_=frame)
-                row += 1
-                col = 0
 
-            label = ARCHETYPE_LABELS.get(arch, arch.replace("_", " ").title())
-            btn = ctk.CTkButton(
-                frame,
-                text=label,
-                width=130,
-                height=38,
-                corner_radius=6,
-                fg_color=SURFACE_ALT,
-                hover_color=ACCENT_HOVER,
+        for group_name, archetypes in ARCHETYPE_GROUPS.items():
+            # Group header separator
+            header_frame = ctk.CTkFrame(container, fg_color="transparent")
+            header_frame.pack(fill="x", pady=(12, 8))
+
+            # Left line
+            ctk.CTkFrame(header_frame, fg_color=BORDER, height=1, width=20).pack(side="left", fill="x", expand=False, padx=(0, 8), pady=1)
+            # Group label
+            ctk.CTkLabel(
+                header_frame,
+                text=group_name,
+                font=ctk.CTkFont(size=11, weight="bold"),
                 text_color=TEXT_MUTED,
-                border_color=BORDER,
-                border_width=1,
-                font=ctk.CTkFont(size=12),
-                command=lambda a=arch: self._toggle_archetype(a),
-            )
-            btn.grid(row=row, column=col, padx=(0, 8), pady=(0, 8), in_=frame)
-            self._arch_buttons[arch] = btn
-            col += 1
-            if col >= cols_per_row:
-                col = 0
-                row += 1
+            ).pack(side="left", padx=(0, 8))
+            # Right line
+            ctk.CTkFrame(header_frame, fg_color=BORDER, height=1).pack(side="left", fill="x", expand=True, padx=(0, 0), pady=1)
+
+            # Archetype buttons in a grid frame
+            grid_frame = ctk.CTkFrame(container, fg_color="transparent")
+            grid_frame.pack(fill="x")
+
+            for i, arch in enumerate(archetypes):
+                label = ARCHETYPE_LABELS.get(arch, arch.replace("_", " ").title())
+                btn = ctk.CTkButton(
+                    grid_frame,
+                    text=label,
+                    width=110,
+                    height=34,
+                    corner_radius=6,
+                    fg_color=SURFACE,
+                    hover_color="#1e3a5f",
+                    text_color=TEXT,
+                    border_color=BORDER,
+                    border_width=1,
+                    font=ctk.CTkFont(size=12),
+                    command=lambda a=arch: self._toggle_archetype(a),
+                )
+                btn.grid(row=i // cols_per_row, column=i % cols_per_row, padx=(0, 8), pady=(0, 8))
+                self._arch_buttons[arch] = btn
 
     def _toggle_archetype(self, arch: str):
         btn = self._arch_buttons[arch]
         if arch in self.selected_archetypes:
             self.selected_archetypes.discard(arch)
-            btn.configure(fg_color=SURFACE_ALT, text_color=TEXT_MUTED, border_color=BORDER)
+            btn.configure(fg_color=SURFACE, text_color=TEXT, border_color=BORDER, border_width=1)
         else:
             self.selected_archetypes.add(arch)
-            btn.configure(fg_color=ACCENT, text_color="#FFFFFF", border_color=ACCENT)
+            btn.configure(fg_color=ACCENT, text_color="#000000", border_color=ACCENT, border_width=1)
+        # Update selected count label
+        count = len(self.selected_archetypes)
+        self._selected_count_label.configure(
+            text=f"{count} archetype{'s' if count != 1 else ''} selected"
+        )
         # Enable/disable tribe section
         tribal_active = "tribal" in self.selected_archetypes
         self._tribe_frame.configure(fg_color="transparent" if tribal_active else BG)
@@ -552,7 +595,7 @@ class ScaffoldApp(ctk.CTk):
                 text=f"✓ {t}" if already else t,
                 fg_color=ACCENT if already else "transparent",
                 hover_color=SURFACE_ALT,
-                text_color="#FFFFFF" if already else TEXT,
+                text_color="#000000" if already else TEXT,
                 font=ctk.CTkFont(size=12),
                 anchor="w",
                 height=28,
@@ -623,9 +666,9 @@ class ScaffoldApp(ctk.CTk):
                 width=110,
                 height=32,
                 corner_radius=16,
-                fg_color=SURFACE_ALT,
-                hover_color=ACCENT_HOVER,
-                text_color=TEXT_MUTED,
+                fg_color=SURFACE,
+                hover_color="#1e3a5f",
+                text_color=TEXT,
                 border_color=BORDER,
                 border_width=1,
                 font=ctk.CTkFont(size=12),
@@ -638,10 +681,10 @@ class ScaffoldApp(ctk.CTk):
         btn = self._tag_buttons[tag]
         if tag in self._selected_tags:
             self._selected_tags.discard(tag)
-            btn.configure(fg_color=SURFACE_ALT, text_color=TEXT_MUTED, border_color=BORDER)
+            btn.configure(fg_color=SURFACE, text_color=TEXT, border_color=BORDER)
         else:
             self._selected_tags.add(tag)
-            btn.configure(fg_color=ACCENT, text_color="#FFFFFF", border_color=ACCENT)
+            btn.configure(fg_color=ACCENT, text_color="#000000", border_color=ACCENT)
 
     def _build_focus_cards(self):
         """Text area for specific cards to guarantee in the candidate pool."""
@@ -840,11 +883,13 @@ class ScaffoldApp(ctk.CTk):
             success = False
         self.after(0, self._on_done, success, output)
 
+    # ── Log panel (collapsible) ──────────────────────────────────────────────
+
     def _build_log_panel(self):
         """Inline collapsible log panel — replaces the popup."""
         self._log_visible = False
 
-        self._log_toggle_frame = ctk.CTkFrame(self, fg_color=SURFACE_ALT, corner_radius=0, height=28)
+        self._log_toggle_frame = ctk.CTkFrame(self, fg_color=SURFACE, corner_radius=0, height=32)
         self._log_toggle_frame.pack(fill="x")
         self._log_toggle_frame.pack_propagate(False)
 
@@ -856,7 +901,7 @@ class ScaffoldApp(ctk.CTk):
             fg_color="transparent",
             hover_color=BORDER,
             anchor="w",
-            height=28,
+            height=32,
             corner_radius=0,
             command=self._toggle_log,
         )
@@ -914,33 +959,46 @@ class ScaffoldApp(ctk.CTk):
         self._log_box.configure(state="disabled")
         self._log_status_inline.configure(text="")
 
+    # ── Fixed bottom bar with selected count + Generate button ───────────────
+
     def _build_footer(self):
         sep = ctk.CTkFrame(self, height=1, fg_color=BORDER, corner_radius=0)
         sep.pack(fill="x")
 
-        footer = ctk.CTkFrame(self, fg_color=SURFACE, corner_radius=0, height=80)
+        footer = ctk.CTkFrame(self, fg_color=SURFACE, corner_radius=0, height=70)
         footer.pack(fill="x", side="bottom")
         footer.pack_propagate(False)
 
+        # Left side: selected archetype count
+        self._selected_count_label = ctk.CTkLabel(
+            footer,
+            text="0 archetypes selected",
+            font=ctk.CTkFont(size=12),
+            text_color=TEXT_MUTED,
+        )
+        self._selected_count_label.pack(side="left", padx=20)
+
+        # Status label (center-ish)
         self.status_label = ctk.CTkLabel(
             footer,
             text="Fill in the fields above and click Generate.",
             font=ctk.CTkFont(size=12),
             text_color=TEXT_MUTED,
-            wraplength=520,
+            wraplength=360,
             justify="left",
         )
-        self.status_label.pack(side="left", padx=20)
+        self.status_label.pack(side="left", fill="x", expand=True, padx=10)
 
+        # Right side: Generate button (prominent)
         self.run_btn = ctk.CTkButton(
             footer,
-            text="Generate Scaffold",
-            width=160,
+            text="Generate Scaffold  ▶",
+            width=180,
             height=44,
             corner_radius=8,
             fg_color=ACCENT,
             hover_color=ACCENT_HOVER,
-            text_color="#FFFFFF",
+            text_color="#000000",
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self._on_generate,
         )
@@ -1078,7 +1136,7 @@ class ScaffoldApp(ctk.CTk):
         self.after(0, self._on_done, success, output, synergy_output)
 
     def _on_done(self, success: bool, output: str, synergy_output=None):
-        self.run_btn.configure(state="normal", text="Generate Scaffold")
+        self.run_btn.configure(state="normal", text="Generate Scaffold  ▶")
         self._clear_log()
         if output:
             for line in output.splitlines():
