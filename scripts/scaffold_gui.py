@@ -74,17 +74,17 @@ APP_TITLE = "MTG Deck Scaffold Generator"
 WIN_W, WIN_H = 820, 920
 
 # ── Color Palette ─────────────────────────────────────────────────────────────
-ACCENT = "#00b4d8"
-ACCENT_HOVER = "#007a94"
-BG = "#1a1a2e"
-SURFACE = "#16213e"
-SURFACE_ALT = "#16213e"
-BORDER = "#2d4a6e"
-TEXT = "#e2e8f0"
-TEXT_MUTED = "#94a3b8"
-SUCCESS = "#22c55e"
-ERROR = "#ef4444"
-WARNING = "#BB653B"
+ACCENT = "#c9a227"         # warm gold — MTG-themed
+ACCENT_HOVER = "#a8871e"
+BG = "#0f0f0f"             # near-black background
+SURFACE = "#1a1a1a"        # card/panel surface
+SURFACE_ALT = "#222222"    # slightly lighter for contrast
+BORDER = "#333333"         # subtle borders
+TEXT = "#e8e8e8"           # bright text
+TEXT_MUTED = "#888888"     # secondary text
+SUCCESS = "#4ade80"
+ERROR = "#f87171"
+WARNING = "#fb923c"
 
 # ── Archetype Groups (7 themed categories) ────────────────────────────────────
 ARCHETYPE_GROUPS = {
@@ -99,11 +99,11 @@ ARCHETYPE_GROUPS = {
 
 # ── Mana Button Colors ────────────────────────────────────────────────────────
 MANA_COLORS = {
-    "W": {"bg": "#f5f0d0", "fg": "#333333", "bg_dim": "#a8a48e", "label": "W\nWhite"},
-    "U": {"bg": "#1a4a8a", "fg": "#ffffff", "bg_dim": "#122f5c", "label": "U\nBlue"},
-    "B": {"bg": "#2a1a3a", "fg": "#cccccc", "bg_dim": "#1a1024", "label": "B\nBlack"},
-    "R": {"bg": "#b91c1c", "fg": "#ffffff", "bg_dim": "#7a1313", "label": "R\nRed"},
-    "G": {"bg": "#166534", "fg": "#ffffff", "bg_dim": "#0e4022", "label": "G\nGreen"},
+    "W": {"bg": "#f9f4e0", "fg": "#222222", "bg_dim": "#3a3730", "label": "W\nWhite"},
+    "U": {"bg": "#0e6eb8", "fg": "#ffffff", "bg_dim": "#1a2a40", "label": "U\nBlue"},
+    "B": {"bg": "#44334d", "fg": "#d4c4e0", "bg_dim": "#1e1622", "label": "B\nBlack"},
+    "R": {"bg": "#cc2929", "fg": "#ffffff", "bg_dim": "#401818", "label": "R\nRed"},
+    "G": {"bg": "#1a8040", "fg": "#ffffff", "bg_dim": "#162e1e", "label": "G\nGreen"},
 }
 
 
@@ -151,15 +151,15 @@ class ScaffoldApp(ctk.CTk):
 
     def _build_ui(self):
         # Title bar
-        title_frame = ctk.CTkFrame(self, fg_color=SURFACE, corner_radius=0, height=56)
+        title_frame = ctk.CTkFrame(self, fg_color=SURFACE, corner_radius=0, height=52)
         title_frame.pack(fill="x")
         title_frame.pack_propagate(False)
         ctk.CTkLabel(
             title_frame,
             text=APP_TITLE,
-            font=ctk.CTkFont(family="Helvetica", size=18, weight="bold"),
-            text_color=TEXT,
-        ).pack(side="left", padx=20, pady=14)
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color=ACCENT,
+        ).pack(side="left", padx=20, pady=12)
 
         # Tab view
         self.tabs = ctk.CTkTabview(
@@ -169,8 +169,8 @@ class ScaffoldApp(ctk.CTk):
             segmented_button_selected_color=ACCENT,
             segmented_button_selected_hover_color=ACCENT_HOVER,
             segmented_button_unselected_color=SURFACE,
-            segmented_button_unselected_hover_color="#1e3a5f",
-            text_color=TEXT,
+            segmented_button_unselected_hover_color=SURFACE_ALT,
+            text_color=BG,
             text_color_disabled=TEXT_MUTED,
         )
         self.tabs.pack(fill="both", expand=True, padx=0, pady=0)
@@ -277,9 +277,9 @@ class ScaffoldApp(ctk.CTk):
                         border_color=BORDER, checkmark_color="#FFFFFF").pack(anchor="w", pady=2)
 
         ctk.CTkButton(
-            frame, text="Run Queries", height=44, corner_radius=8,
-            fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color="#000000",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            frame, text="Run Queries", height=38, corner_radius=8,
+            fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color=BG,
+            font=ctk.CTkFont(size=13, weight="bold"),
             command=self._on_run_queries,
         ).pack(anchor="w", padx=24)
 
@@ -377,9 +377,9 @@ class ScaffoldApp(ctk.CTk):
         ).pack(side="left")
 
         ctk.CTkButton(
-            frame, text="Analyze Synergy", height=44, corner_radius=8,
-            fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color="#000000",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            frame, text="Analyze Synergy", height=38, corner_radius=8,
+            fg_color=ACCENT, hover_color=ACCENT_HOVER, text_color=BG,
+            font=ctk.CTkFont(size=13, weight="bold"),
             command=self._on_synergy,
         ).pack(anchor="w", padx=24)
 
@@ -387,24 +387,24 @@ class ScaffoldApp(ctk.CTk):
 
     def _section_badge(self, number: str, label: str):
         frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
-        frame.pack(fill="x", padx=24, pady=(16, 4))
+        frame.pack(fill="x", padx=24, pady=(18, 6))
 
         badge = ctk.CTkLabel(
             frame,
-            text=f" {number} ",
-            font=ctk.CTkFont(size=13, weight="bold"),
-            text_color="#000000",
+            text=number,
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color=BG,
             fg_color=ACCENT,
-            corner_radius=12,
-            width=26,
-            height=26,
+            corner_radius=10,
+            width=22,
+            height=22,
         )
         badge.pack(side="left", padx=(0, 10))
 
         ctk.CTkLabel(
             frame,
             text=label,
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=ctk.CTkFont(size=13, weight="bold"),
             text_color=TEXT,
         ).pack(side="left")
 
@@ -431,22 +431,21 @@ class ScaffoldApp(ctk.CTk):
         self._color_buttons = {}
         for c in COLOR_ORDER:
             mc = MANA_COLORS[c]
-            border_clr = BORDER if c != "B" else "#5a4a6a"  # B needs visible border
             btn = ctk.CTkButton(
                 frame,
                 text=mc["label"],
-                width=80,
-                height=50,
-                corner_radius=8,
+                width=90,
+                height=52,
+                corner_radius=10,
                 fg_color=mc["bg_dim"],
                 hover_color=mc["bg"],
                 text_color=mc["fg"],
-                border_color=border_clr,
+                border_color=BORDER,
                 border_width=1,
                 font=ctk.CTkFont(size=12, weight="bold"),
                 command=lambda col=c: self._toggle_color(col),
             )
-            btn.pack(side="left", padx=(0, 8))
+            btn.pack(side="left", padx=(0, 10))
             self._color_buttons[c] = btn
 
     def _toggle_color(self, c: str):
@@ -454,8 +453,7 @@ class ScaffoldApp(ctk.CTk):
         mc = MANA_COLORS[c]
         if c in self.selected_colors:
             self.selected_colors.discard(c)
-            border_clr = BORDER if c != "B" else "#5a4a6a"
-            btn.configure(fg_color=mc["bg_dim"], text_color=mc["fg"], border_color=border_clr, border_width=1)
+            btn.configure(fg_color=mc["bg_dim"], text_color=mc["fg"], border_color=BORDER, border_width=1)
         else:
             self.selected_colors.add(c)
             btn.configure(fg_color=mc["bg"], text_color=mc["fg"], border_color=ACCENT, border_width=2)
@@ -495,17 +493,17 @@ class ScaffoldApp(ctk.CTk):
                     grid_frame,
                     text=label,
                     width=110,
-                    height=34,
+                    height=32,
                     corner_radius=6,
                     fg_color=SURFACE,
-                    hover_color="#1e3a5f",
+                    hover_color=SURFACE_ALT,
                     text_color=TEXT,
                     border_color=BORDER,
                     border_width=1,
-                    font=ctk.CTkFont(size=12),
+                    font=ctk.CTkFont(size=11),
                     command=lambda a=arch: self._toggle_archetype(a),
                 )
-                btn.grid(row=i // cols_per_row, column=i % cols_per_row, padx=(0, 8), pady=(0, 8))
+                btn.grid(row=i // cols_per_row, column=i % cols_per_row, padx=(0, 6), pady=(0, 6))
                 self._arch_buttons[arch] = btn
 
     def _toggle_archetype(self, arch: str):
@@ -515,7 +513,7 @@ class ScaffoldApp(ctk.CTk):
             btn.configure(fg_color=SURFACE, text_color=TEXT, border_color=BORDER, border_width=1)
         else:
             self.selected_archetypes.add(arch)
-            btn.configure(fg_color=ACCENT, text_color="#000000", border_color=ACCENT, border_width=1)
+            btn.configure(fg_color=ACCENT, text_color=BG, border_color=ACCENT, border_width=1)
         # Update selected count label
         count = len(self.selected_archetypes)
         self._selected_count_label.configure(
@@ -663,15 +661,15 @@ class ScaffoldApp(ctk.CTk):
             btn = ctk.CTkButton(
                 frame,
                 text=tag,
-                width=110,
-                height=32,
-                corner_radius=16,
+                width=105,
+                height=28,
+                corner_radius=14,
                 fg_color=SURFACE,
-                hover_color="#1e3a5f",
-                text_color=TEXT,
+                hover_color=SURFACE_ALT,
+                text_color=TEXT_MUTED,
                 border_color=BORDER,
                 border_width=1,
-                font=ctk.CTkFont(size=12),
+                font=ctk.CTkFont(size=11),
                 command=lambda t=tag: self._toggle_tag(t),
             )
             btn.grid(row=i // 6, column=i % 6, padx=(0, 6), pady=(0, 6), in_=frame)
@@ -681,10 +679,10 @@ class ScaffoldApp(ctk.CTk):
         btn = self._tag_buttons[tag]
         if tag in self._selected_tags:
             self._selected_tags.discard(tag)
-            btn.configure(fg_color=SURFACE, text_color=TEXT, border_color=BORDER)
+            btn.configure(fg_color=SURFACE, text_color=TEXT_MUTED, border_color=BORDER)
         else:
             self._selected_tags.add(tag)
-            btn.configure(fg_color=ACCENT, text_color="#000000", border_color=ACCENT)
+            btn.configure(fg_color=ACCENT, text_color=BG, border_color=ACCENT)
 
     def _build_focus_cards(self):
         """Text area for specific cards to guarantee in the candidate pool."""
@@ -992,14 +990,14 @@ class ScaffoldApp(ctk.CTk):
         # Right side: Generate button (prominent)
         self.run_btn = ctk.CTkButton(
             footer,
-            text="Generate Scaffold  ▶",
+            text="Generate Scaffold",
             width=180,
-            height=44,
+            height=40,
             corner_radius=8,
             fg_color=ACCENT,
             hover_color=ACCENT_HOVER,
-            text_color="#000000",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=BG,
+            font=ctk.CTkFont(size=13, weight="bold"),
             command=self._on_generate,
         )
         self.run_btn.pack(side="right", padx=20)
@@ -1136,7 +1134,7 @@ class ScaffoldApp(ctk.CTk):
         self.after(0, self._on_done, success, output, synergy_output)
 
     def _on_done(self, success: bool, output: str, synergy_output=None):
-        self.run_btn.configure(state="normal", text="Generate Scaffold  ▶")
+        self.run_btn.configure(state="normal", text="Generate Scaffold")
         self._clear_log()
         if output:
             for line in output.splitlines():

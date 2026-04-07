@@ -34,6 +34,7 @@ Flags:
 Output:
     Decks/YYYY-MM-DD_Deck_Name/
     ├── session.md          ← THE SINGLE CONSOLIDATED FILE (all work goes here)
+    ├── candidate_pool.csv  ← Full card data with oracle text (for AI reference)
     ├── decklist.txt        ← Empty template (filled during Gate 3)
     ├── analysis.md         ← Empty template (filled after all gates)
     └── sideboard_guide.md  ← Empty template (filled after Gate 5)
@@ -550,7 +551,6 @@ def generate_session_file(
         f"> **{unique_card_count} unique cards** across all queries (deduplicated).",
         "> The `pool` column shows which query/queries matched each card.",
         "> Full card details (including oracle text) are in [`candidate_pool.csv`](candidate_pool.csv).",
-        "> Individual query results are also saved under `pools/` for reference.",
         "> DO NOT add any card that does not appear in this pool.",
         "",
     ]
@@ -577,12 +577,11 @@ def generate_session_file(
     lines += [
         "## Additional Queries",
         "",
-        "> If the pools above are insufficient, run additional queries:",
+        "> If the pool above is insufficient, run additional queries:",
         "> ```bash",
         f"> python {RepoPaths.SCRIPTS_DIR_NAME}/search_cards.py --type <type> --colors <colors> [flags...]",
         "> ```",
-        "> Write output to a new file in `pools/` (e.g. `pools/pool_extra.csv`)",
-        "> and add the new cards to the candidate pool above.",
+        "> Add any new cards to the candidate pool above.",
         "",
         "### Gate 1 Checklist",
         "",
@@ -1260,22 +1259,6 @@ def main() -> None:
 
         print(f"\n  Total candidates across all queries: {total_candidates}")
 
-    # Generate session file
-    # Write each query's output to a separate pool CSV file
-    import re as _re
-    pools_dir = deck_dir / "pools"
-    pools_dir.mkdir(exist_ok=True)
-    for i, qr in enumerate(query_results, 1):
-        safe_label = _re.sub(r"[^a-z0-9]+", "_", qr["label"].lower()).strip("_")
-        pool_filename = f"pool_{i:02d}_{safe_label}.csv"
-        pool_path = pools_dir / pool_filename
-        qr["pool_file"] = f"pools/{pool_filename}"
-        output = qr.get("output", "")
-        if output and not output.startswith("("):
-            pool_path.write_text(output, encoding="utf-8")
-        else:
-            pool_path.write_text(f"# No results for: {qr['label']}\n# Command: {qr['command']}\n", encoding="utf-8")
-
     # Build consolidated, deduplicated candidate pool
     import csv as _csv
     import io as _io
@@ -1386,11 +1369,10 @@ def main() -> None:
     print(f"  SCAFFOLD COMPLETE")
     print(f"")
     print(f"  Next steps:")
-    print(f"  1. Open {display_session}")
-    print(f"  2. Feed session.md to your AI tool as context")
-    print(f"  3. Work through Gates 1–6 inside session.md")
-    print(f"  4. Run: python {RepoPaths.SCRIPTS_DIR_NAME}/validate_decklist.py {display_decklist}")
-    print(f"  5. Copy final outputs into decklist.txt, analysis.md, sideboard_guide.md")
+    print(f"  1. Feed session.md + candidate_pool.csv to your AI tool as context")
+    print(f"  2. Work through Gates 1–6 inside session.md")
+    print(f"  3. Run: python {RepoPaths.SCRIPTS_DIR_NAME}/validate_decklist.py {display_decklist}")
+    print(f"  4. Copy final outputs into decklist.txt, analysis.md, sideboard_guide.md")
     print(f"{'='*70}")
 
 
