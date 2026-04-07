@@ -492,6 +492,8 @@ def generate_session_file(
     archetype: str,
     query_results: List[Dict],
     tribe: Optional[str] = None,
+    consolidated_csv: str = "",
+    unique_card_count: int = 0,
 ) -> str:
     """Generate the consolidated session.md content."""
     from mtg_utils import RepoPaths
@@ -539,44 +541,36 @@ def generate_session_file(
         cmd_short = qr["command"].replace("python ", "").strip()
         lines.append(f"| {i} | {qr['label']} | `{cmd_short}` | {qr['count']} |")
 
-    # Embed card data directly in session.md so it's usable without separate files
-    MAX_ROWS_PER_QUERY = 200
+    # Embed consolidated, deduplicated candidate pool (slim: no oracle text)
+    # Full card details including oracle text are in candidate_pool.csv
     lines += [
         "",
-        "## Candidate Pool Data",
+        "## Candidate Pool",
         "",
-        "> Card data from each query is shown below. Full datasets are also saved",
-        "> as CSV files under `pools/` for reference.",
-        "> DO NOT add any card that does not appear in a pool below.",
+        f"> **{unique_card_count} unique cards** across all queries (deduplicated).",
+        "> The `pool` column shows which query/queries matched each card.",
+        "> Full card details (including oracle text) are in [`candidate_pool.csv`](candidate_pool.csv).",
+        "> Individual query results are also saved under `pools/` for reference.",
+        "> DO NOT add any card that does not appear in this pool.",
         "",
     ]
 
-    for i, qr in enumerate(query_results, 1):
-        pool_file = qr.get("pool_file", f"pools/pool_{i:02d}_unknown.csv")
-        count = qr["count"] if isinstance(qr.get("count"), int) and qr["count"] > 0 else 0
-        cmd_short = qr["command"].replace("python ", "").strip()
-        lines.append(f"### Pool {i}: {qr['label']} ({count} cards)")
-        lines.append(f"")
-        lines.append(f"> `{cmd_short}`")
-        lines.append(f"> Full data: [`{pool_file}`]({pool_file})")
-        lines.append(f"")
-        output = qr.get("output", "")
-        if output and not output.startswith("("):
-            csv_lines = output.strip().splitlines()
-            if len(csv_lines) > MAX_ROWS_PER_QUERY + 1:  # +1 for header
-                shown = csv_lines[:MAX_ROWS_PER_QUERY + 1]
-                lines.append("```csv")
-                lines.extend(shown)
-                lines.append("```")
-                lines.append(f"")
-                lines.append(f"*({len(csv_lines) - 1} total — showing first {MAX_ROWS_PER_QUERY}. See pool file for full list.)*")
-            else:
-                lines.append("```csv")
-                lines.extend(csv_lines)
-                lines.append("```")
-        else:
-            lines.append("*(no results)*")
-        lines.append(f"")
+    if consolidated_csv:
+        # Strip oracle_text column for the inline version to save space
+        import csv as _csv_mod
+        import io as _io_mod
+        reader = _csv_mod.DictReader(_io_mod.StringIO(consolidated_csv))
+        slim_cols = [c for c in (reader.fieldnames or []) if c != "oracle_text"]
+        slim_buf = _io_mod.StringIO()
+        writer = _csv_mod.DictWriter(slim_buf, fieldnames=slim_cols, extrasaction="ignore")
+        writer.writeheader()
+        for row in reader:
+            writer.writerow(row)
+        lines.append("```csv")
+        lines.extend(slim_buf.getvalue().strip().splitlines())
+        lines.append("```")
+    else:
+        lines.append("*(no results — run with queries enabled)*")
 
     lines += [""]
 
@@ -587,8 +581,8 @@ def generate_session_file(
         "> ```bash",
         f"> python {RepoPaths.SCRIPTS_DIR_NAME}/search_cards.py --type <type> --colors <colors> [flags...]",
         "> ```",
-        "> Write output to a new file in `pools/` (e.g. `pools/pool_07_extra.csv`)",
-        "> and add a row to the Candidate Pool Index table above.",
+        "> Write output to a new file in `pools/` (e.g. `pools/pool_extra.csv`)",
+        "> and add the new cards to the candidate pool above.",
         "",
         "### Gate 1 Checklist",
         "",
@@ -1282,6 +1276,60 @@ def main() -> None:
         else:
             pool_path.write_text(f"# No results for: {qr['label']}\n# Command: {qr['command']}\n", encoding="utf-8")
 
+    # Build consolidated, deduplicated candidate pool
+    import csv as _csv
+    import io as _io
+
+    POOL_COLUMNS = ["name", "mana_cost", "cmc", "type_line", "colors", "rarity",
+                    "keywords", "oracle_text", "tags", "pool"]
+    ORACLE_MAX = 150  # truncate oracle text to keep session.md manageable
+
+    seen_cards: Dict[str, Dict] = {}  # name -> row dict
+    for i, qr in enumerate(query_results, 1):
+        output = qr.get("output", "")
+        if not output or output.startswith("("):
+            continue
+        reader = _csv.DictReader(_io.StringIO(output))
+        pool_label = qr["label"]
+        for row in reader:
+            card_name = row.get("name", "").strip()
+            if not card_name:
+                continue
+            if card_name in seen_cards:
+                # Append this pool label
+                existing_pools = seen_cards[card_name]["pool"]
+                if pool_label not in existing_pools:
+                    seen_cards[card_name]["pool"] += f" | {pool_label}"
+            else:
+                oracle = row.get("oracle_text", "")
+                if len(oracle) > ORACLE_MAX:
+                    oracle = oracle[:ORACLE_MAX] + "..."
+                seen_cards[card_name] = {
+                    "name": card_name,
+                    "mana_cost": row.get("mana_cost", ""),
+                    "cmc": row.get("cmc", ""),
+                    "type_line": row.get("type_line", ""),
+                    "colors": row.get("colors", ""),
+                    "rarity": row.get("rarity", ""),
+                    "keywords": row.get("keywords", ""),
+                    "oracle_text": oracle,
+                    "tags": row.get("_tags", row.get("tags", "")),
+                    "pool": pool_label,
+                }
+
+    # Write consolidated CSV file
+    consolidated_rows = list(seen_cards.values())
+    consolidated_buf = _io.StringIO()
+    writer = _csv.DictWriter(consolidated_buf, fieldnames=POOL_COLUMNS,
+                             extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(consolidated_rows)
+    consolidated_csv = consolidated_buf.getvalue()
+
+    consolidated_path = deck_dir / "candidate_pool.csv"
+    consolidated_path.write_text(consolidated_csv, encoding="utf-8")
+    print(f"  [OK] candidate_pool.csv written ({len(consolidated_rows):,} unique cards, {len(consolidated_csv):,} bytes)")
+
     session_content = generate_session_file(
         deck_date=deck_date,
         deck_name=args.name,
@@ -1289,6 +1337,8 @@ def main() -> None:
         archetype=", ".join(archetype_list),
         query_results=query_results,
         tribe=args.tribe,
+        consolidated_csv=consolidated_csv,
+        unique_card_count=len(consolidated_rows),
     )
 
     # Write files
