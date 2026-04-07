@@ -1113,6 +1113,7 @@ class ScaffoldApp(ctk.CTk):
                         str(_scripts_dir / "synergy_analysis.py"),
                         str(session_path),
                         "--output", str(synergy_report_path),
+                        "--top", "200",
                     ]
                     import os
                     env2 = os.environ.copy()

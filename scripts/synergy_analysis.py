@@ -801,6 +801,9 @@ def main() -> None:
     p.add_argument("--mode", choices=["auto", "pool", "deck"], default="auto",
                    help="Threshold calibration: pool (large candidate pool, loose) or "
                         "deck (final 60-card, strict). Default: auto-detect from size.")
+    p.add_argument("--top", type=int, default=0, metavar="N",
+                   help="After analysis, write a top-N CSV ranked by composite synergy "
+                        "score.  Output goes next to --output (or input file) as top_N.csv.")
     args = p.parse_args()
 
     input_path = Path(args.input_file)
@@ -874,6 +877,76 @@ def main() -> None:
         print(f"Report written to {args.output}", file=sys.stderr)
     else:
         print(report)
+
+    # ── Top-N ranked export ──────────────────────────────────────────────────
+    if args.top and args.top > 0:
+        import io as _io
+        top_n = args.top
+
+        # Composite score: density (0-1) + oracle weight + breadth bonus - dependency
+        def _composite(sc):
+            oracle_w = min(len(sc.get("oracle_interactions", [])), 10) * 0.05
+            return sc["synergy_density"] + oracle_w + sc["role_breadth"] * 0.05 - sc["dependency"] * 0.1
+
+        ranked = sorted(scores.items(), key=lambda x: -_composite(x[1]))
+        ranked = ranked[:top_n]
+
+        # Build CSV with card data + synergy metrics
+        TOP_COLS = ["rank", "name", "mana_cost", "cmc", "type_line", "colors",
+                    "rarity", "keywords", "oracle_text", "tags", "pool",
+                    "synergy_score", "synergy_density", "role_breadth",
+                    "oracle_interactions", "dependency", "top_partners"]
+
+        # Try to load pool data from candidate_pool.csv for full card info
+        pool_data: Dict[str, Dict] = {}
+        candidate_csv = None
+        if args.output:
+            candidate_csv = Path(args.output).parent / "candidate_pool.csv"
+        elif input_path.is_file():
+            candidate_csv = input_path.parent / "candidate_pool.csv"
+        if candidate_csv and candidate_csv.exists():
+            with open(candidate_csv, encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    pool_data[row.get("name", "").strip().lower()] = row
+
+        buf = _io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=TOP_COLS, extrasaction="ignore")
+        writer.writeheader()
+        for rank_i, (name, sc) in enumerate(ranked, 1):
+            p = sc["profile"]
+            # Get pool membership + extra fields from candidate_pool.csv
+            pd = pool_data.get(name.lower(), {})
+            oracle = pd.get("oracle_text", p.get("oracle_text", ""))
+            partners = list(sc["synergy_partners"])[:5]
+            writer.writerow({
+                "rank": rank_i,
+                "name": p.get("name", name),
+                "mana_cost": p.get("mana_cost", pd.get("mana_cost", "")),
+                "cmc": p.get("cmc", pd.get("cmc", "")),
+                "type_line": p.get("type_line", pd.get("type_line", "")),
+                "colors": p.get("colors", pd.get("colors", "")),
+                "rarity": pd.get("rarity", ""),
+                "keywords": ", ".join(sorted(p.get("keywords", set()))),
+                "oracle_text": oracle,
+                "tags": ", ".join(sorted(p.get("broad_tags", set()))),
+                "pool": pd.get("pool", ""),
+                "synergy_score": f"{_composite(sc):.3f}",
+                "synergy_density": f"{sc['synergy_density']:.1%}",
+                "role_breadth": sc["role_breadth"],
+                "oracle_interactions": len(sc.get("oracle_interactions", [])),
+                "dependency": sc["dependency"],
+                "top_partners": " | ".join(partners),
+            })
+
+        top_csv = buf.getvalue()
+
+        # Determine output path
+        if args.output:
+            top_path = Path(args.output).parent / f"top_{top_n}.csv"
+        else:
+            top_path = input_path.parent / f"top_{top_n}.csv"
+        top_path.write_text(top_csv, encoding="utf-8")
+        print(f"Top {min(top_n, len(ranked))} cards written to {top_path}", file=sys.stderr)
 
     sys.exit(0 if all_passed else 1)
 
