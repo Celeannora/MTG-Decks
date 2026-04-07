@@ -396,7 +396,6 @@ def run_query(
     base_args,
     colors: str,
     tribe: Optional[str] = None,
-    extra_tags: Optional[str] = None,
     suppress_tribe: bool = False,
 ) -> Tuple[str, str, int]:
     """
@@ -435,26 +434,8 @@ def run_query(
     if "--limit" not in arg_tokens:
         cmd_parts += ["--limit", "9999"]
 
-    # Add extra tags if provided
-    base_args_str = base_args if isinstance(base_args, str) else " ".join(base_args)
-    if extra_tags:
-        if "--tags" in base_args_str:
-            # Merge extra_tags into the existing --tags value
-            def _merge_tags(m):
-                existing = m.group(1).rstrip(",")
-                return f"--tags {existing},{extra_tags}"
-            merged = re.sub(r"--tags\s+(\S+)", _merge_tags, base_args_str, count=1)
-            # Rebuild cmd_parts from updated base_args
-            cmd_parts = [sys.executable, str(script)]
-            cmd_parts += shlex.split(merged)
-            if "--show-tags" not in merged:
-                cmd_parts += ["--show-tags"]
-            if "--format" not in merged:
-                cmd_parts += ["--format", "csv"]
-            if "--limit" not in merged:
-                cmd_parts += ["--limit", "9999"]
-        else:
-            cmd_parts += ["--tags", extra_tags]
+    # Extra tags are handled as separate supplemental queries in main(),
+    # not merged into every existing query (which pollutes OR-based tag matching).
 
     cmd_str = " ".join(cmd_parts)
     display_cmd = cmd_str.replace(str(script), "search_cards.py")
@@ -558,35 +539,44 @@ def generate_session_file(
         cmd_short = qr["command"].replace("python ", "").strip()
         lines.append(f"| {i} | {qr['label']} | `{cmd_short}` | {qr['count']} |")
 
+    # Embed card data directly in session.md so it's usable without separate files
+    MAX_ROWS_PER_QUERY = 200
     lines += [
         "",
-        "## Candidate Pool Index",
+        "## Candidate Pool Data",
         "",
-        "> Pool data is in separate CSV files under `pools/`. Read the relevant pool",
-        "> file(s) when selecting cards at each gate. Load only the file(s) for the",
-        "> card type you are currently selecting — not all pools at once.",
-        "> DO NOT add any card that does not appear in a pool file.",
+        "> Card data from each query is shown below. Full datasets are also saved",
+        "> as CSV files under `pools/` for reference.",
+        "> DO NOT add any card that does not appear in a pool below.",
         "",
-        "| # | Role | Pool File | Cards |",
-        "|---|------|-----------|-------|",
     ]
 
     for i, qr in enumerate(query_results, 1):
         pool_file = qr.get("pool_file", f"pools/pool_{i:02d}_unknown.csv")
-        count = qr["count"] if isinstance(qr.get("count"), int) and qr["count"] > 0 else (qr.get("count") or "—")
-        lines.append(f"| {i} | {qr['label']} | [`{pool_file}`]({pool_file}) | {count} |")
-
-    lines += [
-        "",
-        "### Query Commands (for reference / re-running)",
-        "",
-        "| # | Label | Command |",
-        "|---|-------|---------|",
-    ]
-
-    for i, qr in enumerate(query_results, 1):
+        count = qr["count"] if isinstance(qr.get("count"), int) and qr["count"] > 0 else 0
         cmd_short = qr["command"].replace("python ", "").strip()
-        lines.append(f"| {i} | {qr['label']} | `{cmd_short}` |")
+        lines.append(f"### Pool {i}: {qr['label']} ({count} cards)")
+        lines.append(f"")
+        lines.append(f"> `{cmd_short}`")
+        lines.append(f"> Full data: [`{pool_file}`]({pool_file})")
+        lines.append(f"")
+        output = qr.get("output", "")
+        if output and not output.startswith("("):
+            csv_lines = output.strip().splitlines()
+            if len(csv_lines) > MAX_ROWS_PER_QUERY + 1:  # +1 for header
+                shown = csv_lines[:MAX_ROWS_PER_QUERY + 1]
+                lines.append("```csv")
+                lines.extend(shown)
+                lines.append("```")
+                lines.append(f"")
+                lines.append(f"*({len(csv_lines) - 1} total — showing first {MAX_ROWS_PER_QUERY}. See pool file for full list.)*")
+            else:
+                lines.append("```csv")
+                lines.extend(csv_lines)
+                lines.append("```")
+        else:
+            lines.append("*(no results)*")
+        lines.append(f"")
 
     lines += [""]
 
@@ -1206,6 +1196,16 @@ def main() -> None:
         query_plan.append(lands)
     query_results: List[Dict] = []
 
+    # Inject extra-tags as ONE supplemental query (not merged into every query)
+    extra_tags = getattr(args, "extra_tags", None)
+    if extra_tags:
+        # Insert before Lands so it appears near the end
+        insert_pos = len(query_plan) - 1 if lands else len(query_plan)
+        query_plan.insert(insert_pos, {
+            "label": f"Extra tags: {extra_tags}",
+            "args": f"--tags {extra_tags}",
+        })
+
     # Inject focus-card queries (guarantee specific cards appear in pool)
     focus_cards = getattr(args, "focus_cards", None)
     if focus_cards:
@@ -1253,7 +1253,6 @@ def main() -> None:
                 _query_args(q),
                 args.colors.upper(),
                 tribe=args.tribe,
-                extra_tags=args.extra_tags,
             )
 
             query_results.append({
