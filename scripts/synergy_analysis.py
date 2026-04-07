@@ -96,12 +96,35 @@ INTERACTION_RULES: List[Tuple[str, str, str, str, str, str]] = [
     ("broad_tags",  "protection",  "broad_tags",  "removal",     "PROTECTS", "{a} protects key creatures → {b} removal suite operates safely"),
     ("broad_tags",  "counter",     "broad_tags",  "protection",  "PROTECTS", "{a} counters removal → {b} protected threat survives"),
     ("broad_tags",  "bounce",      "broad_tags",  "counter",     "PROTECTS", "{a} bounces threats → {b} backup counter coverage"),
+
+    # ── SACRIFICE / ARISTOCRATS ──────────────────────────────────────────────
+    ("source_tags", "sacrifice",   "payoff_tags",  "sacrifice",   "FEEDS",    "{a} provides sac outlet → {b} fires death trigger"),
+    ("source_tags", "token",       "payoff_tags",  "sacrifice",   "FEEDS",    "{a} makes tokens → {b} sacrifice outlet has fuel"),
+    ("broad_tags",  "sacrifice",   "broad_tags",   "lifegain",    "TRIGGERS", "{a} death triggers → {b} life gain on creature death"),
+    ("broad_tags",  "sacrifice",   "broad_tags",   "draw",        "TRIGGERS", "{a} sacrifice or death → {b} card draw on death"),
+
+    # ── ENERGY ───────────────────────────────────────────────────────────────
+    ("source_tags", "energy",      "payoff_tags",  "energy",      "FEEDS",    "{a} produces energy → {b} spends energy counters"),
+    ("source_tags", "energy",      "broad_tags",   "pump",        "FEEDS",    "{a} produces energy → {b} activated pump uses energy"),
+
+    # ── STORM / SPELL COUNT ──────────────────────────────────────────────────
+    ("source_tags", "storm_count", "payoff_tags",  "storm_count", "AMPLIFIES","{a} generates/extends spell chain → {b} scales with spell count"),
+    ("broad_tags",  "ramp",        "source_tags",  "storm_count", "ENABLES",  "{a} ritual/ramp → {b} storm chain becomes viable"),
+
+    # ── ENCHANTRESS ──────────────────────────────────────────────────────────
+    ("source_tags", "enchantress", "payoff_tags",  "enchantress", "TRIGGERS", "{a} is an enchantment → {b} enchantment-cast draw trigger fires"),
+    ("broad_tags",  "tutor",       "source_tags",  "enchantress", "ENABLES",  "{a} tutors enchantments → {b} enchantress engine found reliably"),
+
+    # ── BLINK / ETB ABUSE ────────────────────────────────────────────────────
+    ("source_tags", "blink",       "payoff_tags",  "etb",         "AMPLIFIES","{a} blinks → {b} ETB fires again on re-entry"),
+    ("source_tags", "blink",       "broad_tags",   "etb",         "AMPLIFIES","{a} blinks → {b} ETB fires repeatedly"),
+    ("broad_tags",  "bounce",      "payoff_tags",  "etb",         "FEEDS",    "{a} bounces → {b} ETB replays on recast"),
 ]
 
 # Narrow roles for REDUNDANT detection — deliberately omits broad strategy tags
 # (lifegain, tribal, mill, draw) since a deck intentionally runs multiples of these.
 # Only same-function, same-CMC-bracket cards are flagged redundant.
-ROLE_TAGS = {"wipe", "counter", "tutor", "reanimation"}
+ROLE_TAGS = {"wipe", "counter", "tutor", "reanimation", "removal", "draw", "bounce"}
 
 # ─── Keywords worth cross-referencing in oracle text ────────────────────────
 _ORACLE_KEYWORDS = {
@@ -514,10 +537,27 @@ def check_thresholds(
         f"({pct:.0%} of total) — remainder are tag-inferred"
     )
 
+    # T6 is checked at report-build time (chain timing); placeholder here
+    # will be populated after chains are built
+
     return passed, msgs
 
 
 # ─── Report generation ───────────────────────────────────────────────────────
+
+def _earliest_chain_turn(chain_cards: list, land_count: int = 24, deck_size: int = 60) -> int:
+    """
+    Estimate the earliest turn a synergy chain can fire.
+    Assumes one land drop per turn, no acceleration.
+    Returns the turn where the highest-CMC piece can be cast.
+    """
+    if not chain_cards:
+        return 0
+    max_cmc = max(float(c.get("cmc") or 0) for c in chain_cards)
+    # Rough model: cast on turn = CMC (one mana per turn, no ramp)
+    # Adjust downward by 1 if deck has significant ramp (>= 8 ramp pieces)
+    return max(1, int(max_cmc))
+
 
 def build_report(
     scores: Dict[str, Dict],
@@ -678,6 +718,7 @@ def build_report(
         if sc["synergy_count"] >= 3
     ][:3]
 
+    chain_timing_data = []  # collect (chain_index, earliest_turn) for threshold check
     if chain_anchors:
         for i, (hub_name, hub_sc) in enumerate(chain_anchors, 1):
             # Prefer oracle-confirmed partners for the chain
@@ -686,9 +727,22 @@ def build_report(
             partner_list = (oracle_partners + [p for p in tag_partners if p not in oracle_partners])[:2]
             chain = " → ".join(f"[{c}]" for c in [hub_name] + partner_list)
             oracle_label = " ⭐oracle" if oracle_partners else ""
+
+            # Compute earliest firing turn for chain
+            chain_card_names = [hub_name] + partner_list
+            chain_cards = [scores[n]["profile"] for n in chain_card_names if n in scores]
+            earliest_turn = _earliest_chain_turn(chain_cards)
+            chain_timing_data.append((i, earliest_turn))
+            timing_label = f"⚠️ SLOW" if earliest_turn >= 5 else "✅ ON CURVE"
+
             lines += [
                 f"**Chain {i} — [{hub_name} engine]{oracle_label}:**",
                 chain + " → [outcome]",
+                f"Earliest firing turn: T{earliest_turn} (assuming no ramp) — {timing_label}",
+            ]
+            if earliest_turn >= 5:
+                lines.append(f"⚠️ SLOW CHAIN: This chain requires T5+ to fully assemble. Verify against expected meta kill turn.")
+            lines += [
                 "Redundancy: *(fill in — which pieces have substitutes?)*",
                 "Minimum pieces to function: N of M",
                 "",
@@ -701,6 +755,14 @@ def build_report(
             "Minimum pieces to function: N of M",
             "",
         ]
+
+    # Check 6: No more than 1 primary chain requires T5+ without ramp support
+    slow_chains = [c for c in chain_timing_data if c[1] >= 5]
+    if len(slow_chains) > 1:
+        threshold_msgs.append(
+            f"[WARN] T6: {len(slow_chains)} synergy chains require T5+ to assemble. "
+            f"Consider adding ramp or lower-CMC redundancy."
+        )
 
     lines += [
         "---",

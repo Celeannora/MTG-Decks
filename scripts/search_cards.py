@@ -58,6 +58,11 @@ TAG SYSTEM:
     menace          — menace keyword
     scry            — "scry"
     surveil         — "surveil"
+    sacrifice       — sac outlets and death-trigger payoffs
+    energy          — energy producers and spenders
+    storm_count     — spell-count producers and payoffs (Storm keyword)
+    enchantress     — enchantment-cast draw/trigger payoffs (Constellation)
+    blink           — flicker/exile-and-return effects
 
 Exit codes:
     0  Results found and printed
@@ -67,6 +72,7 @@ Exit codes:
 
 import argparse
 import csv
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
@@ -124,6 +130,7 @@ def compute_tags(card: Dict) -> Set[str]:
     tags: Set[str] = set()
     oracle = card.get("oracle_text", "").lower()
     kw_raw = card.get("keywords", "").lower()
+    keywords_str = card.get("keywords", "").lower()
 
     for tag, patterns in TAG_RULES:
         if any(p in oracle for p in patterns):
@@ -132,6 +139,42 @@ def compute_tags(card: Dict) -> Set[str]:
     for kw, tag in KEYWORD_TAG_MAP.items():
         if kw in kw_raw:
             tags.add(tag)
+
+    # sacrifice tag — sac outlets and death-trigger payoffs
+    if re.search(r"sacrifice (a|another|any number of) (creature|permanent|artifact|land)", oracle, re.I):
+        tags.add("sacrifice")
+    if re.search(r"whenever (a|another) creature (you control )?dies", oracle, re.I):
+        tags.add("sacrifice")
+    if re.search(r"whenever you sacrifice", oracle, re.I):
+        tags.add("sacrifice")
+
+    # energy tag — producers and spenders
+    if re.search(r"you get \{E", oracle, re.I) or re.search(r"gets? \{E", oracle, re.I):
+        tags.add("energy")
+    if re.search(r"pay \{E", oracle, re.I):
+        tags.add("energy")
+
+    # storm_count tag — spell-count producers and payoffs
+    if re.search(r"\bstorm\b", keywords_str, re.I):  # has Storm keyword
+        tags.add("storm_count")
+    if re.search(r"for each (instant or sorcery|other spell|spell) (cast this turn|you('ve| have) cast)", oracle, re.I):
+        tags.add("storm_count")
+    if re.search(r"copy (this spell|it) for each", oracle, re.I):
+        tags.add("storm_count")
+
+    # enchantress tag — enchantment draw/trigger payoffs
+    if re.search(r"whenever you cast an enchantment", oracle, re.I):
+        tags.add("enchantress")
+    if re.search(r"whenever an enchantment enters", oracle, re.I):
+        tags.add("enchantress")
+    if re.search(r"\bconstellation\b", oracle, re.I):
+        tags.add("enchantress")
+
+    # blink tag — flicker/exile-and-return effects
+    if re.search(r"exile (target|another|it).*then return.*to.*battlefield", oracle, re.I):
+        tags.add("blink")
+    if re.search(r"\bflicker\b", oracle, re.I):
+        tags.add("blink")
 
     return tags
 
@@ -280,6 +323,7 @@ def print_table(
     results: List[Tuple[Dict, Set[str]]],
     show_tags: bool,
     limit: int,
+    show_power: bool = False,
 ) -> None:
     """Print results as a readable table."""
     total = len(results)
@@ -303,7 +347,11 @@ def print_table(
         collector = card.get("collector_number", "")
         source = card.get("_source_file", "")
 
-        print(f"  {name}")
+        power_suffix = ""
+        if show_power:
+            ps = compute_power_score(card)
+            power_suffix = f"  [Score: {ps}]"
+        print(f"  {name}{power_suffix}")
         print(f"    Mana: {mana}  CMC: {cmc}  [{rarity}] ({set_code}) #{collector}")
         print(f"    Type: {type_line}")
 
@@ -362,6 +410,67 @@ def print_names(results: List[Tuple[Dict, Set[str]]], limit: int) -> None:
         print(f"{card.get('name', '')}  [{src}]")
 
 
+def compute_power_score(card: dict) -> float:
+    """
+    Heuristic power score for ranking candidates. Higher = more impactful.
+    Not a perfect measure — use alongside synergy analysis.
+
+    Components:
+    - stat_efficiency: (power + toughness) / CMC  (creatures only)
+    - keyword_value: bonuses for evasion, protection, fast keywords
+    - tag_value: bonuses for impactful strategic tags
+    - rarity_weight: mythic/rare lean toward competitive staples
+    - cmc_penalty: heavy penalty for CMC > 5 (too slow unless payoff is massive)
+    """
+    cmc = float(card.get("cmc") or 0)
+    power_str = card.get("power") or "0"
+    tough_str = card.get("toughness") or "0"
+
+    try:
+        p = float(power_str) if power_str not in ("*", "X", "?", "∞") else 1.0
+        t = float(tough_str) if tough_str not in ("*", "X", "?", "∞") else 1.0
+    except (ValueError, TypeError):
+        p = t = 0.0
+
+    # Stat efficiency (only meaningful for creatures)
+    type_line = (card.get("type_line") or "").lower()
+    if "creature" in type_line and cmc > 0:
+        stat_score = (p + t) / cmc
+    else:
+        stat_score = 0.0
+
+    # Keyword bonuses
+    keywords_lower = (card.get("keywords") or "").lower()
+    kw_vals = {
+        "flying": 0.4, "lifelink": 0.4, "deathtouch": 0.5,
+        "first strike": 0.3, "double strike": 0.7, "trample": 0.3,
+        "haste": 0.45, "indestructible": 0.8, "ward": 0.4,
+        "vigilance": 0.25, "flash": 0.45, "menace": 0.25,
+        "hexproof": 0.5, "reach": 0.1, "protection": 0.4,
+    }
+    kw_score = sum(v for k, v in kw_vals.items() if k in keywords_lower)
+
+    # Tag bonuses (high-impact strategic roles)
+    tags_str = (card.get("tags") or "").lower()
+    tag_vals = {
+        "etb": 0.35, "draw": 0.5, "removal": 0.5, "wipe": 0.6,
+        "tutor": 0.6, "counter": 0.5, "ramp": 0.45, "reanimation": 0.4,
+        "pump": 0.2, "lifegain": 0.2, "protection": 0.3,
+    }
+    tag_score = sum(v for k, v in tag_vals.items() if k in tags_str)
+
+    # Rarity proxy for competitive relevance
+    rarity_bonus = {"mythic": 0.5, "rare": 0.2, "uncommon": 0.1, "common": 0.0}.get(
+        (card.get("rarity") or "").lower(), 0.0
+    )
+
+    # CMC penalty: starts at cmc=5, grows steeply
+    cmc_penalty = max(0.0, (cmc - 4) * 0.3)
+
+    score = stat_score + kw_score + tag_score + rarity_bonus - cmc_penalty
+    return round(max(score, 0.0), 2)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Search the MTG Standard card database with strategy-aware filtering.",
@@ -385,6 +494,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--show-tags", action="store_true", help="Show computed tags per card")
     p.add_argument("--format", choices=["table", "csv", "names"], default="table",
                    help="Output format (default: table)")
+    p.add_argument("--legal", metavar="FORMAT",
+                   help="Filter to cards legal in format: standard, pioneer, modern, legacy, vintage, all")
+    p.add_argument("--ranked", action="store_true",
+                   help="Sort output by power score (highest first)")
+    p.add_argument("--min-power", type=float, default=None, metavar="SCORE",
+                   help="Exclude cards with power score below this threshold")
     return p
 
 
@@ -431,6 +546,23 @@ def main() -> None:
         print(f"No cards loaded. Check that {RepoPaths.CARDS_DIR_NAME}/ exists and is populated.", file=sys.stderr)
         sys.exit(2)
 
+    # --legal filter: pre-filter cards by format legality
+    args_legal = getattr(args, "legal", None)
+    if args_legal and args_legal != "all":
+        has_legal_col = any("legal_formats" in card for card in all_cards[:10])
+        if not has_legal_col:
+            print("Note: --legal filter skipped — database lacks legal_formats column.", file=sys.stderr)
+            print("Run scripts/fetch_and_categorize_cards.py to rebuild with legality data.", file=sys.stderr)
+        else:
+            filtered = []
+            for card in all_cards:
+                legal_formats = card.get("legal_formats", "")
+                if not legal_formats:
+                    continue
+                if args_legal in legal_formats.split(","):
+                    filtered.append(card)
+            all_cards = filtered
+
     results = filter_cards(
         all_cards,
         color_filter=args.colors,
@@ -449,12 +581,25 @@ def main() -> None:
         print("\nNo cards matched the given filters.\n", file=sys.stderr)
         sys.exit(1)
 
+    # --min-power filter
+    if args.min_power is not None:
+        results = [(card, tags) for card, tags in results
+                    if compute_power_score(card) >= args.min_power]
+        if not results:
+            print("\nNo cards matched the given power threshold.\n", file=sys.stderr)
+            sys.exit(1)
+
+    # --ranked: sort by power score descending
+    if args.ranked:
+        results.sort(key=lambda ct: compute_power_score(ct[0]), reverse=True)
+
     if args.format == "csv":
         print_csv(results, args.limit)
     elif args.format == "names":
         print_names(results, args.limit)
     else:
-        print_table(results, show_tags=args.show_tags, limit=args.limit)
+        print_table(results, show_tags=args.show_tags, limit=args.limit,
+                    show_power=args.ranked)
 
     sys.exit(0)
 
@@ -559,6 +704,69 @@ _DIRECTIONAL: Dict[str, Dict[str, List[str]]] = {
             r"whenever a (creature |card )?card .{0,20}graveyard",
         ],
     },
+    "sacrifice": {
+        "source": [
+            r"sacrifice (a|another|any number of) (creature|permanent|artifact|land)",
+            r"\{[^}]+\}(?:,)? sacrifice (a|another)",
+            r": sacrifice",
+        ],
+        "payoff": [
+            r"whenever (a|another) creature (you control )?dies",
+            r"whenever you sacrifice (a|another)",
+            r"each creature that dies",
+            r"whenever a creature dies",
+        ],
+    },
+    "energy": {
+        "source": [
+            r"you get \{E",
+            r"gets? \{E",
+            r"opponent gets? \{E",
+        ],
+        "payoff": [
+            r"pay \{E+\}",
+            r"you have (\d+|at least) or more \{E",
+            r"remove.*\{E.*from",
+        ],
+    },
+    "storm_count": {
+        "source": [
+            r"copy (this spell|it) for each (other )?spell",
+            r"\bstorm\b",
+            r"cast (another|a second|an additional)",
+            r"you may cast (it|a copy) without paying",
+        ],
+        "payoff": [
+            r"for each (instant or sorcery|other spell|spell) (you've )?cast this turn",
+            r"number of (instants?|sorceries|spells).*cast this turn",
+            r"spells? you cast this turn",
+        ],
+    },
+    "enchantress": {
+        "source": [
+            r"\btype\b.*enchantment",  # is an enchantment (type line check done separately)
+            r"create.*enchantment token",
+            r"enchant (creature|permanent|player|land)",
+        ],
+        "payoff": [
+            r"whenever you cast an enchantment",
+            r"whenever an enchantment enters",
+            r"\bconstellation\b",
+            r"for each enchantment you control",
+        ],
+    },
+    "blink": {
+        "source": [
+            r"exile (target|another|it).{0,50}(then return|return it).{0,50}battlefield",
+            r"\bflicker\b",
+            r"phase out",
+        ],
+        "payoff": [
+            r"whenever .{0,40} enters the battlefield",
+            r"when .{0,40} enters the battlefield",
+            r"\betb\b",
+        ],
+    },
 }
 
 _BASIC_TYPES = {
@@ -619,6 +827,10 @@ def compute_synergy_profile(card: Dict) -> Dict:
     keywords = {k.strip().lower() for k in kw_raw.split(";") if k.strip()}
     if "lifelink" in keywords:
         source_tags.add("lifegain")
+
+    # Enchantments themselves register as enchantress producers
+    if "enchantment" in card.get("type_line", "").lower():
+        source_tags.add("enchantress")
 
     subtypes = _parse_subtypes(type_line)
 

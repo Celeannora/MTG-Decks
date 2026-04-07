@@ -34,7 +34,7 @@ CSV_FIELDNAMES = [
     'name', 'mana_cost', 'cmc', 'type_line', 'oracle_text',
     'colors', 'color_identity', 'rarity', 'set', 'set_name',
     'collector_number', 'power', 'toughness', 'loyalty',
-    'produced_mana', 'keywords', 'tags',
+    'produced_mana', 'keywords', 'tags', 'legal_formats',
 ]
 
 # ---------------------------------------------------------------------------
@@ -172,6 +172,10 @@ class UniversalCardFetcher:
             'loyalty': card.get('loyalty', ''),
             'produced_mana': ','.join(card.get('produced_mana', [])),
             'tags': _compute_tags(oracle, keywords),
+            'legal_formats': ",".join(
+                fmt for fmt, status in card.get("legalities", {}).items()
+                if status == "legal"
+            ),
         }
 
     def get_primary_type(self, type_line: str) -> str:
