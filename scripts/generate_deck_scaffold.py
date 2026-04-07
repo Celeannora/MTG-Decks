@@ -147,7 +147,7 @@ ARCHETYPE_QUERIES: Dict[str, List[Dict[str, str]]] = {
         ["--oracle", "target player mills", "--format", "csv", "--limit", "9999"],
         ["--oracle", "each opponent mills", "--format", "csv", "--limit", "9999"],
         ["--oracle", "mills that many", "--format", "csv", "--limit", "9999"],
-        ["--tags", "mill", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "mill", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "self_mill": [
         # Spells/effects that self-mill (fill your own graveyard)
@@ -155,16 +155,16 @@ ARCHETYPE_QUERIES: Dict[str, List[Dict[str, str]]] = {
         ["--oracle", "mill yourself", "--format", "csv", "--limit", "9999"],
         ["--oracle", "discard", "--tags", "self_mill", "--format", "csv", "--limit", "9999"],
         ["--oracle", "put.*cards.*graveyard", "--format", "csv", "--limit", "9999"],
-        ["--tags", "self_mill", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "self_mill", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "reanimation": [
         # Return creatures from graveyard to play
         ["--oracle", "return target creature card from your graveyard", "--format", "csv", "--limit", "9999"],
         ["--oracle", "return.*from.*graveyard.*battlefield", "--format", "csv", "--limit", "9999"],
         ["--oracle", "return.*graveyard.*to.*play", "--format", "csv", "--limit", "9999"],
-        ["--tags", "reanimation", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "reanimation", "--format", "csv", "--limit", "9999"],  # color-agnostic
         # Sac outlets + discard-as-cost enablers
-        ["--oracle", "sacrifice a creature", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--oracle", "sacrifice a creature", "--format", "csv", "--limit", "9999"],  # color-agnostic
         ["--oracle", "discard a card", "--tags", "reanimation", "--format", "csv", "--limit", "9999"],
     ],
     "lifegain": [
@@ -209,111 +209,111 @@ ARCHETYPE_QUERIES: Dict[str, List[Dict[str, str]]] = {
         ["--oracle", "whenever you sacrifice a creature", "--format", "csv", "--limit", "9999"],
         ["--oracle", "sacrifice a creature:", "--format", "csv", "--limit", "9999"],
         ["--oracle", "each creature that dies", "--format", "csv", "--limit", "9999"],
-        ["--tags", "aristocrats", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "aristocrats", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "tokens": [
         ["--oracle", "create.*token", "--format", "csv", "--limit", "9999"],
         ["--oracle", "creatures you control get", "--format", "csv", "--limit", "9999"],
         ["--oracle", "for each token you control", "--format", "csv", "--limit", "9999"],
         ["--keywords", "Convoke", "--format", "csv", "--limit", "9999"],
-        ["--tags", "token", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "token", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "blink": [
         ["--oracle", "exile.*return.*to.*battlefield", "--format", "csv", "--limit", "9999"],
         ["--oracle", "whenever.*enters the battlefield", "--format", "csv", "--limit", "9999"],
         ["--oracle", "flicker", "--format", "csv", "--limit", "9999"],
         ["--keywords", "Blitz", "--format", "csv", "--limit", "9999"],
-        ["--tags", "blink", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "blink", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "stax": [
         ["--oracle", "players can't", "--format", "csv", "--limit", "9999"],
         ["--oracle", "costs.*more to cast", "--format", "csv", "--limit", "9999"],
         ["--oracle", "whenever a player casts a spell", "--format", "csv", "--limit", "9999"],
         ["--oracle", "don't untap", "--format", "csv", "--limit", "9999"],
-        ["--tags", "stax", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "stax", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "storm": [
         ["--keywords", "Storm", "--format", "csv", "--limit", "9999"],
         ["--oracle", "for each spell cast this turn", "--format", "csv", "--limit", "9999"],
         ["--oracle", "add.*to your mana pool", "--oracle", "this turn", "--format", "csv", "--limit", "9999"],
         ["--oracle", "copy.*for each other spell", "--format", "csv", "--limit", "9999"],
-        ["--tags", "storm", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "storm", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "prowess": [
         ["--keywords", "Prowess", "--format", "csv", "--limit", "9999"],
         ["--oracle", "whenever you cast a noncreature spell", "--format", "csv", "--limit", "9999"],
         ["--oracle", "whenever you cast an instant or sorcery", "--format", "csv", "--limit", "9999"],
         ["--oracle", "magecraft", "--format", "csv", "--limit", "9999"],
-        ["--tags", "prowess", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "prowess", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "enchantress": [
         ["--oracle", "whenever you cast an enchantment", "--format", "csv", "--limit", "9999"],
         ["--oracle", "whenever an enchantment enters the battlefield", "--format", "csv", "--limit", "9999"],
         ["--oracle", "constellation", "--format", "csv", "--limit", "9999"],
         ["--oracle", "enchant creature", "--oracle", "draw a card", "--format", "csv", "--limit", "9999"],
-        ["--tags", "enchantress", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "enchantress", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "artifacts": [
         ["--oracle", "whenever an artifact enters the battlefield", "--format", "csv", "--limit", "9999"],
         ["--oracle", "metalcraft", "--format", "csv", "--limit", "9999"],
         ["--keywords", "Affinity", "--format", "csv", "--limit", "9999"],
         ["--keywords", "Improvise", "--format", "csv", "--limit", "9999"],
-        ["--tags", "artifacts", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "artifacts", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "equipment": [
         ["--type", "equipment", "--format", "csv", "--limit", "9999"],
         ["--oracle", "whenever equipped creature", "--format", "csv", "--limit", "9999"],
         ["--oracle", "attach.*to.*creature you control", "--format", "csv", "--limit", "9999"],
         ["--oracle", "living weapon", "--format", "csv", "--limit", "9999"],
-        ["--tags", "equipment", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "equipment", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "voltron": [
         ["--oracle", "put.*aura.*onto the battlefield attached", "--format", "csv", "--limit", "9999"],
         ["--oracle", "double strike", "--oracle", "trample", "--format", "csv", "--limit", "9999"],
         ["--oracle", "hexproof", "--oracle", "indestructible", "--format", "csv", "--limit", "9999"],
         ["--oracle", "21 or more combat damage to a player", "--format", "csv", "--limit", "9999"],
-        ["--tags", "voltron", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "voltron", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "landfall": [
         ["--oracle", "landfall", "--format", "csv", "--limit", "9999"],
         ["--oracle", "whenever a land enters the battlefield under your control", "--format", "csv", "--limit", "9999"],
         ["--oracle", "you may play an additional land", "--format", "csv", "--limit", "9999"],
         ["--oracle", "search your library for.*land", "--format", "csv", "--limit", "9999"],
-        ["--tags", "landfall", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "landfall", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "lands": [
         ["--oracle", "return.*land.*from your graveyard", "--format", "csv", "--limit", "9999"],
         ["--oracle", "you may play lands from your graveyard", "--format", "csv", "--limit", "9999"],
         ["--oracle", "dredge", "--format", "csv", "--limit", "9999"],
         ["--oracle", "sacrifice.*land", "--format", "csv", "--limit", "9999"],
-        ["--tags", "lands", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "lands", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "infect": [
         ["--keywords", "Infect", "--format", "csv", "--limit", "9999"],
         ["--oracle", "poison counter", "--format", "csv", "--limit", "9999"],
         ["--oracle", "wither", "--format", "csv", "--limit", "9999"],
-        ["--oracle", "gets.*until end of turn", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
-        ["--tags", "infect", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--oracle", "gets.*until end of turn", "--format", "csv", "--limit", "9999"],  # color-agnostic
+        ["--tags", "infect", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "proliferate": [
         ["--keywords", "Proliferate", "--format", "csv", "--limit", "9999"],
         ["--oracle", "proliferate", "--format", "csv", "--limit", "9999"],
         ["--oracle", "double the number of.*counters", "--format", "csv", "--limit", "9999"],
         ["--oracle", "put.*counter.*on each", "--format", "csv", "--limit", "9999"],
-        ["--tags", "proliferate", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "proliferate", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "energy": [
         ["--oracle", "energy counter", "--format", "csv", "--limit", "9999"],
         ["--oracle", "you get", "--oracle", "energy", "--format", "csv", "--limit", "9999"],
         ["--oracle", "pay.*energy", "--format", "csv", "--limit", "9999"],
-        ["--tags", "energy", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "energy", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "graveyard": [
         ["--oracle", "cards in your graveyard", "--format", "csv", "--limit", "9999"],
         ["--keywords", "Delve", "--format", "csv", "--limit", "9999"],
         ["--keywords", "Threshold", "--format", "csv", "--limit", "9999"],
         ["--oracle", "if seven or more cards are in your graveyard", "--format", "csv", "--limit", "9999"],
-        ["--tags", "graveyard", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "graveyard", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "flashback": [
         ["--keywords", "Flashback", "--format", "csv", "--limit", "9999"],
@@ -327,42 +327,42 @@ ARCHETYPE_QUERIES: Dict[str, List[Dict[str, str]]] = {
         ["--oracle", "whenever you discard a card", "--format", "csv", "--limit", "9999"],
         ["--oracle", "discard.*card.*draw", "--format", "csv", "--limit", "9999"],
         ["--oracle", "you may cast.*from your hand.*exile it", "--format", "csv", "--limit", "9999"],
-        ["--tags", "madness", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "madness", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "superfriends": [
         ["--type", "planeswalker", "--format", "csv", "--limit", "9999"],
         ["--oracle", "whenever a planeswalker you control", "--format", "csv", "--limit", "9999"],
         ["--oracle", "loyalty counter", "--format", "csv", "--limit", "9999"],
         ["--oracle", "you control a planeswalker", "--format", "csv", "--limit", "9999"],
-        ["--tags", "superfriends", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "superfriends", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "extra_turns": [
         ["--oracle", "take an extra turn after this one", "--format", "csv", "--limit", "9999"],
         ["--oracle", "takes an additional turn", "--format", "csv", "--limit", "9999"],
         ["--oracle", "extra turn", "--format", "csv", "--limit", "9999"],
         ["--oracle", "untap all", "--format", "csv", "--limit", "9999"],
-        ["--tags", "extra_turns", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "extra_turns", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "eldrazi": [
         ["--type", "eldrazi", "--format", "csv", "--limit", "9999"],
         ["--keywords", "Annihilator", "--format", "csv", "--limit", "9999"],
         ["--oracle", "colorless mana", "--format", "csv", "--limit", "9999"],
         ["--oracle", "waste", "--type", "land", "--format", "csv", "--limit", "9999"],
-        ["--tags", "eldrazi", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "eldrazi", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "vehicles": [
         ["--type", "vehicle", "--format", "csv", "--limit", "9999"],
         ["--keywords", "Crew", "--format", "csv", "--limit", "9999"],
         ["--oracle", "crew", "--oracle", "becomes an artifact creature", "--format", "csv", "--limit", "9999"],
         ["--oracle", "whenever you crew", "--format", "csv", "--limit", "9999"],
-        ["--tags", "vehicles", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "vehicles", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
     "domain": [
         ["--oracle", "domain", "--format", "csv", "--limit", "9999"],
         ["--oracle", "for each basic land type among lands you control", "--format", "csv", "--limit", "9999"],
         ["--oracle", "number of basic land types", "--format", "csv", "--limit", "9999"],
         ["--oracle", "search your library for a basic land", "--format", "csv", "--limit", "9999"],
-        ["--tags", "domain", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--tags", "domain", "--format", "csv", "--limit", "9999"],  # color-agnostic
     ],
 }
 
@@ -377,7 +377,8 @@ def run_query(
 ) -> Tuple[str, str, int]:
     """
     Run a search_cards.py query. Returns (command_string, output, result_count).
-    Adds --colors and --show-tags automatically.
+    color-agnostic: does NOT inject --colors — archetype queries search all colors.
+    Adds --show-tags automatically.
     """
     from mtg_utils import RepoPaths
     paths = RepoPaths(root=repo_root)
@@ -386,7 +387,7 @@ def run_query(
     cmd_parts = [sys.executable, str(script)]
     cmd_parts += shlex.split(base_args)
 
-    cmd_parts += ["--colors", colors]
+    # color-agnostic: no --colors injection; archetypes search across all colors
 
     # Tribe is NOT used as a filter on existing queries — it only adds
     # supplemental per-tribe creature queries to the query plan (see main()).
@@ -406,7 +407,6 @@ def run_query(
             # Rebuild cmd_parts from updated base_args
             cmd_parts = [sys.executable, str(script)]
             cmd_parts += shlex.split(base_args)
-            cmd_parts += ["--colors", colors]
             cmd_parts += ["--show-tags", "--format", "csv", "--limit", "9999"]
         else:
             cmd_parts += ["--tags", extra_tags]
@@ -1151,7 +1151,7 @@ def main() -> None:
         for q in query_plan:
             query_results.append({
                 "label": q["label"],
-                "command": f"python {RepoPaths.SCRIPTS_DIR_NAME}/search_cards.py {q['args']} --colors {args.colors.upper()} --show-tags",
+                "command": f"python {RepoPaths.SCRIPTS_DIR_NAME}/search_cards.py {q['args']} --show-tags",
                 "output": "(run this query and paste results here)",
                 "count": "?",
             })
