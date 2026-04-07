@@ -465,6 +465,8 @@ def run_query(
             cmd_parts,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=str(repo_root),
             timeout=60,
         )
