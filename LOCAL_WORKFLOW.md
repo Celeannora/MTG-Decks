@@ -109,8 +109,8 @@ Work through the gates in order. All work stays in `session.md`:
 | Gate 2 | Define strategy, win condition, target turn. |
 | Gate 2.5 | Score synergies, map chains, check thresholds. |
 | Gate 3 | Select all 60 mainboard cards with source citations. |
-| Gate 4 | Build mana base with pip counts and Karsten validation. |
-| Gate 5 | Select 15 sideboard cards with source citations. |
+| Gate 4 | Build mana base. Run `mana_base_advisor.py --pips W:N,B:N --lands N` to validate source counts. |
+| Gate 5 | Select 15 sideboard cards. Run `sideboard_advisor.py --meta aggro control mill` for suggestions. |
 | Gate 6 | Run validation script and record the result. |
 
 ### Step 4: Run validation
@@ -135,6 +135,68 @@ Copy the completed work from `session.md` into:
 - `decklist.txt` — MTGA-importable list
 - `analysis.md` — Full analysis following the template
 - `sideboard_guide.md` — Matchup boarding plans
+
+---
+
+## Additional Analysis Tools
+
+### Mana Base Validation (Gate 4 support)
+
+```bash
+# Count colored pips in your mainboard first, then run:
+python scripts/mana_base_advisor.py --pips W:12,B:8 --lands 24
+python scripts/mana_base_advisor.py --pips W:12,B:8,R:6 --lands 24 --on-draw
+```
+
+Outputs: minimum sources per color (Karsten-based), Monte Carlo access probabilities by turn,
+recommended land allocation. Run BEFORE finalizing lands.
+
+### Curve Execution Check (after Gate 3)
+
+```bash
+python scripts/goldfish.py Decks/my_deck/decklist.txt
+python scripts/goldfish.py Decks/my_deck/decklist.txt --hands 2000 --turns 5 --focus "Key Card Name"
+```
+
+Simulates opening hands to verify your curve executes. Reports: land drought/flood rate,
+on-curve probability, and how early key cards appear. If on-curve drops below 40%, revisit
+your CMC distribution before gate 4.
+
+### Sideboard Planning (Gate 5 support)
+
+```bash
+python scripts/sideboard_advisor.py Decks/my_deck/decklist.txt --meta aggro control mill
+python scripts/sideboard_advisor.py --colors WB --meta aggro graveyard stax
+```
+
+Queries the local DB for sideboard candidates by matchup. Use the output as a starting
+shortlist — then verify each selection against Gate 1 pool rules (must be in the database).
+
+### Power Score Filtering (Gate 1 pool thinning)
+
+After running queries, use --ranked and --min-power to thin large candidate pools:
+
+```bash
+# Get top 30 lifegain creatures by power score
+python scripts/search_cards.py --type creature --colors WB --tags lifegain --ranked --limit 30
+
+# Exclude weak cards (score < 1.5)
+python scripts/search_cards.py --type creature --colors WB --tags lifegain --min-power 1.5
+```
+
+This cuts 200-card pools to the 30-50 strongest candidates before synergy analysis.
+
+### Format Legality Filtering
+
+```bash
+# Standard-legal only (requires rebuilt database)
+python scripts/search_cards.py --type creature --colors WB --tags lifegain --legal standard
+
+# Rebuild database with legality data:
+python scripts/fetch_and_categorize_cards.py
+```
+
+Note: `--legal` requires the database to be rebuilt after updating `fetch_and_categorize_cards.py`.
 
 ---
 

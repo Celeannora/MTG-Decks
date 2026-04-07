@@ -62,7 +62,14 @@ python scripts/search_cards.py --type <type> [filters...]
 `lifegain` · `mill` · `draw` · `removal` · `counter` · `ramp` · `token` · `bounce` ·
 `discard` · `tutor` · `wipe` · `protection` · `pump` · `reanimation` · `etb` · `tribal` ·
 `scry` · `surveil` · `flash` · `haste` · `trample` · `flying` · `deathtouch` · `vigilance` ·
-`reach` · `menace`
+`reach` · `menace` · `sacrifice` · `energy` · `storm_count` · `enchantress` · `blink`
+
+**Power scoring flags (new):**
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--ranked` | Sort results by power score (highest first) | _(flag)_ |
+| `--min-power` | Exclude cards with power score below threshold | `1.5` |
+| `--legal` | Filter by format legality | `standard`, `pioneer`, `modern` |
 
 **Example queries:**
 ```bash
@@ -108,6 +115,65 @@ python scripts/validate_decklist.py --db sqlite Decks/my_deck/decklist.txt
 | 2 | Decklist file not found |
 | 3 | Deck count violation (wrong 60/15/4-copy counts) |
 
+### `mana_base_advisor.py` — Color source calculator
+
+```bash
+python scripts/mana_base_advisor.py --pips W:12,B:8,R:6 --lands 24
+```
+
+Computes minimum sources needed per color for 90% reliability, Monte Carlo
+color access probabilities by turn, and recommended land allocation.
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--pips` | Color pip counts across all spells | `W:12,B:8,R:6` |
+| `--lands` | Total land count (default: 24) | `22` |
+| `--sims` | Simulation count (default: 300000) | `500000` |
+| `--on-draw` | Also show on-draw probabilities | _(flag)_ |
+
+**Use at Gate 4.** Run after counting colored pips, before finalizing land counts.
+
+---
+
+### `goldfish.py` — Opening hand simulator
+
+```bash
+python scripts/goldfish.py Decks/my_deck/decklist.txt
+python scripts/goldfish.py Decks/my_deck/decklist.txt --hands 2000 --turns 5 --focus "Sheoldred"
+```
+
+Simulates N random opening hands and models greedy curve execution.
+Reports land distribution, mulligan rate, on-curve probability, and focus card access.
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--hands` | Simulations to run (default: 1000) | `2000` |
+| `--turns` | Turns to model (default: 5) | `6` |
+| `--focus` | Card names to track appearance for | `"Sheoldred" "Hope"` |
+
+**Use after Gate 3** to verify the curve executes before committing to the list.
+
+---
+
+### `sideboard_advisor.py` — Sideboard suggestions
+
+```bash
+python scripts/sideboard_advisor.py Decks/my_deck/decklist.txt --meta aggro control mill
+python scripts/sideboard_advisor.py --colors WB --meta aggro graveyard
+```
+
+Queries the local DB for sideboard candidates that answer specified meta archetypes.
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--meta` | Meta archetypes to prepare for | `aggro control reanimation` |
+| `--colors` | Color identity filter | `WB`, `WUR` |
+| `--limit` | Suggestions per matchup (default: 5) | `8` |
+
+**Use at Gate 5.** Run before hand-selecting 15 sideboard cards.
+
+---
+
 ### `index_decks.py` — Deck registry
 
 ```bash
@@ -138,6 +204,29 @@ to cover all card types you need. Do not skip any type you plan to use.
 | Mill | `instant,sorcery` (mill), `creature`, `enchantment`, `land` |
 | Lifegain | `creature` (lifegain), `instant,sorcery` (lifegain), `enchantment`, `land` |
 | Tribal | `creature` (tribe), `instant,sorcery,enchantment` (support), `land` |
+| Aristocrats | `creature` (sac outlets, death triggers), `enchantment` (sac payoffs), `instant,sorcery` (draw on death), `land` |
+| Tokens | `creature,enchantment` (token generators), `instant,sorcery` (token spells), `enchantment` (anthems), `land` |
+| Blink | `creature` (ETB value), `instant,enchantment` (blink effects), `land` |
+| Stax | `artifact,enchantment` (tax pieces), `creature` (hatebears), `land` |
+| Storm | `instant,sorcery` (rituals, cantrips, storm payoffs), `artifact` (mana rocks), `land` |
+| Prowess | `creature` (prowess/magecraft), `instant,sorcery` (cheap spells), `land` |
+| Enchantress | `enchantment` (all types), `creature` (enchantress payoffs), `land` |
+| Artifacts | `artifact` (all types), `creature` (artifact synergy), `enchantment` (metalcraft payoffs), `land` |
+| Equipment | `artifact` (equipment type), `creature` (equipment payoffs), `land` |
+| Voltron | `artifact` (equipment/aura), `enchantment` (auras), `creature` (evasive threats), `land` |
+| Landfall | `creature,enchantment` (landfall payoffs), `land` (fetches, extra land drops) |
+| Lands | `land` (all), `creature` (dredge, land-based creatures), `sorcery` (land recursion) |
+| Infect | `creature` (infect), `instant,sorcery` (pump spells), `land` |
+| Proliferate | `instant,sorcery` (proliferate), `creature` (proliferate payoffs), `planeswalker`, `land` |
+| Energy | `creature,artifact,enchantment` (energy producers and spenders), `land` |
+| Graveyard | `creature` (delve, threshold), `instant,sorcery` (GY spells), `land` |
+| Flashback | `instant,sorcery` (flashback/escape/jump-start), `creature` (dredge), `land` |
+| Madness | `instant,sorcery,creature` (madness keyword), `artifact,enchantment` (discard outlets), `land` |
+| Superfriends | `planeswalker` (all), `instant,sorcery` (proliferate, protection), `enchantment`, `land` |
+| Extra Turns | `instant,sorcery` (extra turn spells), `creature` (untap effects), `land` |
+| Eldrazi | `creature` (Eldrazi type), `land` (colorless producers, Wastes) |
+| Vehicles | `artifact` (vehicle type), `creature` (crew-size 2-4), `land` |
+| Domain | `land` (all basic types), `instant,sorcery,creature` (domain payoffs) |
 
 **Step 2: Run `search_cards.py` for each needed type**
 
@@ -270,6 +359,8 @@ Before proceeding to Gate 3, the candidate list must satisfy all of the followin
 
 5. **Every REDUNDANT pair is acknowledged** — If two cards are flagged REDUNDANT, justify why both deserve slots (e.g., "4 copies of the effect is needed for consistency" or "one is better in early game, the other in late game"). If no justification exists, cut one.
 
+6. **Chain timing** — Primary synergy chains fire ≤T4 OR ramp present to accelerate.
+
 **If any threshold is not met:**
 - Revisit the candidate pool from Gate 1
 - Run additional `search_cards.py` queries if the pool lacks high-synergy options
@@ -307,6 +398,7 @@ Each chain must meet two requirements:
 - [ ] No card with Dependency ≥ 3
 - [ ] All REDUNDANT pairs justified
 - [ ] 2–3 synergy chains mapped with redundancy and degradation noted
+- [ ] No primary synergy chain requires T5+ to fire without ramp support documented
 - [ ] All analysis based on Gate 1 query results (oracle text, tags, keywords) — not memory
 
 **If any item is unchecked, do not proceed to Gate 3.**
