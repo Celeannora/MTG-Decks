@@ -39,6 +39,12 @@ from mtg_utils import RepoPaths
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 ARCHETYPES = sorted(ARCHETYPE_QUERIES.keys())
+ARCHETYPE_LABELS = {
+    "opp_mill": "Opp Mill",
+    "self_mill": "Self Mill",
+    "reanimation": "Reanimation",
+    # all other keys use title-cased key name as fallback
+}
 COLORS_MAP = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"}
 COLOR_ORDER = "WUBRG"
 APP_TITLE = "MTG Deck Scaffold Generator"
@@ -241,7 +247,8 @@ class ScaffoldApp(ctk.CTk):
         ctk.CTkLabel(
             frame,
             text="Scores pairwise tag-based interactions for all cards in a session.md or decklist.txt. "
-                 "Checks all 5 Gate 2.5 thresholds and generates a pre-filled report.",
+                 "Checks all 5 Gate 2.5 thresholds and generates a pre-filled report. "
+                 "Auto mode detects pool vs deck size automatically; use pool for >40 cards, deck for ≤40.",
             font=ctk.CTkFont(size=11),
             text_color=TEXT_MUTED,
             wraplength=700,
@@ -295,6 +302,29 @@ class ScaffoldApp(ctk.CTk):
         )
         self.syn_threshold_entry.insert(0, "3.0")
         self.syn_threshold_entry.pack(side="left")
+
+        # Analysis mode selector
+        mode_row = ctk.CTkFrame(frame, fg_color="transparent")
+        mode_row.pack(anchor="w", padx=24, pady=(0, 16))
+        ctk.CTkLabel(mode_row, text="Analysis Mode:",
+                     font=ctk.CTkFont(size=12), text_color=TEXT).pack(side="left", padx=(0, 8))
+        self._synergy_mode_var = ctk.StringVar(value="auto")
+        ctk.CTkOptionMenu(
+            mode_row,
+            values=["auto", "pool", "deck"],
+            variable=self._synergy_mode_var,
+            width=110,
+            height=32,
+            fg_color=SURFACE,
+            button_color=ACCENT,
+            button_hover_color=ACCENT_HOVER,
+            dropdown_fg_color=SURFACE,
+            dropdown_hover_color=SURFACE_ALT,
+            text_color=TEXT,
+            dropdown_text_color=TEXT,
+            font=ctk.CTkFont(size=12),
+            corner_radius=6,
+        ).pack(side="left")
 
         ctk.CTkButton(
             frame, text="Analyze Synergy", height=44, corner_radius=8,
@@ -363,10 +393,42 @@ class ScaffoldApp(ctk.CTk):
         frame = ctk.CTkFrame(self.scroll, fg_color="transparent")
         frame.pack(fill="x", padx=24, pady=(0, 4))
         self._arch_buttons = {}
-        for i, arch in enumerate(ARCHETYPES):
+
+        # Custom sort: opp_mill immediately before self_mill, rest alphabetical
+        mill_keys = {"opp_mill", "self_mill"}
+        non_mill = [a for a in ARCHETYPES if a not in mill_keys]
+        ordered = []
+        for a in non_mill:
+            # Insert mill pair right before the first key that sorts after "opp_mill"
+            if not any(m in ordered for m in mill_keys) and a > "opp_mill":
+                ordered.extend(k for k in ["opp_mill", "self_mill"] if k in ARCHETYPES)
+            ordered.append(a)
+        if not any(m in ordered for m in mill_keys):
+            ordered.extend(k for k in ["opp_mill", "self_mill"] if k in ARCHETYPES)
+
+        row = 0
+        col = 0
+        cols_per_row = 5
+        for arch in ordered:
+            # Insert mill group header before opp_mill
+            if arch == "opp_mill":
+                if col != 0:
+                    row += 1
+                    col = 0
+                ctk.CTkLabel(
+                    frame,
+                    text="── Mill ──",
+                    text_color=ACCENT,
+                    font=ctk.CTkFont(size=11),
+                ).grid(row=row, column=0, columnspan=cols_per_row, sticky="w",
+                       padx=(0, 8), pady=(4, 2), in_=frame)
+                row += 1
+                col = 0
+
+            label = ARCHETYPE_LABELS.get(arch, arch.replace("_", " ").title())
             btn = ctk.CTkButton(
                 frame,
-                text=arch.capitalize(),
+                text=label,
                 width=130,
                 height=38,
                 corner_radius=6,
@@ -378,8 +440,12 @@ class ScaffoldApp(ctk.CTk):
                 font=ctk.CTkFont(size=12),
                 command=lambda a=arch: self._toggle_archetype(a),
             )
-            btn.grid(row=i // 5, column=i % 5, padx=(0, 8), pady=(0, 8), in_=frame)
+            btn.grid(row=row, column=col, padx=(0, 8), pady=(0, 8), in_=frame)
             self._arch_buttons[arch] = btn
+            col += 1
+            if col >= cols_per_row:
+                col = 0
+                row += 1
 
     def _toggle_archetype(self, arch: str):
         btn = self._arch_buttons[arch]
@@ -714,6 +780,9 @@ class ScaffoldApp(ctk.CTk):
         threshold = self.syn_threshold_entry.get().strip()
         if threshold and threshold != "3.0":
             cmd += ["--min-synergy", threshold]
+        mode = self._synergy_mode_var.get()
+        if mode and mode != "auto":
+            cmd += ["--mode", mode]
         output_file = self.syn_output_entry.get().strip()
         if output_file:
             cmd += ["--output", output_file]

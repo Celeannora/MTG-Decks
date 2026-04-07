@@ -141,15 +141,31 @@ ARCHETYPE_QUERIES: Dict[str, List[Dict[str, str]]] = {
         {"label": "Protection / counters",         "args": "--type instant --tags counter,protection"},
         {"label": "Lands",                         "args": "--type land"},
     ],
-    "mill": [
-        {"label": "Mill creatures",                "args": "--type creature --tags mill"},
-        {"label": "Mill instants/sorceries",       "args": "--type instant,sorcery --tags mill"},
-        {"label": "Mill enchantments",             "args": "--type enchantment --tags mill"},
-        {"label": "Mill artifacts",                "args": "--type artifact --tags mill"},
-        {"label": "Counterspells",                 "args": "--type instant --tags counter"},
-        {"label": "Removal",                       "args": "--type instant --tags removal"},
-        {"label": "Card draw",                     "args": "--type instant,sorcery --tags draw"},
-        {"label": "Lands",                         "args": "--type land"},
+    "opp_mill": [
+        # Spells/effects that mill the opponent
+        ["--oracle", "opponent mills", "--format", "csv", "--limit", "9999"],
+        ["--oracle", "target player mills", "--format", "csv", "--limit", "9999"],
+        ["--oracle", "each opponent mills", "--format", "csv", "--limit", "9999"],
+        ["--oracle", "mills that many", "--format", "csv", "--limit", "9999"],
+        ["--tags", "mill", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+    ],
+    "self_mill": [
+        # Spells/effects that self-mill (fill your own graveyard)
+        ["--oracle", "put the top", "--oracle", "into your graveyard", "--format", "csv", "--limit", "9999"],
+        ["--oracle", "mill yourself", "--format", "csv", "--limit", "9999"],
+        ["--oracle", "discard", "--tags", "self_mill", "--format", "csv", "--limit", "9999"],
+        ["--oracle", "put.*cards.*graveyard", "--format", "csv", "--limit", "9999"],
+        ["--tags", "self_mill", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+    ],
+    "reanimation": [
+        # Return creatures from graveyard to play
+        ["--oracle", "return target creature card from your graveyard", "--format", "csv", "--limit", "9999"],
+        ["--oracle", "return.*from.*graveyard.*battlefield", "--format", "csv", "--limit", "9999"],
+        ["--oracle", "return.*graveyard.*to.*play", "--format", "csv", "--limit", "9999"],
+        ["--tags", "reanimation", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        # Sac outlets + discard-as-cost enablers
+        ["--oracle", "sacrifice a creature", "--colors", "{colors}", "--format", "csv", "--limit", "9999"],
+        ["--oracle", "discard a card", "--tags", "reanimation", "--format", "csv", "--limit", "9999"],
     ],
     "lifegain": [
         {"label": "Lifegain creatures",            "args": "--type creature --tags lifegain"},
