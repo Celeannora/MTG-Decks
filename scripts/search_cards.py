@@ -270,9 +270,18 @@ def filter_cards(
         if name_filter and name_filter.lower() not in card.get("name", "").lower():
             continue
 
-        # Oracle text filter
-        if oracle_filter and oracle_filter.lower() not in card.get("oracle_text", "").lower():
-            continue
+        # Oracle text filter (supports regex if pattern contains regex metacharacters)
+        if oracle_filter:
+            oracle_text = card.get("oracle_text", "").lower()
+            pattern = oracle_filter.lower()
+            if any(c in pattern for c in '.*+?[](){}|\\^$'):
+                # Regex mode
+                if not re.search(pattern, oracle_text, re.IGNORECASE):
+                    continue
+            else:
+                # Simple substring mode
+                if pattern not in oracle_text:
+                    continue
 
         # Color filter
         if color_filter and not color_matches(card, color_filter):
