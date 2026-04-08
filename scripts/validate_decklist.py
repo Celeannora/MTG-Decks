@@ -25,9 +25,12 @@ Usage:
     python scripts/validate_decklist.py --strict Decks/my_deck/decklist.txt
     python scripts/validate_decklist.py --show-tags Decks/my_deck/decklist.txt
 
+    # Explicit color-identity enforcement (hard errors for off-color cards)
+    python scripts/validate_decklist.py --deck-colors WB Decks/my_deck/decklist.txt
+
 Exit codes:
     0  Validation passed
-    1  Illegal / unrecognised cards found
+    1  Illegal / unrecognised cards found, or off-color cards (when --deck-colors used)
     2  Input file or database not found
     3  Deck count violation (wrong 60/15/4-copy counts)
 """
@@ -64,6 +67,10 @@ UNLIMITED_COPIES = BASIC_LAND_NAMES | {
 
 # Canonical color letter order for display
 COLOR_ORDER = "WUBRG"
+
+# Basic lands are colorless by color_identity in Scryfall data — exempt them
+# from color-identity checks so Plains/Island/etc. never trigger a violation.
+COLOR_IDENTITY_EXEMPT = BASIC_LAND_NAMES
 
 
 # ---------------------------------------------------------------------------
@@ -146,6 +153,21 @@ def normalize_colors(color_str: str) -> Set[str]:
 def format_color_set(colors: Set[str]) -> str:
     """Format a color set in canonical WUBRG order."""
     return "".join(c for c in COLOR_ORDER if c in colors) or "C"
+
+
+def parse_deck_colors_arg(raw: str) -> Set[str]:
+    """Parse a --deck-colors argument like 'WB' or 'W,B' into a color set."""
+    # Accept both 'WB' and 'W,B' and 'W B' formats
+    cleaned = raw.upper().replace(",", "").replace(" ", "")
+    valid = set(COLOR_ORDER)
+    colors = {c for c in cleaned if c in valid}
+    if not colors and cleaned != "C":
+        raise argparse.ArgumentTypeError(
+            f"Invalid --deck-colors value '{raw}'. "
+            f"Use WUBRG letters, e.g. WB or GU or WUBRG. "
+            f"For colorless use C."
+        )
+    return colors  # empty set = colorless (C)
 
 
 # ---------------------------------------------------------------------------
@@ -314,10 +336,16 @@ class DecklistValidator:
     """Validates a decklist against a pluggable card database backend."""
 
     def __init__(self, backend, *, strict: bool = False,
-                 show_tags: bool = False) -> None:
+                 show_tags: bool = False,
+                 deck_colors: Optional[Set[str]] = None) -> None:
         self.backend = backend
         self.strict = strict
         self.show_tags = show_tags
+        # Explicitly declared color identity for the deck (from --deck-colors).
+        # When set, off-color cards are hard errors (exit 1).
+        # When None, color identity is inferred from the card pool and
+        # anomalies are warnings only.
+        self.deck_colors: Optional[Set[str]] = deck_colors
 
     # -- count checks -------------------------------------------------------
 
@@ -375,38 +403,71 @@ class DecklistValidator:
 
     # -- color identity consistency -----------------------------------------
 
-    @staticmethod
     def _check_color_identity(
+        self,
         mainboard: List[Tuple[int, str]],
         sideboard: List[Tuple[int, str]],
         card_data: Dict[str, Dict],
-    ) -> List[str]:
-        """Detect colors used and warn about any cards outside the deck's identity."""
+    ) -> Tuple[List[str], List[str]]:
+        """Check each card's color identity against the declared (or inferred) deck identity.
+
+        Returns (errors, warnings).
+
+        When self.deck_colors is set (--deck-colors supplied by user):
+          - Any card whose color_identity is not a subset of deck_colors is an ERROR.
+          - Basic lands and colorless cards are exempt.
+
+        When self.deck_colors is None (inferred mode):
+          - The deck's color identity is computed as the union of all cards.
+          - Cards that exceed the union identity indicate a data anomaly and are
+            reported as WARNINGS (this is unusual but can happen with bad CSV data).
+        """
+        errors: List[str] = []
         warnings: List[str] = []
-        # Gather the deck's overall color identity from all cards
-        deck_colors: Set[str] = set()
-        for _, name in mainboard + sideboard:
-            info = card_data.get(name.lower())
-            if info:
-                deck_colors |= normalize_colors(info.get("color_identity", ""))
 
-        if not deck_colors:
-            return warnings
+        # Determine the reference color set
+        if self.deck_colors is not None:
+            reference = self.deck_colors
+            strict_mode = True
+        else:
+            # Infer from union of all cards
+            reference: Set[str] = set()
+            for _, name in mainboard + sideboard:
+                info = card_data.get(name.lower())
+                if info:
+                    reference |= normalize_colors(info.get("color_identity", ""))
+            strict_mode = False
 
-        # Check each card — if its identity isn't a subset of deck identity,
-        # something unusual is happening
-        off_color: List[str] = []
+        if not reference and self.deck_colors is None:
+            # Colorless deck inferred — nothing to check
+            return errors, warnings
+
         for _, name in mainboard + sideboard:
+            # Skip basic lands — they are colorless in Scryfall's color_identity
+            # field and should never trigger a violation
+            if name.lower() in COLOR_IDENTITY_EXEMPT:
+                continue
             info = card_data.get(name.lower())
             if not info:
                 continue
             card_id = normalize_colors(info.get("color_identity", ""))
-            if card_id and not card_id.issubset(deck_colors):
-                off_color.append(name)
+            if not card_id:
+                # Colorless card — always legal in any deck
+                continue
+            if not card_id.issubset(reference):
+                extra = card_id - reference
+                extra_str = format_color_set(extra)
+                msg = (
+                    f"'{name}' has color identity {format_color_set(card_id)} "
+                    f"— adds {extra_str} outside declared "
+                    f"{format_color_set(reference)}."
+                )
+                if strict_mode:
+                    errors.append(msg)
+                else:
+                    warnings.append(f"[data anomaly] {msg}")
 
-        # This shouldn't normally fire (card is subset of whole deck by definition),
-        # but it's a sanity check for any logic errors.
-        return warnings
+        return errors, warnings
 
     # -- tag-based synergy summary ------------------------------------------
 
@@ -440,6 +501,9 @@ class DecklistValidator:
             return 2
 
         print(f"Validating: {decklist_path}")
+        if self.deck_colors is not None:
+            declared_str = format_color_set(self.deck_colors) if self.deck_colors else "C"
+            print(f"Declared color identity: {declared_str}")
         print("=" * 70)
 
         mainboard, sideboard = parse_decklist(decklist_path)
@@ -494,6 +558,11 @@ class DecklistValidator:
         if self.strict:
             land_warnings = self._check_land_count(mainboard, card_data)
 
+        # -- Color identity check -------------------------------------------
+        color_errors, color_warnings = self._check_color_identity(
+            mainboard, sideboard, card_data
+        )
+
         # -- Synergy tags ---------------------------------------------------
         tag_summary: Dict[str, int] = {}
         if self.show_tags:
@@ -530,6 +599,16 @@ class DecklistValidator:
             for w in land_warnings:
                 print(f"  * {w}")
 
+        if color_errors:
+            print("\n  COLOR IDENTITY VIOLATIONS\n")
+            for err in color_errors:
+                print(f"  * {err}")
+
+        if color_warnings:
+            print("\n  COLOR IDENTITY WARNINGS\n")
+            for w in color_warnings:
+                print(f"  * {w}")
+
         if tag_summary:
             print("\n  SYNERGY TAGS (mainboard non-land cards)\n")
             for tag, count in sorted(tag_summary.items(),
@@ -543,6 +622,10 @@ class DecklistValidator:
                 print(f"  * {qty}x {name} ({section})")
             print("\n  These cards are either rotated or not present "
                   "in the database.\n")
+            return 1
+
+        if color_errors:
+            print(f"\n  VALIDATION FAILED — color identity violation(s) above.\n")
             return 1
 
         if count_errors:
@@ -578,6 +661,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "  %(prog)s --verbose Decks/my_deck/decklist.txt\n"
             "  %(prog)s --db sqlite Decks/my_deck/decklist.txt\n"
             "  %(prog)s --strict --show-tags Decks/my_deck/decklist.txt\n"
+            "  %(prog)s --deck-colors WB Decks/my_deck/decklist.txt\n"
         ),
     )
     p.add_argument(
@@ -621,6 +705,17 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="print synergy tag summary for the deck",
     )
+    p.add_argument(
+        "--deck-colors",
+        metavar="COLORS",
+        default=None,
+        help=(
+            "declare the deck's color identity (e.g. WB, GU, WUBRG, C). "
+            "When set, any card outside this identity is a hard error (exit 1). "
+            "Without this flag, colors are inferred from the card pool and "
+            "anomalies are warnings only."
+        ),
+    )
     return p
 
 
@@ -650,10 +745,20 @@ def main() -> None:
     else:
         backend = CSVBackend(repo_root)
 
+    # Parse --deck-colors if provided
+    deck_colors: Optional[Set[str]] = None
+    if args.deck_colors:
+        raw = args.deck_colors.strip().upper()
+        if raw == "C":
+            deck_colors = set()  # explicitly colorless
+        else:
+            deck_colors = parse_deck_colors_arg(raw)
+
     validator = DecklistValidator(
         backend,
         strict=args.strict,
         show_tags=args.show_tags,
+        deck_colors=deck_colors,
     )
     sys.exit(validator.validate(decklist_path, verbose=args.verbose))
 
