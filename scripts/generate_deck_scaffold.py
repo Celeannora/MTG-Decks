@@ -270,7 +270,7 @@ ARCHETYPE_QUERIES: Dict[str, List[Dict[str, str]]] = {
         {"label": "Lands", "args": "--type land"},
     ],
     "equipment": [
-        {"label": "Equipment cards", "args": "--type equipment"},
+        {"label": "Equipment cards", "args": "--type artifact --oracle \"equip\""},
         {"label": "Equipped creature payoffs", "args": "--oracle \"whenever equipped creature\""},
         {"label": "Auto-attach effects", "args": "--oracle \"attach.*to.*creature you control\""},
         {"label": "Living weapon", "args": "--oracle \"living weapon\""},
@@ -365,7 +365,7 @@ ARCHETYPE_QUERIES: Dict[str, List[Dict[str, str]]] = {
         {"label": "Lands", "args": "--type land"},
     ],
     "eldrazi": [
-        {"label": "Eldrazi creatures", "args": "--type eldrazi"},
+        {"label": "Eldrazi creatures", "args": "--type creature --oracle \"eldrazi\""},
         {"label": "Annihilator keyword", "args": "--keywords Annihilator"},
         {"label": "Colorless mana cards", "args": "--oracle \"colorless mana\""},
         {"label": "Waste lands", "args": "--oracle waste --type land"},
@@ -373,7 +373,7 @@ ARCHETYPE_QUERIES: Dict[str, List[Dict[str, str]]] = {
         {"label": "Lands", "args": "--type land"},
     ],
     "vehicles": [
-        {"label": "Vehicle cards", "args": "--type vehicle"},
+        {"label": "Vehicle cards", "args": "--type artifact --keywords Crew"},
         {"label": "Crew keyword", "args": "--keywords Crew"},
         {"label": "Crew + animate", "args": "--oracle crew --oracle \"becomes an artifact creature\""},
         {"label": "Crew payoffs", "args": "--oracle \"whenever you crew\""},
@@ -401,8 +401,12 @@ def run_query(
 ) -> Tuple[str, str, int]:
     """
     Run a search_cards.py query. Returns (command_string, output, result_count).
-    color-agnostic: does NOT inject --colors — archetype queries search all colors.
-    Adds --show-tags automatically.
+
+    Injects --colors <COLORS> for all non-land, non-colorless queries so that
+    candidate pools are limited to cards playable in the deck's color identity.
+    Land queries are deliberately exempt — broad land pools are intentional
+    (dual lands, utility lands, and fetches should appear regardless of color).
+    Colorless decks (colors == 'C') are also exempt.
 
     base_args can be a string (dict-format queries) or a list (list-format queries).
     """
@@ -420,7 +424,24 @@ def run_query(
 
     cmd_parts = [sys.executable, str(script)] + arg_tokens
 
-    # color-agnostic: no --colors injection; archetypes search across all colors
+    # Inject --colors unless:
+    #   (a) colors is empty or colorless ('C') — no color filter applies
+    #   (b) this is a land query — broad land pool is intentional (duals, fetches)
+    #   (c) --colors is already present in the args (avoid double-injection)
+    _normalized_colors = colors.upper().strip() if colors else ""
+    _is_land_only_query = (
+        "--type" in arg_tokens
+        and arg_tokens[arg_tokens.index("--type") + 1].lower() == "land"
+        and "--oracle" not in arg_tokens
+        and "--tags" not in arg_tokens
+    )
+    if (
+        _normalized_colors
+        and _normalized_colors != "C"
+        and not _is_land_only_query
+        and "--colors" not in arg_tokens
+    ):
+        cmd_parts += ["--colors", _normalized_colors]
 
     # Tribe is NOT used as a filter on existing queries — it only adds
     # supplemental per-tribe creature queries to the query plan (see main()).
