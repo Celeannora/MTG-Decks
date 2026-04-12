@@ -28,6 +28,12 @@ Usage:
     # Explicit color-identity enforcement (hard errors for off-color cards)
     python scripts/validate_decklist.py --deck-colors WB Decks/my_deck/decklist.txt
 
+    # Tune land-count sanity thresholds for non-midrange strategies
+    python scripts/validate_decklist.py --strict --min-lands 16 --max-lands 22 Decks/burn/decklist.txt
+
+    # Verify database integrity before validation
+    python scripts/validate_decklist.py --check-db-integrity Decks/my_deck/decklist.txt
+
 Exit codes:
     0  Validation passed
     1  Illegal / unrecognised cards found, or off-color cards (when --deck-colors used)
@@ -46,7 +52,12 @@ from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
-from mtg_utils import RepoPaths, parse_decklist
+from mtg_utils import (
+    CardBackend,
+    RepoPaths,
+    compute_tags,
+    parse_decklist,
+)
 
 CARD_TYPES = [
     'artifact', 'battle', 'creature', 'enchantment', 'instant',
@@ -62,7 +73,7 @@ BASIC_LAND_NAMES = {
 # Cards that may legally exceed the 4-copy rule
 UNLIMITED_COPIES = BASIC_LAND_NAMES | {
     'rat colony', 'relentless rats', 'persistent petitioners',
-    'dragon\'s approach', 'shadowborn apostle', 'slime against humanity',
+    "dragon's approach", 'shadowborn apostle', 'slime against humanity',
 }
 
 # Canonical color letter order for display
@@ -72,76 +83,14 @@ COLOR_ORDER = "WUBRG"
 # from color-identity checks so Plains/Island/etc. never trigger a violation.
 COLOR_IDENTITY_EXEMPT = BASIC_LAND_NAMES
 
+# Default land-count sanity range (overridable via --min-lands / --max-lands)
+_DEFAULT_MIN_LANDS = 20
+_DEFAULT_MAX_LANDS = 28
+
 
 # ---------------------------------------------------------------------------
-# Tag computation (imported logic from search_cards.py)
+# Color helpers
 # ---------------------------------------------------------------------------
-
-TAG_RULES: List[Tuple[str, List[str]]] = [
-    ("lifegain",    ["you gain", "lifelink", "gain life"]),
-    ("mill",        ["mill ", "mills ", "put the top", "from the top",
-                     "into their graveyard from their library"]),
-    ("draw",        ["draw a card", "draw two", "draw three", "draw x",
-                     "draw cards"]),
-    ("removal",     ["exile target", "destroy target",
-                     "deals damage to target", "deals that much damage"]),
-    ("counter",     ["counter target spell", "counter that spell",
-                     "counter target ability"]),
-    ("ramp",        ["add {", "add mana",
-                     "search your library for a basic land",
-                     "search your library for a land"]),
-    ("token",       ["create a ", "create x ", "create two ",
-                     "create three ", "token"]),
-    ("bounce",      ["return target", "return up to", "return each"]),
-    ("discard",     ["discards a card", "discards two",
-                     "each opponent discards", "target player discards"]),
-    ("tutor",       ["search your library for a card",
-                     "search your library for an instant",
-                     "search your library for a sorcery"]),
-    ("wipe",        ["destroy all", "exile all", "deals damage to all",
-                     "deals damage to each"]),
-    ("protection",  ["hexproof", "indestructible", "ward {"]),
-    ("pump",        ["+1/+1 counter", "gets +", "+x/+x"]),
-    ("reanimation", ["return target creature card from your graveyard",
-                     "return up to one target creature card from a graveyard"]),
-    ("etb",         ["when ~ enters", "when it enters",
-                     "enters the battlefield"]),
-    ("tribal",      ["other ", "s you control get", "s you control have"]),
-    ("scry",        ["scry "]),
-    ("surveil",     ["surveil "]),
-]
-
-KEYWORD_TAG_MAP: Dict[str, str] = {
-    "flash":        "flash",
-    "haste":        "haste",
-    "trample":      "trample",
-    "flying":       "flying",
-    "deathtouch":   "deathtouch",
-    "vigilance":    "vigilance",
-    "reach":        "reach",
-    "menace":       "menace",
-    "lifelink":     "lifegain",
-    "first strike": "first_strike",
-    "double strike": "double_strike",
-}
-
-
-def compute_tags(oracle_text: str, keywords: str) -> Set[str]:
-    """Derive strategic tags from oracle_text and keywords strings."""
-    tags: Set[str] = set()
-    oracle = oracle_text.lower()
-    kw_raw = keywords.lower()
-
-    for tag, patterns in TAG_RULES:
-        if any(p in oracle for p in patterns):
-            tags.add(tag)
-
-    for kw, tag in KEYWORD_TAG_MAP.items():
-        if kw in kw_raw:
-            tags.add(tag)
-
-    return tags
-
 
 def normalize_colors(color_str: str) -> Set[str]:
     """Normalize a comma-separated color_identity value to a set of letters."""
@@ -157,7 +106,6 @@ def format_color_set(colors: Set[str]) -> str:
 
 def parse_deck_colors_arg(raw: str) -> Set[str]:
     """Parse a --deck-colors argument like 'WB' or 'W,B' into a color set."""
-    # Accept both 'WB' and 'W,B' and 'W B' formats
     cleaned = raw.upper().replace(",", "").replace(" ", "")
     valid = set(COLOR_ORDER)
     colors = {c for c in cleaned if c in valid}
@@ -167,14 +115,14 @@ def parse_deck_colors_arg(raw: str) -> Set[str]:
             f"Use WUBRG letters, e.g. WB or GU or WUBRG. "
             f"For colorless use C."
         )
-    return colors  # empty set = colorless (C)
+    return colors
 
 
 # ---------------------------------------------------------------------------
-# Database backends
+# Database backends  (all inherit CardBackend ABC defined in mtg_utils)
 # ---------------------------------------------------------------------------
 
-class CSVBackend:
+class CSVBackend(CardBackend):
     """Load card index from card database CSV files (default mode)."""
 
     def __init__(self, repo_root: Path) -> None:
@@ -190,7 +138,6 @@ class CSVBackend:
                 cards_dir,
             )
             sys.exit(2)
-        # Check that it's not empty
         csv_count = sum(1 for _ in cards_dir.rglob("*.csv"))
         if csv_count == 0:
             logging.error(
@@ -201,6 +148,7 @@ class CSVBackend:
             sys.exit(2)
         logging.info("Loading card database from %s ...", cards_dir)
         seen: set = set()
+        self._parse_errors: List[str] = []
         for card_type in CARD_TYPES:
             type_dir = cards_dir / card_type
             if not type_dir.exists():
@@ -228,21 +176,41 @@ class CSVBackend:
                                 }
                 except Exception as exc:
                     logging.warning("Could not read %s: %s", csv_file, exc)
+                    self._parse_errors.append(str(csv_file))
         logging.info("Loaded %d unique card names.", len(self.card_database))
 
     def lookup(self, card_name: str) -> Tuple[bool, Optional[Dict]]:
         entry = self.card_database.get(card_name.lower())
-        if entry:
-            return True, entry
-        return False, None
+        return (True, entry) if entry else (False, None)
 
     def suggest(self, card_name: str, n: int = 3) -> List[str]:
         return difflib.get_close_matches(
             card_name.lower(), self.card_database.keys(), n=n, cutoff=0.75
         )
 
+    def integrity_report(self, cards_dir: Path) -> None:
+        """Print per-type row counts and any files with parse errors."""
+        print("\n  DATABASE INTEGRITY REPORT\n")
+        for card_type in CARD_TYPES:
+            type_dir = cards_dir / card_type
+            if not type_dir.exists():
+                print(f"  {'[MISSING]':<12} {card_type}")
+                continue
+            rows = sum(
+                1 for f in sorted(type_dir.glob("*.csv"))
+                for _ in open(f, encoding="utf-8")
+            ) - sum(1 for _ in sorted(type_dir.glob("*.csv")))  # subtract header rows
+            files = sum(1 for _ in type_dir.glob("*.csv"))
+            print(f"  {card_type:<16} {rows:>6} rows across {files} file(s)")
+        if self._parse_errors:
+            print(f"\n  ⚠ {len(self._parse_errors)} file(s) had parse errors:")
+            for f in self._parse_errors:
+                print(f"      {f}")
+        else:
+            print("\n  No parse errors detected.")
 
-class JSONBackend:
+
+class JSONBackend(CardBackend):
     """Load card index from pre-built local database JSON index."""
 
     def __init__(self, repo_root: Path) -> None:
@@ -265,9 +233,7 @@ class JSONBackend:
 
     def lookup(self, card_name: str) -> Tuple[bool, Optional[Dict]]:
         entry = self.card_database.get(card_name.lower())
-        if entry:
-            return True, entry
-        return False, None
+        return (True, entry) if entry else (False, None)
 
     def suggest(self, card_name: str, n: int = 3) -> List[str]:
         return difflib.get_close_matches(
@@ -275,7 +241,7 @@ class JSONBackend:
         )
 
 
-class SQLiteBackend:
+class SQLiteBackend(CardBackend):
     """Load card index from pre-built local database SQLite file."""
 
     def __init__(self, repo_root: Path) -> None:
@@ -299,9 +265,10 @@ class SQLiteBackend:
                 "FROM cards"
             )
             for row in cursor.fetchall():
-                (name_lower, name, type_line, mana_cost, source_file,
-                 cmc, colors, color_identity, oracle_text, keywords,
-                 rarity) = row
+                (
+                    name_lower, name, type_line, mana_cost, source_file,
+                    cmc, colors, color_identity, oracle_text, keywords, rarity,
+                ) = row
                 self.card_database[name_lower] = {
                     "name": name,
                     "type_line": type_line or "",
@@ -318,9 +285,7 @@ class SQLiteBackend:
 
     def lookup(self, card_name: str) -> Tuple[bool, Optional[Dict]]:
         entry = self.card_database.get(card_name.lower())
-        if entry:
-            return True, entry
-        return False, None
+        return (True, entry) if entry else (False, None)
 
     def suggest(self, card_name: str, n: int = 3) -> List[str]:
         return difflib.get_close_matches(
@@ -333,19 +298,24 @@ class SQLiteBackend:
 # ---------------------------------------------------------------------------
 
 class DecklistValidator:
-    """Validates a decklist against a pluggable card database backend."""
+    """Validates a decklist against a pluggable CardBackend."""
 
-    def __init__(self, backend, *, strict: bool = False,
-                 show_tags: bool = False,
-                 deck_colors: Optional[Set[str]] = None) -> None:
+    def __init__(
+        self,
+        backend: CardBackend,
+        *,
+        strict: bool = False,
+        show_tags: bool = False,
+        deck_colors: Optional[Set[str]] = None,
+        min_lands: int = _DEFAULT_MIN_LANDS,
+        max_lands: int = _DEFAULT_MAX_LANDS,
+    ) -> None:
         self.backend = backend
         self.strict = strict
         self.show_tags = show_tags
-        # Explicitly declared color identity for the deck (from --deck-colors).
-        # When set, off-color cards are hard errors (exit 1).
-        # When None, color identity is inferred from the card pool and
-        # anomalies are warnings only.
-        self.deck_colors: Optional[Set[str]] = deck_colors
+        self.deck_colors = deck_colors
+        self.min_lands = min_lands
+        self.max_lands = max_lands
 
     # -- count checks -------------------------------------------------------
 
@@ -361,7 +331,6 @@ class DecklistValidator:
             errors.append(f"Mainboard has {main_total} cards (expected 60).")
         if sideboard and side_total != 15:
             errors.append(f"Sideboard has {side_total} cards (expected 15 or 0).")
-        # 4-copy rule
         copy_counts: Dict[str, int] = {}
         for qty, name in mainboard + sideboard:
             if name.lower() not in UNLIMITED_COPIES:
@@ -375,12 +344,17 @@ class DecklistValidator:
 
     # -- land count sanity --------------------------------------------------
 
-    @staticmethod
     def _check_land_count(
+        self,
         mainboard: List[Tuple[int, str]],
         card_data: Dict[str, Dict],
     ) -> List[str]:
-        """Warn if land count is outside the typical 20-28 range."""
+        """Warn if land count falls outside [min_lands, max_lands].
+
+        Thresholds default to 20-28 (midrange) but are overridable via
+        --min-lands / --max-lands to support aggro (16-20) and ramp (26-32)
+        archetypes without false positives.
+        """
         warnings: List[str] = []
         land_count = 0
         for qty, name in mainboard:
@@ -391,13 +365,15 @@ class DecklistValidator:
                     land_count += qty
             elif name.lower() in BASIC_LAND_NAMES:
                 land_count += qty
-        if land_count < 20:
+        if land_count < self.min_lands:
             warnings.append(
-                f"Low land count: {land_count} lands (typical range is 20–28)."
+                f"Low land count: {land_count} lands "
+                f"(expected ≥{self.min_lands} for this archetype)."
             )
-        elif land_count > 28:
+        elif land_count > self.max_lands:
             warnings.append(
-                f"High land count: {land_count} lands (typical range is 20–28)."
+                f"High land count: {land_count} lands "
+                f"(expected ≤{self.max_lands} for this archetype)."
             )
         return warnings
 
@@ -409,28 +385,13 @@ class DecklistValidator:
         sideboard: List[Tuple[int, str]],
         card_data: Dict[str, Dict],
     ) -> Tuple[List[str], List[str]]:
-        """Check each card's color identity against the declared (or inferred) deck identity.
-
-        Returns (errors, warnings).
-
-        When self.deck_colors is set (--deck-colors supplied by user):
-          - Any card whose color_identity is not a subset of deck_colors is an ERROR.
-          - Basic lands and colorless cards are exempt.
-
-        When self.deck_colors is None (inferred mode):
-          - The deck's color identity is computed as the union of all cards.
-          - Cards that exceed the union identity indicate a data anomaly and are
-            reported as WARNINGS (this is unusual but can happen with bad CSV data).
-        """
         errors: List[str] = []
         warnings: List[str] = []
 
-        # Determine the reference color set
         if self.deck_colors is not None:
             reference = self.deck_colors
             strict_mode = True
         else:
-            # Infer from union of all cards
             reference: Set[str] = set()
             for _, name in mainboard + sideboard:
                 info = card_data.get(name.lower())
@@ -439,12 +400,9 @@ class DecklistValidator:
             strict_mode = False
 
         if not reference and self.deck_colors is None:
-            # Colorless deck inferred — nothing to check
             return errors, warnings
 
         for _, name in mainboard + sideboard:
-            # Skip basic lands — they are colorless in Scryfall's color_identity
-            # field and should never trigger a violation
             if name.lower() in COLOR_IDENTITY_EXEMPT:
                 continue
             info = card_data.get(name.lower())
@@ -452,14 +410,12 @@ class DecklistValidator:
                 continue
             card_id = normalize_colors(info.get("color_identity", ""))
             if not card_id:
-                # Colorless card — always legal in any deck
                 continue
             if not card_id.issubset(reference):
                 extra = card_id - reference
-                extra_str = format_color_set(extra)
                 msg = (
                     f"'{name}' has color identity {format_color_set(card_id)} "
-                    f"— adds {extra_str} outside declared "
+                    f"— adds {format_color_set(extra)} outside declared "
                     f"{format_color_set(reference)}."
                 )
                 if strict_mode:
@@ -476,7 +432,6 @@ class DecklistValidator:
         mainboard: List[Tuple[int, str]],
         card_data: Dict[str, Dict],
     ) -> Dict[str, int]:
-        """Count how many mainboard non-land cards contribute to each tag."""
         tag_counts: Counter = Counter()
         for qty, name in mainboard:
             info = card_data.get(name.lower())
@@ -513,7 +468,8 @@ class DecklistValidator:
             return 2
 
         illegal: List[Tuple[int, str, str]] = []
-        card_data: Dict[str, Dict] = {}  # lookup cache for enriched checks
+        unscored: List[str] = []  # cards not found in DB — scored as empty
+        card_data: Dict[str, Dict] = {}
 
         print("\n  MAINBOARD VALIDATION\n")
         for qty, name in mainboard:
@@ -550,44 +506,42 @@ class DecklistValidator:
                         print(f"     Did you mean: {', '.join(suggestions)}?")
                     illegal.append((qty, name, "sideboard"))
 
-        # -- Count checks ---------------------------------------------------
         count_errors = self._validate_counts(mainboard, sideboard)
 
-        # -- Strict-mode extra checks ---------------------------------------
         land_warnings: List[str] = []
         if self.strict:
             land_warnings = self._check_land_count(mainboard, card_data)
 
-        # -- Color identity check -------------------------------------------
         color_errors, color_warnings = self._check_color_identity(
             mainboard, sideboard, card_data
         )
 
-        # -- Synergy tags ---------------------------------------------------
         tag_summary: Dict[str, int] = {}
         if self.show_tags:
             tag_summary = self._synergy_summary(mainboard, card_data)
 
-        # -- Color identity summary -----------------------------------------
         deck_colors: Set[str] = set()
         for _, name in mainboard + sideboard:
             info = card_data.get(name.lower())
             if info:
                 deck_colors |= normalize_colors(info.get("color_identity", ""))
 
-        # -- Print summary --------------------------------------------------
         print("\n" + "=" * 70)
         print("\n  VALIDATION SUMMARY\n")
         main_total = sum(q for q, _ in mainboard)
         side_total = sum(q for q, _ in sideboard)
-        print(f"  Mainboard : {main_total} cards "
-              f"({len(mainboard)} unique entries)")
+        print(f"  Mainboard : {main_total} cards ({len(mainboard)} unique entries)")
         if sideboard:
-            print(f"  Sideboard : {side_total} cards "
-                  f"({len(sideboard)} unique entries)")
-
+            print(f"  Sideboard : {side_total} cards ({len(sideboard)} unique entries)")
         if deck_colors:
             print(f"  Colors    : {format_color_set(deck_colors)}")
+
+        # Warn about unscored cards (affects synergy tag density)
+        if unscored:
+            print("\n  ⚠ WARNING — CARDS NOT IN DATABASE (synergy tags may be underreported)\n")
+            for name in unscored:
+                print(f"    - {name}")
+            print("\n  Run 'python scripts/fetch_and_categorize_cards.py' to update the DB.")
 
         if count_errors:
             print("\n  COUNT VIOLATIONS\n")
@@ -611,8 +565,7 @@ class DecklistValidator:
 
         if tag_summary:
             print("\n  SYNERGY TAGS (mainboard non-land cards)\n")
-            for tag, count in sorted(tag_summary.items(),
-                                     key=lambda x: -x[1]):
+            for tag, count in sorted(tag_summary.items(), key=lambda x: -x[1]):
                 print(f"    {tag:<16} {count:>3} cards")
 
         if illegal:
@@ -620,8 +573,7 @@ class DecklistValidator:
             print(f"  Found {len(illegal)} unrecognised card(s):\n")
             for qty, name, section in illegal:
                 print(f"  * {qty}x {name} ({section})")
-            print("\n  These cards are either rotated or not present "
-                  "in the database.\n")
+            print("\n  These cards are either rotated or not present in the database.\n")
             return 1
 
         if color_errors:
@@ -662,59 +614,47 @@ def _build_parser() -> argparse.ArgumentParser:
             "  %(prog)s --db sqlite Decks/my_deck/decklist.txt\n"
             "  %(prog)s --strict --show-tags Decks/my_deck/decklist.txt\n"
             "  %(prog)s --deck-colors WB Decks/my_deck/decklist.txt\n"
+            "  %(prog)s --strict --min-lands 16 --max-lands 22 Decks/burn/decklist.txt\n"
+            "  %(prog)s --check-db-integrity Decks/my_deck/decklist.txt\n"
         ),
     )
-    p.add_argument(
-        "decklist",
-        help="path to decklist.txt (relative to repo root or absolute)",
-    )
+    p.add_argument("decklist", help="path to decklist.txt (relative to repo root or absolute)")
     p.add_argument(
         "--db",
         choices=["csv", "json", "sqlite"],
         default="csv",
         help="card database backend (default: csv)",
     )
-    # Keep --local and --sqlite as hidden aliases for backwards compatibility
-    p.add_argument(
-        "--local",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
-    p.add_argument(
-        "--sqlite",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
-    p.add_argument(
-        "--quiet", "-q",
-        action="store_true",
-        help="suppress per-card output, only print summary",
-    )
-    p.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="print source CSV path for each card",
-    )
-    p.add_argument(
-        "--strict",
-        action="store_true",
-        help="enable extra checks (land count sanity warnings)",
-    )
-    p.add_argument(
-        "--show-tags",
-        action="store_true",
-        help="print synergy tag summary for the deck",
-    )
+    p.add_argument("--local", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument("--sqlite", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument("--quiet", "-q", action="store_true", help="suppress per-card output")
+    p.add_argument("--verbose", "-v", action="store_true", help="print source CSV path per card")
+    p.add_argument("--strict", action="store_true", help="enable extra checks (land count, etc.)")
+    p.add_argument("--show-tags", action="store_true", help="print synergy tag summary")
     p.add_argument(
         "--deck-colors",
         metavar="COLORS",
         default=None,
-        help=(
-            "declare the deck's color identity (e.g. WB, GU, WUBRG, C). "
-            "When set, any card outside this identity is a hard error (exit 1). "
-            "Without this flag, colors are inferred from the card pool and "
-            "anomalies are warnings only."
-        ),
+        help="declare deck color identity (e.g. WB, WUBRG, C); off-color cards become hard errors",
+    )
+    p.add_argument(
+        "--min-lands",
+        type=int,
+        default=_DEFAULT_MIN_LANDS,
+        metavar="N",
+        help=f"minimum expected lands for --strict land check (default {_DEFAULT_MIN_LANDS})",
+    )
+    p.add_argument(
+        "--max-lands",
+        type=int,
+        default=_DEFAULT_MAX_LANDS,
+        metavar="N",
+        help=f"maximum expected lands for --strict land check (default {_DEFAULT_MAX_LANDS})",
+    )
+    p.add_argument(
+        "--check-db-integrity",
+        action="store_true",
+        help="print per-type row counts and any CSV parse errors before validating",
     )
     return p
 
@@ -731,7 +671,6 @@ def main() -> None:
     if not decklist_path.is_absolute():
         decklist_path = repo_root / decklist_path
 
-    # Resolve backend — support legacy --local / --sqlite flags
     db_choice = args.db
     if args.local and args.sqlite:
         db_choice = "sqlite"
@@ -739,26 +678,27 @@ def main() -> None:
         db_choice = "json"
 
     if db_choice == "sqlite":
-        backend = SQLiteBackend(repo_root)
+        backend: CardBackend = SQLiteBackend(repo_root)
     elif db_choice == "json":
         backend = JSONBackend(repo_root)
     else:
         backend = CSVBackend(repo_root)
 
-    # Parse --deck-colors if provided
+    if args.check_db_integrity and isinstance(backend, CSVBackend):
+        backend.integrity_report(paths.cards_dir)
+
     deck_colors: Optional[Set[str]] = None
     if args.deck_colors:
         raw = args.deck_colors.strip().upper()
-        if raw == "C":
-            deck_colors = set()  # explicitly colorless
-        else:
-            deck_colors = parse_deck_colors_arg(raw)
+        deck_colors = set() if raw == "C" else parse_deck_colors_arg(raw)
 
     validator = DecklistValidator(
         backend,
         strict=args.strict,
         show_tags=args.show_tags,
         deck_colors=deck_colors,
+        min_lands=args.min_lands,
+        max_lands=args.max_lands,
     )
     sys.exit(validator.validate(decklist_path, verbose=args.verbose))
 
