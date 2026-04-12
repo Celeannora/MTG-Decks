@@ -26,6 +26,15 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
+__all__ = [
+    "RepoPaths",
+    "parse_decklist",
+    "TAG_RULES",
+    "KEYWORD_TAG_MAP",
+    "compute_tags",
+    "CardBackend",
+]
+
 
 # ---------------------------------------------------------------------------
 # Centralised repo path configuration
@@ -154,9 +163,13 @@ def parse_decklist(
 #    ramp pattern now anchors to the canonical mana-ability phrasing from
 #    Scryfall oracle text.
 #
-# 3. ETB tilde fix: Scryfall stores full card names in oracle text, not "~".
+# 3. ETB fix: Scryfall stores full card names in oracle text, not "~".
 #    The old pattern "when ~ enters" matched nothing.  The new pattern matches
-#    both "when [CardName] enters" and "when it enters" and "when this enters".
+#    "when [CardName] enters" and "when it enters" and "when this enters".
+#    The card-name wildcard is restricted to word characters + light punctuation
+#    found in real card names (' , - ) to prevent cross-clause false matches
+#    on multi-ability cards.  The open '.{0,40}?' from Stage 1 could span
+#    clause boundaries; this tighter pattern cannot.
 #
 # 4. Confidence hint: patterns are ordered from most-specific to least-specific
 #    within each tag so the first match is the highest-confidence one.
@@ -177,7 +190,10 @@ _TAG_RULES_RAW: List[Tuple[str, str]] = [
     ("protection", r"hexproof|indestructible|ward \{"),
     ("pump",       r"\+1/\+1 counter|gets \+\d|\+x/\+x"),
     ("reanimation",r"return target (?:creature|permanent) card from (?:your|a) graveyard"),
-    ("etb",        r"when (?:this|it|[a-z].{0,40}?) enters(?: the battlefield)?"),
+    # ETB: restricted wildcard prevents cross-clause false matches on multi-ability cards.
+    # Matches: "when this enters", "when it enters", "when [CardName] enters".
+    # Card names contain word chars + limited punctuation (', ,, -, space).
+    ("etb",        r"when (?:this|it|[\w][\w ,'\.\-]{0,40}?) enters(?: the battlefield)?"),
     ("tribal",     r"other [a-z]+ you control|[a-z]+s you control (?:get|have|gain)"),
     ("scry",       r"\bscry \d"),
     ("surveil",    r"\bsurveil \d"),
