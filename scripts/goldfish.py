@@ -96,7 +96,12 @@ def load_card_data(card_names: List[str], paths: RepoPaths) -> Dict[str, Dict]:
                             found[name_lower] = row
                             if len(found) == len(target):
                                 return found
-            except Exception:
+            except Exception as exc:
+                # Log skipped file so users can diagnose DB corruption issues
+                print(
+                    f"  ⚠ skipped {csv_file.name}: {exc}",
+                    file=sys.stderr,
+                )
                 continue
     return found
 
