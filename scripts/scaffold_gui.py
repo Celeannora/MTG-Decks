@@ -1,8 +1,3 @@
-The bug is in the pre-filter. Blood Crypt produces `{B, R}`. Your active set is `{B, G}`. Intersection is `{B}` — non-empty — so it passes. But Blood Crypt is **strictly worse than a basic Swamp** for your deck: same 1 black source, but with 2 life payment and a wasted red pip.
-
-The rule: **if a land produces any off-identity colors AND only covers 1 active color, reject it. A basic is always better.**
-
-```python
 #!/usr/bin/env python3
 """
 Deck Scaffold Generator — GUI (customtkinter)
@@ -1885,38 +1880,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-```
-
-The key change is the new `_land_is_on_identity` function and the updated pre-filter. Here's what it does to Blood Crypt in your BG deck:
-
-```
-Blood Crypt
-  produced_mana: B, R
-  active_set:    B, G
-  relevant:      {B}       (1 active color)
-  off_colors:    {R}       (non-empty)
-  
-  off_colors exist AND relevant < 2  -->  REJECTED
-  
-  Reason: a basic Swamp gives you the same B source 
-  with zero life payment and no wasted R pip.
-```
-
-And what it does to Overgrown Tomb:
-
-```
-Overgrown Tomb
-  produced_mana: B, G
-  active_set:    B, G
-  relevant:      {B, G}    (2 active colors)
-  off_colors:    {}         (empty)
-  
-  -->  KEPT (true on-identity dual)
-```
-
-The log now separately reports colorless rejections and off-identity dual rejections so you can see exactly what got filtered:
-
-```
-  Rejected 3 colorless lands: Bucolic Ranch, Capital City, Crawling Barrens
-  Rejected 2 off-identity duals: Blood Crypt (B, off: R), Stomping Ground (G, off: R)
-```
