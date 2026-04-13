@@ -1,3 +1,8 @@
+The bug is in the pre-filter. Blood Crypt produces `{B, R}`. Your active set is `{B, G}`. Intersection is `{B}` — non-empty — so it passes. But Blood Crypt is **strictly worse than a basic Swamp** for your deck: same 1 black source, but with 2 life payment and a wasted red pip.
+
+The rule: **if a land produces any off-identity colors AND only covers 1 active color, reject it. A basic is always better.**
+
+```python
 #!/usr/bin/env python3
 """
 Deck Scaffold Generator — GUI (customtkinter)
@@ -222,37 +227,30 @@ def _resolve_card_name(query, by_name):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Land color detection (NO oracle parsing - only produced_mana + subtypes)
+# Land color detection (NO oracle parsing)
 # ─────────────────────────────────────────────────────────────────────────────
 def _detect_land_colors(row: dict) -> set[str]:
-    """Which WUBRG colors can this land RELIABLY produce?
+    """Which WUBRG colors can this land produce?
 
-    ONLY trusts two sources:
-      1. Scryfall 'produced_mana' field (if present in CSV)
-      2. Land subtypes in type_line (Plains=W, Island=U, etc.)
+    ONLY trusts:
+      1. Scryfall produced_mana field
+      2. Land subtypes (Plains=W, Island=U, Swamp=B, Mountain=R, Forest=G)
 
-    NO oracle text parsing.  Oracle text is too unreliable:
-    activation costs, conditional abilities, and flavour text
-    all cause false positives that let colorless garbage through.
-
-    Returns empty set for colorless-only lands.
+    NO oracle text parsing. Returns empty set for colorless-only.
     """
-    colors: set[str] = set()
+    colors = set()
 
-    # 1) Scryfall produced_mana field (authoritative)
+    # 1) Scryfall produced_mana (authoritative)
     pm = str(row.get("produced_mana", "") or "").upper()
     if pm:
         for c in "WUBRG":
             if c in pm:
                 colors.add(c)
-        # Field exists but only C -> colorless only
         if not colors:
             return set()
         return colors
 
-    # 2) Land subtypes only (always reliable)
-    #    "Land - Plains Swamp" -> {W, B}
-    #    "Land - Locus"        -> {} (colorless)
+    # 2) Land subtypes only
     tl = row.get("type_line", "")
     if "\u2014" in tl:
         subtypes = tl.split("\u2014", 1)[1]
@@ -265,8 +263,40 @@ def _detect_land_colors(row: dict) -> set[str]:
         if re.search(r"\b" + re.escape(subtype) + r"\b", subtypes):
             colors.add(color)
 
-    # 3) Nothing provable -> assume colorless -> REJECT
     return colors
+
+
+def _land_is_on_identity(produced: set[str], active_set: set[str]) -> bool:
+    """Check if a land is worth including in a deck with the given colors.
+
+    Rules:
+      - Must produce at least 1 active color
+      - If it produces ANY off-identity colors, it must cover 2+ active
+        colors to be worth the slot (otherwise a basic is strictly better)
+      - Colorless-only -> always False
+
+    Examples for a BG deck (active_set = {B, G}):
+      Overgrown Tomb  {B, G}    -> 2 active, 0 off -> True
+      Blood Crypt     {B, R}    -> 1 active, 1 off -> False (basic Swamp better)
+      Command Tower   {W,U,B,R,G} -> 2 active, 3 off -> True (covers both)
+      Blooming Marsh  {B, G}    -> 2 active, 0 off -> True
+      Llanowar Wastes {B, G}    -> 2 active, 0 off -> True
+      Stomping Ground {R, G}    -> 1 active, 1 off -> False (basic Forest better)
+    """
+    if not produced:
+        return False
+
+    relevant = produced & active_set
+    if not relevant:
+        return False
+
+    off_colors = produced - active_set
+    if off_colors and len(relevant) < 2:
+        # Produces off-identity colors but only covers 1 active color.
+        # A basic land does the same job with zero downside.
+        return False
+
+    return True
 
 
 def _count_pips(mana_cost: str) -> dict[str, int]:
@@ -312,7 +342,7 @@ def merge_scores_into_candidate_pool(deck_dir: str) -> tuple[bool, int]:
     top_path  = Path(deck_dir) / "top_200.csv"
     if not pool_path.exists() or not top_path.exists():
         return False, 0
-    scores: dict[str, dict] = {}
+    scores = {}
     top_text = top_path.read_text(encoding="utf-8")
     tr = csv.DictReader(io.StringIO(top_text))
     tf = list(tr.fieldnames or [])
@@ -362,10 +392,11 @@ def auto_build_decklist(
 
     Strict mana base:
       - Colorless-only lands NEVER included
-      - Only trusts produced_mana + land subtypes
-      - No oracle text parsing
-      - Max half land slots = nonbasic
-      - All remaining = basics by Karsten gap
+      - Off-identity duals covering only 1 active color NEVER included
+        (a basic is strictly better: same color, no downside)
+      - Only trusts produced_mana + land subtypes for detection
+      - Max half land slots = nonbasic, rest = basics
+      - Basics distributed by Karsten gap then pip ratio
     """
     focus_log: list[tuple[str, str]] = []
     pool_path = Path(deck_dir) / "candidate_pool.csv"
@@ -385,7 +416,7 @@ def auto_build_decklist(
     if not has_scores:
         return False, "No synergy scores yet", focus_log
 
-    by_name: dict[str, dict] = {}
+    by_name = {}
     for r in rows:
         n = r.get("name", "").strip()
         if n:
@@ -423,10 +454,10 @@ def auto_build_decklist(
     # ══════════════════════════════════════════════════════════════════
     # PHASE 1: Lock focus cards
     # ══════════════════════════════════════════════════════════════════
-    mainboard: list[tuple[int, str, dict]] = []
-    used: set[str] = set()
+    mainboard = []
+    used = set()
     slots = 0
-    focus_land_names: list[str] = []
+    focus_land_names = []
 
     if focus_cards:
         focus_log.append(("Focus Card Resolution:", ACCENT))
@@ -493,8 +524,8 @@ def auto_build_decklist(
     # ══════════════════════════════════════════════════════════════════
     # PHASE 3: Colour analysis
     # ══════════════════════════════════════════════════════════════════
-    total_pips: dict[str, int] = {c: 0 for c in "WUBRG"}
-    hardest: dict[str, tuple[int, int]] = {}
+    total_pips = {c: 0 for c in "WUBRG"}
+    hardest = {}
 
     for copies, _, r in mainboard:
         mc = r.get("mana_cost", "")
@@ -516,7 +547,7 @@ def auto_build_decklist(
         active_colors = ["W"]
     active_set = set(active_colors)
 
-    min_sources: dict[str, int] = {}
+    min_sources = {}
     for c in active_colors:
         if c in hardest:
             p, t = hardest[c]
@@ -525,53 +556,70 @@ def auto_build_decklist(
             min_sources[c] = 10
 
     # ══════════════════════════════════════════════════════════════════
-    # PHASE 4: Mana base (ultra-strict, zero colorless)
+    # PHASE 4: Mana base (ultra-strict, identity-aware)
     #
-    #   1. Nonbasic MUST produce active color (produced_mana or subtype)
-    #   2. If we can't prove it -> rejected
-    #   3. Max half land slots = nonbasic, rest = basics
-    #   4. Prefer duals covering 2+ active colors
-    #   5. NO utility lands, NO colorless, NO conditional sources
+    #   1. Colorless-only -> REJECTED
+    #   2. Off-identity dual covering only 1 active color -> REJECTED
+    #      (basic is strictly better: same coverage, no downside)
+    #   3. On-identity dual covering 2+ active colors -> KEEP
+    #   4. On-identity mono covering 1 active, 0 off -> KEEP
+    #   5. Max half land slots = nonbasic, rest = basics
     # ══════════════════════════════════════════════════════════════════
-    csrc: dict[str, int] = {c: 0 for c in "WUBRG"}
-    land_picks: list[tuple[int, str, set[str]]] = []
-    land_used: set[str] = set()
+    csrc = {c: 0 for c in "WUBRG"}
+    land_picks = []
+    land_used = set()
     land_slots = 0
 
-    # Pre-filter: STRICT
-    on_color: list[tuple[dict, set[str]]] = []
-    rejected: list[str] = []
+    # Pre-filter with identity check
+    on_color = []
+    rejected = []
+    rejected_off = []
 
     for r in pool_lands:
         name = r.get("name", "").strip()
         tl = r.get("type_line", "")
         if not name or "Basic" in tl:
             continue
+
         produced = _detect_land_colors(r)
-        relevant = produced & active_set
 
-        if not relevant:
-            rejected.append(name)
-            continue
-
-        # Double check: if produced_mana exists and is colorless-only,
-        # reject even if subtypes matched (corrupted data guard)
+        # Double check produced_mana if available
         pm = str(r.get("produced_mana", "") or "").upper()
         if pm and not any(c in pm for c in "WUBRG"):
             rejected.append(name)
             continue
 
+        if not _land_is_on_identity(produced, active_set):
+            relevant = produced & active_set
+            off = produced - active_set
+            if not produced or not relevant:
+                rejected.append(name)
+            else:
+                # Has active color but also off-identity with <2 active
+                rejected_off.append(
+                    "%s (%s, off: %s)" % (name,
+                                          "+".join(sorted(relevant)),
+                                          "+".join(sorted(off))))
+            continue
+
+        relevant = produced & active_set
         on_color.append((r, relevant))
 
     if rejected:
-        sample = rejected[:6]
         focus_log.append(
-            ("  Rejected %d colorless/off-color lands: %s%s"
-             % (len(rejected), ", ".join(sample),
-                "..." if len(rejected) > 6 else ""),
+            ("  Rejected %d colorless lands: %s%s"
+             % (len(rejected), ", ".join(rejected[:5]),
+                "..." if len(rejected) > 5 else ""),
              TEXT_DIM))
 
-    # 4a) Focus lands (on-color only)
+    if rejected_off:
+        focus_log.append(
+            ("  Rejected %d off-identity duals: %s%s"
+             % (len(rejected_off), ", ".join(rejected_off[:4]),
+                "..." if len(rejected_off) > 4 else ""),
+             TEXT_DIM))
+
+    # 4a) Focus lands (identity-checked)
     for fname in focus_land_names:
         if land_slots >= n_lands:
             break
@@ -579,12 +627,16 @@ def auto_build_decklist(
         if not row or fname.lower() in land_used:
             continue
         produced = _detect_land_colors(row)
-        relevant = produced & active_set
-        if not relevant:
+        if not _land_is_on_identity(produced, active_set):
+            off = produced - active_set
             focus_log.append(
-                ("  \u26a0 %s REJECTED (can't prove it makes %s mana)"
-                 % (fname, "/".join(active_colors)), ERROR))
+                ("  \u26a0 %s REJECTED (off-identity: makes %s, "
+                 "deck is %s)"
+                 % (fname, "+".join(sorted(produced)) or "colorless",
+                    "+".join(sorted(active_colors))),
+                 ERROR))
             continue
+        relevant = produced & active_set
         copies = min(4, n_lands - land_slots)
         if copies <= 0:
             break
@@ -602,6 +654,7 @@ def auto_build_decklist(
             gap = max(0, min_sources.get(c, 0) - csrc.get(c, 0))
             if gap > 0:
                 s += gap * (min_sources.get(c, 10) / 8.0)
+        # True duals (2+ active) get big bonus
         if len(rel) >= 2:
             s += len(rel) * 5.0
         s += _safe_float(r.get("weighted_score", "0")) * 0.001
@@ -626,9 +679,9 @@ def auto_build_decklist(
         if copies <= 0:
             break
 
-        # Final paranoia check
+        # Final paranoia: re-check identity
         produced = _detect_land_colors(r)
-        if not (produced & active_set):
+        if not _land_is_on_identity(produced, active_set):
             continue
 
         land_picks.append((copies, name, relevant))
@@ -637,11 +690,9 @@ def auto_build_decklist(
         for c in relevant:
             csrc[c] += copies
 
-    # NO "fill remaining with whatever". Every unfilled slot = basic.
-
     # 4d) ALL remaining = basics by Karsten gap then pip ratio
     remaining = n_lands - land_slots
-    basic_alloc: list[tuple[int, str]] = []
+    basic_alloc = []
 
     if remaining > 0:
         gaps = {c: max(0, min_sources.get(c, 0) - csrc.get(c, 0))
@@ -649,7 +700,6 @@ def auto_build_decklist(
         total_gap = sum(gaps.values())
 
         if total_gap == 0:
-            # All Karsten met - distribute by pip ratio
             total_p = max(1, sum(total_pips.get(c, 0)
                                  for c in active_colors))
             allocated = 0
@@ -668,7 +718,6 @@ def auto_build_decklist(
                 on, oname = basic_alloc[0]
                 basic_alloc[0] = (on + remaining - allocated, oname)
         else:
-            # Distribute basics to close gaps first
             allocated = 0
             gc = [c for c in active_colors if gaps.get(c, 0) > 0]
             for i, c in enumerate(gc):
@@ -682,7 +731,6 @@ def auto_build_decklist(
                     basic_alloc.append((n, BASIC_FOR_COLOR[c]))
                     csrc[c] += n
                     allocated += n
-            # Leftover -> highest-pip color
             if allocated < remaining:
                 left = remaining - allocated
                 best = max(active_colors,
@@ -700,7 +748,7 @@ def auto_build_decklist(
     # ══════════════════════════════════════════════════════════════════
     # PHASE 5: Sideboard
     # ══════════════════════════════════════════════════════════════════
-    sideboard: list[tuple[int, str]] = []
+    sideboard = []
     sb_slots = 0
     for r in nonlands:
         if sb_slots >= 15:
@@ -716,7 +764,7 @@ def auto_build_decklist(
     # ══════════════════════════════════════════════════════════════════
     # PHASE 6: Write output
     # ══════════════════════════════════════════════════════════════════
-    type_groups: dict[str, list[tuple[int, str]]] = {}
+    type_groups = {}
     for copies, name, r in mainboard:
         grp = _card_type_group(r)
         type_groups.setdefault(grp, []).append((copies, name))
@@ -874,10 +922,10 @@ class ScaffoldApp(ctk.CTk):
         self.minsize(760, 700)
         self.configure(fg_color=BG)
         self._repo = RepoPaths()
-        self.selected_colors: set[str]     = set()
-        self.selected_archetypes: set[str] = set()
-        self._selected_tags: set[str]      = set()
-        self._tribes: list[str]            = []
+        self.selected_colors = set()
+        self.selected_archetypes = set()
+        self._selected_tags = set()
+        self._tribes = []
         self.wildcard_var     = ctk.BooleanVar(value=False)
         self.skip_queries_var = ctk.BooleanVar(value=False)
         self.run_synergy_var  = ctk.BooleanVar(value=True)
@@ -895,7 +943,7 @@ class ScaffoldApp(ctk.CTk):
     # ═══════════════════════════════════════════════════════════════════════
     # EXPORT / IMPORT
     # ═══════════════════════════════════════════════════════════════════════
-    def _export_settings(self) -> dict:
+    def _export_settings(self):
         return {
             "deck_name": self.name_entry.get().strip(),
             "colors": sorted(self.selected_colors),
@@ -914,7 +962,7 @@ class ScaffoldApp(ctk.CTk):
             },
         }
 
-    def _import_settings(self, data: dict) -> None:
+    def _import_settings(self, data):
         self._reset_form()
         name = data.get("deck_name", "")
         if name:
@@ -1674,7 +1722,6 @@ class ScaffoldApp(ctk.CTk):
         self.after(0, self._done, RunResult(ok, out, source=source))
 
     def _bg_scaffold(self, cmd, colors, run_syn, auto_build, focus_names):
-        """Scaffold thread - triple try/except so GUI NEVER gets stuck."""
         try:
             ok, out = self._stream(cmd)
         except Exception as e:
@@ -1738,7 +1785,6 @@ class ScaffoldApp(ctk.CTk):
             self.after(0, self._log, traceback.format_exc(), ERROR)
 
         files = _verify_files(deck_dir) if deck_dir else []
-        # THIS ALWAYS RUNS - GUI always unlocks
         self.after(0, self._done,
                    RunResult(ok, out, syn, "scaffold", deck_dir, files,
                              ab_msg, focus_log))
@@ -1839,3 +1885,38 @@ def main():
 
 if __name__ == "__main__":
     main()
+```
+
+The key change is the new `_land_is_on_identity` function and the updated pre-filter. Here's what it does to Blood Crypt in your BG deck:
+
+```
+Blood Crypt
+  produced_mana: B, R
+  active_set:    B, G
+  relevant:      {B}       (1 active color)
+  off_colors:    {R}       (non-empty)
+  
+  off_colors exist AND relevant < 2  -->  REJECTED
+  
+  Reason: a basic Swamp gives you the same B source 
+  with zero life payment and no wasted R pip.
+```
+
+And what it does to Overgrown Tomb:
+
+```
+Overgrown Tomb
+  produced_mana: B, G
+  active_set:    B, G
+  relevant:      {B, G}    (2 active colors)
+  off_colors:    {}         (empty)
+  
+  -->  KEPT (true on-identity dual)
+```
+
+The log now separately reports colorless rejections and off-identity dual rejections so you can see exactly what got filtered:
+
+```
+  Rejected 3 colorless lands: Bucolic Ranch, Capital City, Crawling Barrens
+  Rejected 2 off-identity duals: Blood Crypt (B, off: R), Stomping Ground (G, off: R)
+```
