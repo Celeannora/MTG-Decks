@@ -95,8 +95,8 @@ SCAFFOLD_FILES = ["session.md", "candidate_pool.csv", "decklist.txt",
                   "analysis.md", "sideboard_guide.md"]
 
 SCORE_SORT_KEYS = [
-    "weighted_score", "engine_score", "synergy_density",
-    "engine_density", "role_breadth", "synergy_score",
+    "synergy_density", "engine_density", "weighted_score",
+    "engine_score", "role_breadth", "synergy_score",
     "oracle_interactions",
 ]
 
@@ -116,15 +116,11 @@ SUBTYPE_COLOR = {"Plains": "W", "Island": "U", "Swamp": "B",
 
 SETTINGS_EXT = ".scaffold.json"
 
-# Tap states returned by _enters_tapped()
-TAP_ALWAYS      = "always"      # always enters tapped, no way around it
-TAP_CONDITIONAL = "conditional"  # CAN enter untapped (shocks, checks, fasts)
-TAP_NEVER       = "never"        # always untapped
+TAP_ALWAYS      = "always"
+TAP_CONDITIONAL = "conditional"
+TAP_NEVER       = "never"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Data
-# ─────────────────────────────────────────────────────────────────────────────
 @dataclass
 class RunResult:
     success: bool
@@ -206,9 +202,6 @@ def _card_type_group(row: dict) -> str:
     return "Other Spells"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Fuzzy name resolution
-# ─────────────────────────────────────────────────────────────────────────────
 def _resolve_card_name(query, by_name):
     key = query.lower().strip()
     if key in by_name:
@@ -227,23 +220,24 @@ def _resolve_card_name(query, by_name):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Land analysis: color detection + tap state
+# Land analysis: color detection + tap state + tribal dead check
 # ─────────────────────────────────────────────────────────────────────────────
+_COLOR_WORDS = {"white": "W", "blue": "U", "black": "B", "red": "R", "green": "G"}
+
+
 def _detect_land_colors(row: dict) -> set[str]:
-    """Which WUBRG colors can this land produce?
-    ONLY trusts produced_mana field and land subtypes.
-    Returns empty set for colorless-only."""
+    """Which WUBRG colors can this land produce for UNRESTRICTED use?
+
+    Three layers of defense against fake 5-color lands:
+      1. "spend this mana only" anywhere in oracle → subtypes only
+      2. {T}: Add {C}  +  "any color" anywhere    → colorless utility land
+         (Bucolic Ranch, Eclipsed Realms, Captivating Cave, Unknown Shores)
+      3. Per-line parsing skips costed / restricted abilities
+      4. No oracle → produced_mana capped at ≤ 2 colors
+    """
     colors = set()
 
-    pm = str(row.get("produced_mana", "") or "").upper()
-    if pm:
-        for c in "WUBRG":
-            if c in pm:
-                colors.add(c)
-        if not colors:
-            return set()
-        return colors
-
+    # ── 1) Basic land subtypes — always reliable ────────────────────
     tl = row.get("type_line", "")
     if "\u2014" in tl:
         subtypes = tl.split("\u2014", 1)[1]
@@ -251,109 +245,166 @@ def _detect_land_colors(row: dict) -> set[str]:
         subtypes = tl.split(" - ", 1)[1]
     else:
         subtypes = ""
-
     for subtype, color in SUBTYPE_COLOR.items():
         if re.search(r"\b" + re.escape(subtype) + r"\b", subtypes):
             colors.add(color)
 
+    oracle = (row.get("oracle_text", "") or "").strip()
+    ol = oracle.lower() if oracle else ""
+
+    # ── 2) Nuclear: "spend this mana only" anywhere → subtypes only ─
+    if ol and "spend this mana only" in ol:
+        return colors
+
+    # ── 3) Heuristic: {T}: Add {C}  +  "any color" = utility junk ──
+    #    Every real 5-color land (City of Brass, Mana Confluence) taps
+    #    directly for any color — it does NOT also have "{T}: Add {C}".
+    #    Lands that have BOTH are always restricted/costed utility:
+    #      Bucolic Ranch, Eclipsed Realms, Captivating Cave,
+    #      Unknown Shores, Shimmering Grotto, etc.
+    #    Skip only if no basic subtypes already found.
+    if ol and not colors:
+        has_free_colorless = bool(
+            re.search(r"\{t\}[^:]*:\s*add\s*\{c\}", ol))
+        has_any_color = bool(
+            re.search(r"\badd\b.{0,30}\bany\b.{0,15}\bcolor\b", ol))
+        if has_free_colorless and has_any_color:
+            return set()
+
+    # ── 4) Per-line oracle parsing ──────────────────────────────────
+    if oracle:
+        for line in oracle.split("\n"):
+            ll = line.lower().strip()
+            if "add" not in ll:
+                continue
+            if "spend this mana only" in ll:
+                continue
+            if ":" in ll:
+                cost_part = ll.split(":")[0]
+                if re.search(r"\{\d+\}", cost_part):
+                    continue
+
+            for seg in re.findall(r"add\b(.{1,60})", ll):
+                for c in re.findall(r"\{([wubrg])\}", seg):
+                    colors.add(c.upper())
+                if re.search(r"\bany\b.{0,15}\bcolor\b", seg):
+                    colors.update("WUBRG")
+                if re.search(r"\bany type\b", seg):
+                    colors.update("WUBRG")
+                if re.search(
+                        r"\b(chosen color|color of your choice)\b", seg):
+                    colors.update("WUBRG")
+                for word, code in _COLOR_WORDS.items():
+                    if re.search(r"\b" + word + r"\b", seg):
+                        colors.add(code)
+
+        return colors
+
+    # ── 5) No oracle — conservative produced_mana, cap ≤ 2 colors ──
+    pm = str(row.get("produced_mana", "") or "").upper()
+    if pm:
+        pm_colors = {c for c in "WUBRG" if c in pm}
+        if len(pm_colors) <= 2:
+            colors.update(pm_colors)
+
     return colors
-
-
 def _enters_tapped(row: dict) -> str:
-    """Determine if a land enters the battlefield tapped.
-
-    Returns:
-        TAP_NEVER       - always enters untapped (basics, shocks paying life,
-                          fetches, fast lands within 2-land window, painlands)
-        TAP_CONDITIONAL - CAN enter untapped if you meet a condition
-                          (shocklands, checklands, fast lands, reveal lands)
-        TAP_ALWAYS      - always enters tapped, no exceptions
-                          (guildgates, gainlands, taplands, most budget duals)
-    """
+    """Returns TAP_NEVER, TAP_CONDITIONAL, or TAP_ALWAYS."""
     oracle = row.get("oracle_text", "").lower()
-    tl = row.get("type_line", "").lower()
-
-    # No oracle text = probably basic or simple land = untapped
     if not oracle.strip():
         return TAP_NEVER
-
-    # Check for "enters the battlefield tapped" or "enters tapped"
     has_etb_tapped = ("enters the battlefield tapped" in oracle
                       or "enters tapped" in oracle)
-
     if not has_etb_tapped:
         return TAP_NEVER
-
-    # It mentions entering tapped. But is there a condition that lets
-    # it enter UNtapped?
-    # Shocklands: "you may pay 2 life. If you don't, it enters tapped"
-    # Checklands: "unless you control a Swamp or a Forest"
-    # Fast lands: "if you control two or fewer other lands"
-    # Reveal lands: "you may reveal ... if you don't, it enters tapped"
-    # Pathway/modal: these don't say "enters tapped" so already handled
     conditional_patterns = [
-        "unless you control",
-        "unless you pay",
-        "you may pay",
-        "you may reveal",
-        "if you control two or fewer",
-        "if you control fewer",
-        "if you control a ",
-        "if an opponent controls",
-        "you may sacrifice",
+        "unless you control", "unless you pay", "you may pay",
+        "you may reveal", "if you control two or fewer",
+        "if you control fewer", "if you control a ",
+        "if an opponent controls", "you may sacrifice",
         "if you don't, it enters",
-        "if you don't, ~ enters",
     ]
-
     for pat in conditional_patterns:
         if pat in oracle:
             return TAP_CONDITIONAL
-
-    # No bypass condition found = always tapped
     return TAP_ALWAYS
 
 
 def _land_is_acceptable(produced: set[str], active_set: set[str],
                          tap_state: str) -> bool:
-    """Decide if a nonbasic land is worth including.
-
-    Rejection rules (a basic is ALWAYS better in these cases):
-      1. Produces zero active colors -> REJECT
-      2. Off-identity colors + only 1 active color -> REJECT
-         (basic same color, untapped, no downside)
-      3. ALWAYS tapped + only 1 active color -> REJECT
-         (basic same color, untapped, no downside)
-      4. ALWAYS tapped + off-identity + any count -> REJECT
-
-    Accept rules:
-      - Untapped/conditional + 2+ active colors + no off-identity = BEST
-      - Untapped/conditional + 2+ active colors + some off-identity = OK
-      - Untapped/conditional + 1 active + 0 off-identity = OK (painlands etc)
-      - Always tapped + 2+ active + 0 off-identity = LAST RESORT
-    """
+    """Reject lands where a basic is strictly better."""
     if not produced:
         return False
-
     relevant = produced & active_set
     if not relevant:
         return False
-
     off_colors = produced - active_set
-
-    # Off-identity + only 1 active = basic is better
     if off_colors and len(relevant) < 2:
         return False
-
-    # Always tapped + only 1 active = basic is better (untapped + same color)
     if tap_state == TAP_ALWAYS and len(relevant) < 2:
         return False
-
-    # Always tapped + off-identity colors = garbage
     if tap_state == TAP_ALWAYS and off_colors:
         return False
+    return True
+
+
+# ─── Dead tribal land detection ──────────────────────────────────────────────
+_GENERIC_NOUNS = {
+    "creature", "creatures", "permanent", "permanents", "land", "lands",
+    "spell", "spells", "token", "tokens", "nontoken", "artifact", "artifacts",
+    "enchantment", "enchantments", "player", "opponent", "card", "cards",
+    "source", "type", "ability", "counter", "life", "mana", "damage",
+    "graveyard", "library", "hand", "battlefield", "stack", "exile",
+    "color", "controller", "owner", "target", "chosen", "other",
+}
+
+_TRIBAL_LAND_PATTERNS = [
+    re.compile(r"whenever (?:a|an|another) (\w+) enters", re.IGNORECASE),
+    re.compile(r"whenever (?:a|an|another) (\w+) attacks", re.IGNORECASE),
+    re.compile(r"whenever (?:a|an|another) (\w+) dies", re.IGNORECASE),
+    re.compile(r"whenever (?:a|an|another) (\w+) you control", re.IGNORECASE),
+    re.compile(r"(\w+)s? you control get", re.IGNORECASE),
+    re.compile(r"(\w+)s? you control have", re.IGNORECASE),
+    re.compile(r"target (\w+) gets", re.IGNORECASE),
+    re.compile(r"each (\w+) you control", re.IGNORECASE),
+    re.compile(r"number of (\w+)s? you control", re.IGNORECASE),
+    re.compile(r"another (\w+) enters", re.IGNORECASE),
+    re.compile(r"(\w+)s? you control gain", re.IGNORECASE),
+    re.compile(r"sacrifice (?:a|an) (\w+)", re.IGNORECASE),
+    re.compile(r"tap an untapped (\w+) you control", re.IGNORECASE),
+    # Spell/card type references (catches Bucolic Ranch, etc.)
+    re.compile(r"cast (?:a|an) (\w+) spell", re.IGNORECASE),
+    re.compile(r"(?:a|an|it's a) (\w+) card", re.IGNORECASE),
+    re.compile(r"spend this mana only to cast (?:a|an) (\w+)", re.IGNORECASE),
+    re.compile(r"search .{0,30} for .{0,10}(\w+) card", re.IGNORECASE),
+]
+
+def _land_has_dead_tribal(row: dict, deck_subtypes: set[str]) -> bool:
+    """Does this land reference a creature type the deck doesn't have?
+    Returns True = dead tribal (reject). False = fine to keep."""
+    oracle = row.get("oracle_text", "")
+    if not oracle:
+        return False
+
+    referenced_types = set()
+    for pat in _TRIBAL_LAND_PATTERNS:
+        for m in pat.finditer(oracle):
+            word = m.group(1).lower().rstrip("s")
+            if word not in _GENERIC_NOUNS and len(word) >= 3:
+                referenced_types.add(word)
+
+    if not referenced_types:
+        return False
+
+    deck_lower = {s.lower().rstrip("s") for s in deck_subtypes}
+    for ref in referenced_types:
+        if ref in deck_lower:
+            return False
 
     return True
 
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _count_pips(mana_cost: str) -> dict[str, int]:
     pips = {c: 0 for c in "WUBRG"}
@@ -444,16 +495,6 @@ def auto_build_decklist(
     colors: str,
     focus_cards: list[str] | None = None,
 ) -> tuple[bool, str, list[tuple[str, str]]]:
-    """Build 60+15 from scored candidate_pool.csv.
-
-    Land rules:
-      - ONLY on-identity colors. No off-color garbage.
-      - UNTAPPED lands prioritized. Always-tapped lands heavily penalized.
-      - Tapped + only 1 active color = REJECTED (basic is better).
-      - Tapped + off-identity = REJECTED.
-      - Untapped on-identity duals = top picks.
-      - Max half land slots nonbasic, rest basics.
-    """
     focus_log = []
     pool_path = Path(deck_dir) / "candidate_pool.csv"
 
@@ -490,16 +531,22 @@ def auto_build_decklist(
     n_lands    = 22 if avg_cmc < 2.3 else 26 if avg_cmc > 3.5 else 24
     n_nonlands = 60 - n_lands
 
-    def _copies_for(r):
+    def _copies_for(r, *, is_focus=False):
         cmc = _safe_float(r.get("cmc", "0"))
         leg = "Legendary" in r.get("type_line", "")
+        if is_focus:
+            return 3 if leg else 4
         if cmc >= 6:        return 1
         if cmc >= 5 or leg: return 2
         if cmc >= 4:        return 3
         return 4
 
-    def _copy_reason(r, copies):
+    def _copy_reason(r, copies, *, is_focus=False):
         cmc = _safe_float(r.get("cmc", "0"))
+        if is_focus:
+            if "Legendary" in r.get("type_line", "") and copies <= 3:
+                return "Focus+Legendary"
+            return "Focus (locked 4x)"
         if "Legendary" in r.get("type_line", "") and copies <= 2:
             return "Legendary"
         if cmc >= 5:
@@ -507,7 +554,7 @@ def auto_build_decklist(
         return ""
 
     # ══════════════════════════════════════════════════════════════════
-    # PHASE 1: Lock focus cards
+    # PHASE 1: Lock focus cards — 4x default, Legendary 3x
     # ══════════════════════════════════════════════════════════════════
     mainboard = []
     used = set()
@@ -540,7 +587,7 @@ def auto_build_decklist(
                         ("  \u2713 \"%s\" -> %s (%s) -- locked as land"
                          % (fc_clean, resolved, mt), WARNING))
                 continue
-            copies = min(_copies_for(row), n_nonlands - slots)
+            copies = min(_copies_for(row, is_focus=True), n_nonlands - slots)
             if copies <= 0:
                 focus_log.append(
                     ("  \u26a0 %s -- no slots" % resolved, WARNING))
@@ -548,7 +595,7 @@ def auto_build_decklist(
             mainboard.append((copies, resolved, row))
             used.add(resolved.lower())
             slots += copies
-            reason = _copy_reason(row, copies)
+            reason = _copy_reason(row, copies, is_focus=True)
             rs = " (%s)" % reason if reason else ""
             mt = status.split(":")[0] if ":" in status else status
             if status == "exact":
@@ -561,7 +608,7 @@ def auto_build_decklist(
         focus_log.append(("", TEXT))
 
     # ══════════════════════════════════════════════════════════════════
-    # PHASE 2: Fill nonlands by score
+    # PHASE 2: Fill nonlands by score (non-focus uses CMC scaling)
     # ══════════════════════════════════════════════════════════════════
     for r in nonlands:
         if slots >= n_nonlands:
@@ -569,7 +616,7 @@ def auto_build_decklist(
         name = r.get("name", "").strip()
         if not name or name.lower() in used:
             continue
-        copies = min(_copies_for(r), n_nonlands - slots)
+        copies = min(_copies_for(r, is_focus=False), n_nonlands - slots)
         if copies <= 0:
             break
         mainboard.append((copies, name, r))
@@ -612,31 +659,36 @@ def auto_build_decklist(
 
     # ══════════════════════════════════════════════════════════════════
     # PHASE 4: Mana base
-    #
-    #   HARD RULES:
-    #     - Colorless only            -> REJECT
-    #     - Off-identity + <2 active  -> REJECT (basic is better)
-    #     - Always tapped + <2 active -> REJECT (basic is better)
-    #     - Always tapped + off-identity -> REJECT
-    #
-    #   PRIORITY (highest first):
-    #     1. Untapped, 2+ active colors, 0 off-identity  (shocks, pains)
-    #     2. Conditional, 2+ active, 0 off             (checks, fasts)
-    #     3. Untapped, 1 active, 0 off                 (on-color utility)
-    #     4. Conditional, 1 active, 0 off
-    #     5. Always tapped, 2+ active, 0 off           (LAST RESORT)
-    #     6. Everything else -> BASIC
     # ══════════════════════════════════════════════════════════════════
     csrc = {c: 0 for c in "WUBRG"}
     land_picks = []
     land_used = set()
     land_slots = 0
 
-    # Analyse every pool land
-    candidates = []     # (row, relevant_colors, tap_state)
+    max_tapped_slots = 2 if avg_cmc < 2.5 else 4
+    tapped_slots_used = 0
+
+    # ── Gather creature subtypes for tribal land check ───────────────
+    deck_subtypes = set()
+    for _, _, r in mainboard:
+        tl = r.get("type_line", "")
+        if "\u2014" in tl:
+            sub_part = tl.split("\u2014", 1)[1]
+        elif " - " in tl:
+            sub_part = tl.split(" - ", 1)[1]
+        else:
+            sub_part = ""
+        for word in sub_part.split():
+            cleaned = word.strip(",").strip()
+            if cleaned and len(cleaned) >= 3:
+                deck_subtypes.add(cleaned)
+
+    untapped_candidates = []
+    tapped_candidates = []
     rej_colorless = []
     rej_offid = []
     rej_tapped = []
+    rej_tribal = []
 
     for r in pool_lands:
         name = r.get("name", "").strip()
@@ -647,7 +699,6 @@ def auto_build_decklist(
         produced = _detect_land_colors(r)
         tap = _enters_tapped(r)
 
-        # Double-check produced_mana for colorless
         pm = str(r.get("produced_mana", "") or "").upper()
         if pm and not any(c in pm for c in "WUBRG"):
             rej_colorless.append(name)
@@ -667,10 +718,19 @@ def auto_build_decklist(
                     "+".join(sorted(off))))
             continue
 
-        relevant = produced & active_set
-        candidates.append((r, relevant, tap))
+        # Dead tribal check: land's only upside is a tribe trigger
+        # the deck can't use. A basic is strictly better.
+        if _land_has_dead_tribal(r, deck_subtypes):
+            rej_tribal.append(name)
+            continue
 
-    # Log rejections
+        relevant = produced & active_set
+
+        if tap == TAP_ALWAYS:
+            tapped_candidates.append((r, relevant, tap))
+        else:
+            untapped_candidates.append((r, relevant, tap))
+
     if rej_colorless:
         focus_log.append(
             ("  Rejected %d colorless: %s%s"
@@ -685,12 +745,18 @@ def auto_build_decklist(
              TEXT_DIM))
     if rej_tapped:
         focus_log.append(
-            ("  Rejected %d tapped mono: %s%s"
+            ("  Rejected %d tapped mono/off-id: %s%s"
              % (len(rej_tapped), ", ".join(rej_tapped[:3]),
                 "..." if len(rej_tapped) > 3 else ""),
              TEXT_DIM))
+    if rej_tribal:
+        focus_log.append(
+            ("  Rejected %d dead tribal: %s%s"
+             % (len(rej_tribal), ", ".join(rej_tribal[:4]),
+                "..." if len(rej_tribal) > 4 else ""),
+             WARNING))
 
-    # 4a) Focus lands (must pass same checks)
+    # 4a) Focus lands
     for fname in focus_land_names:
         if land_slots >= n_lands:
             break
@@ -700,17 +766,29 @@ def auto_build_decklist(
         produced = _detect_land_colors(row)
         tap = _enters_tapped(row)
         if not _land_is_acceptable(produced, active_set, tap):
-            off = produced - active_set
             focus_log.append(
                 ("  \u26a0 %s REJECTED (makes %s, deck is %s, tap=%s)"
                  % (fname,
                     "+".join(sorted(produced)) or "colorless",
-                    "+".join(sorted(active_colors)),
-                    tap),
+                    "+".join(sorted(active_colors)), tap),
+                 ERROR))
+            continue
+        if _land_has_dead_tribal(row, deck_subtypes):
+            focus_log.append(
+                ("  \u26a0 %s REJECTED (dead tribal ability)" % fname,
                  ERROR))
             continue
         relevant = produced & active_set
         copies = min(4, n_lands - land_slots)
+        if tap == TAP_ALWAYS:
+            copies = min(copies, max_tapped_slots - tapped_slots_used)
+            if copies <= 0:
+                focus_log.append(
+                    ("  \u26a0 %s REJECTED (tapped budget full: %d/%d)"
+                     % (fname, tapped_slots_used, max_tapped_slots),
+                     ERROR))
+                continue
+            tapped_slots_used += copies
         if copies <= 0:
             break
         land_picks.append((copies, fname, relevant))
@@ -719,71 +797,91 @@ def auto_build_decklist(
         for c in relevant:
             csrc[c] += copies
 
-    # 4b) Score and sort candidates
-    #     Untapped >> conditional >> tapped
-    #     More active colors >> fewer
-    #     Karsten gap coverage >> already-met colors
+    # 4b) Scoring
     def _land_score(info):
         r, rel, tap = info
         s = 0.0
-
-        # Tap state: massive factor
         if tap == TAP_NEVER:
-            s += 100.0
+            s += 1000.0
         elif tap == TAP_CONDITIONAL:
-            s += 60.0
-        else:  # TAP_ALWAYS
-            s += 5.0
-
-        # Active color coverage
-        s += len(rel) * 20.0
-
-        # Karsten gap coverage
+            s += 500.0
+        s += len(rel) * 50.0
         for c in rel:
             gap = max(0, min_sources.get(c, 0) - csrc.get(c, 0))
             if gap > 0:
-                s += gap * 3.0
-
-        # Minor synergy tiebreak
+                s += gap * 10.0
+        produced = _detect_land_colors(r)
+        off = len(produced - active_set)
+        s -= off * 30.0
         s += _safe_float(r.get("weighted_score", "0")) * 0.001
-
         return s
 
-    candidates.sort(key=_land_score, reverse=True)
+    untapped_candidates.sort(key=_land_score, reverse=True)
+    tapped_candidates.sort(key=_land_score, reverse=True)
 
-    # 4c) Pick nonbasics, max half of land slots
+    # 4c) PASS 1: untapped/conditional only
     max_nb = n_lands // 2
 
-    for r, relevant, tap in candidates:
+    for r, relevant, tap in untapped_candidates:
         if land_slots >= max_nb:
             break
         name = r.get("name", "").strip()
         if not name or name.lower() in land_used:
             continue
-
-        # Must cover a gap OR be a true dual
         has_gap = any(csrc.get(c, 0) < min_sources.get(c, 0)
                       for c in relevant)
         if not has_gap and len(relevant) < 2:
             continue
-
         copies = min(4, max_nb - land_slots)
         if copies <= 0:
             break
-
-        # Final paranoia
         produced = _detect_land_colors(r)
         tap2 = _enters_tapped(r)
         if not _land_is_acceptable(produced, active_set, tap2):
             continue
-
         land_picks.append((copies, name, relevant))
         land_used.add(name.lower())
         land_slots += copies
         for c in relevant:
             csrc[c] += copies
 
-    # 4d) ALL remaining = basics
+    # 4d) PASS 2: tapped ONLY if Karsten gaps remain
+    karsten_met = all(csrc.get(c, 0) >= min_sources.get(c, 0)
+                      for c in active_colors)
+
+    if not karsten_met and tapped_slots_used < max_tapped_slots:
+        for r, relevant, tap in tapped_candidates:
+            if land_slots >= max_nb:
+                break
+            if tapped_slots_used >= max_tapped_slots:
+                break
+            name = r.get("name", "").strip()
+            if not name or name.lower() in land_used:
+                continue
+            has_gap = any(csrc.get(c, 0) < min_sources.get(c, 0)
+                          for c in relevant)
+            if not has_gap:
+                continue
+            copies = min(4, max_nb - land_slots)
+            copies = min(copies, max_tapped_slots - tapped_slots_used)
+            if copies <= 0:
+                break
+            produced = _detect_land_colors(r)
+            tap2 = _enters_tapped(r)
+            if not _land_is_acceptable(produced, active_set, tap2):
+                continue
+            land_picks.append((copies, name, relevant))
+            land_used.add(name.lower())
+            land_slots += copies
+            tapped_slots_used += copies
+            for c in relevant:
+                csrc[c] += copies
+            focus_log.append(
+                ("  \u26a0 %s: %dx tapped (gap-fill, %d/%d tapped budget)"
+                 % (name, copies, tapped_slots_used, max_tapped_slots),
+                 WARNING))
+
+    # 4e) Basics
     remaining = n_lands - land_slots
     basic_alloc = []
 
@@ -880,6 +978,7 @@ def auto_build_decklist(
         "// Top synergy: %s" % top3,
         "// Avg CMC %.1f -> %d lands (%d nonbasic + %d basic)"
         % (avg_cmc, n_lands, nb_ct, ba_ct),
+        "// Tapped budget: %d/%d slots used" % (tapped_slots_used, max_tapped_slots),
     ]
     if focus_cards:
         lines.append("// Focus: %d locked, %d not found" % (fp, ff))
@@ -901,17 +1000,21 @@ def auto_build_decklist(
     if all_ok:
         lines.append("//   ALL COLORS OK")
 
-    # Log nonbasic land picks with tap state
     lines.append("//")
     lines.append("// Land picks:")
     for copies, name, rel in land_picks:
         row = by_name.get(name.lower(), {})
         tap = _enters_tapped(row)
-        tap_tag = "" if tap == TAP_NEVER else " [COND]" if tap == TAP_CONDITIONAL else " [TAPPED]"
+        if tap == TAP_NEVER:
+            tap_tag = ""
+        elif tap == TAP_CONDITIONAL:
+            tap_tag = " [COND]"
+        else:
+            tap_tag = " [TAPPED]"
         lines.append("//   %dx %s (%s)%s" % (
             copies, name, "+".join(sorted(rel)), tap_tag))
     for copies, name in basic_alloc:
-        lines.append("//   %dx %s (basic)" % (copies, name))
+        lines.append("//   %dx %s (basic, untapped)" % (copies, name))
 
     lines.extend(["// Review before tournament use", "", "Deck"])
 
@@ -950,9 +1053,10 @@ def auto_build_decklist(
     mn = (" | Mana: Karsten OK" if not shorts
           else " | MANA WARN: %s" % ", ".join(shorts))
 
-    summary = ("%d main + %d sb | CMC %.1f | %d lands (%dnb+%db)%s%s"
+    summary = ("%d main + %d sb | CMC %.1f | %d lands (%dnb+%db) "
+               "tapped:%d/%d%s%s"
                % (main_total, sb_slots, avg_cmc, n_lands, nb_ct, ba_ct,
-                  fn, mn))
+                  tapped_slots_used, max_tapped_slots, fn, mn))
     return True, summary, focus_log
 
 
@@ -974,9 +1078,6 @@ def _init_fonts():
     _F_HINT    = ctk.CTkFont(size=11)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Widget factories
-# ─────────────────────────────────────────────────────────────────────────────
 def w_entry(parent, placeholder="", **kw):
     d = dict(fg_color=SURFACE, border_color=BORDER, text_color=TEXT,
              placeholder_text_color=TEXT_MUTED, font=_F_BODY,
@@ -1046,9 +1147,6 @@ class ScaffoldApp(ctk.CTk):
         self._tribe_search_job = None
         self._build_ui()
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # EXPORT / IMPORT
-    # ═══════════════════════════════════════════════════════════════════════
     def _export_settings(self):
         return {
             "deck_name": self.name_entry.get().strip(),
@@ -1112,9 +1210,8 @@ class ScaffoldApp(ctk.CTk):
         if not f:
             return
         try:
-            Path(f).write_text(
-                json.dumps(data, indent=2, ensure_ascii=False),
-                encoding="utf-8")
+            Path(f).write_text(json.dumps(data, indent=2, ensure_ascii=False),
+                               encoding="utf-8")
             self._sm("Settings saved: %s" % Path(f).name, SUCCESS)
         except Exception as e:
             self._sm("Save failed: %s" % e, ERROR)
@@ -1133,21 +1230,16 @@ class ScaffoldApp(ctk.CTk):
         except Exception as e:
             self._sm("Load failed: %s" % e, ERROR)
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # LAYOUT
-    # ═══════════════════════════════════════════════════════════════════════
     def _build_ui(self):
         hdr = ctk.CTkFrame(self, fg_color=SURFACE, corner_radius=0, height=56)
-        hdr.pack(fill="x")
-        hdr.pack_propagate(False)
+        hdr.pack(fill="x"); hdr.pack_propagate(False)
         ctk.CTkLabel(hdr, text="\u2726  " + APP_TITLE, font=_F_TITLE,
                      text_color=ACCENT).pack(side="left", padx=24, pady=14)
         w_button(hdr, "\u2193 Load", self._on_load_settings,
                  width=70, height=30).pack(side="right", padx=(4, 20), pady=13)
         w_button(hdr, "\u2191 Save", self._on_save_settings,
                  width=70, height=30).pack(side="right", padx=0, pady=13)
-        self.tabs = ctk.CTkTabview(
-            self, fg_color=BG,
+        self.tabs = ctk.CTkTabview(self, fg_color=BG,
             segmented_button_fg_color=SURFACE,
             segmented_button_selected_color=ACCENT,
             segmented_button_selected_hover_color=ACCENT_HOVER,
@@ -1209,7 +1301,7 @@ class ScaffoldApp(ctk.CTk):
         self._build_tags(c5)
         c6 = self._card(self.scroll)
         self._card_header(c6, "6", "Focus Cards",
-                          "One per line. LOCKED into mainboard. Fuzzy-matched.")
+                          "One per line. LOCKED 4x into mainboard (3x if Legendary). Fuzzy-matched.")
         self.focus_box = ctk.CTkTextbox(
             c6, fg_color=SURFACE, border_color=BORDER, text_color=TEXT,
             font=ctk.CTkFont(family="Courier New", size=12),
@@ -1492,8 +1584,7 @@ class ScaffoldApp(ctk.CTk):
         self._log_visible = False
         self._log_tags = set()
         bar = ctk.CTkFrame(self, fg_color=SURFACE, corner_radius=0, height=34)
-        bar.pack(fill="x")
-        bar.pack_propagate(False)
+        bar.pack(fill="x"); bar.pack_propagate(False)
         self._log_toggle = ctk.CTkButton(
             bar, text="\u25b6  Log",
             font=ctk.CTkFont(size=11, weight="bold"),
@@ -1505,8 +1596,7 @@ class ScaffoldApp(ctk.CTk):
         self._log_inline.pack(side="left", padx=4)
         self._log_frame = ctk.CTkFrame(
             self, fg_color=SURFACE, corner_radius=0, height=0)
-        self._log_frame.pack(fill="x")
-        self._log_frame.pack_propagate(False)
+        self._log_frame.pack(fill="x"); self._log_frame.pack_propagate(False)
         self._log_box = ctk.CTkTextbox(
             self._log_frame, fg_color=SURFACE, text_color=TEXT,
             font=_F_MONO, border_width=0, corner_radius=0,
@@ -1556,8 +1646,7 @@ class ScaffoldApp(ctk.CTk):
         ctk.CTkFrame(self, height=1, fg_color=BORDER,
                       corner_radius=0).pack(fill="x")
         ft = ctk.CTkFrame(self, fg_color=SURFACE, corner_radius=0, height=72)
-        ft.pack(fill="x", side="bottom")
-        ft.pack_propagate(False)
+        ft.pack(fill="x", side="bottom"); ft.pack_propagate(False)
         left = ctk.CTkFrame(ft, fg_color="transparent")
         left.pack(side="left", padx=20, fill="y")
         self._arch_count = ctk.CTkLabel(
@@ -1586,40 +1675,27 @@ class ScaffoldApp(ctk.CTk):
                  fg_color="transparent", text_color=TEXT_MUTED
                  ).pack(side="right", padx=(0, 8), pady=14)
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # STATE
-    # ═══════════════════════════════════════════════════════════════════════
     def _validate_live(self):
         if not self.name_entry.get().strip():
-            self._sm("\u2460 Enter a deck name.", TEXT_MUTED)
-            return False
+            self._sm("\u2460 Enter a deck name.", TEXT_MUTED); return False
         if not self.selected_colors:
-            self._sm("\u2461 Select colours.", TEXT_MUTED)
-            return False
+            self._sm("\u2461 Select colours.", TEXT_MUTED); return False
         if not self.selected_archetypes:
-            self._sm("\u2462 Pick archetypes.", TEXT_MUTED)
-            return False
+            self._sm("\u2462 Pick archetypes.", TEXT_MUTED); return False
         if "tribal" in self.selected_archetypes and not self._tribes:
-            self._sm("\u2463 Tribal -- pick subtype.", WARNING)
-            return False
-        self._sm("Ready!", SUCCESS)
-        return True
+            self._sm("\u2463 Tribal -- pick subtype.", WARNING); return False
+        self._sm("Ready!", SUCCESS); return True
 
     def _sm(self, msg, color=TEXT_MUTED):
         self.status.configure(text=msg, text_color=color)
 
     def _reset_form(self):
         self.name_entry.delete(0, "end")
-        for c in list(self.selected_colors):
-            self._toggle_color(c)
-        for a in list(self.selected_archetypes):
-            self._toggle_arch(a)
-        for t in list(self._selected_tags):
-            self._toggle_tag(t)
-        self._tribes.clear()
-        self._refresh_tribe_chips()
-        for w in self._tribe_results.winfo_children():
-            w.destroy()
+        for c in list(self.selected_colors): self._toggle_color(c)
+        for a in list(self.selected_archetypes): self._toggle_arch(a)
+        for t in list(self._selected_tags): self._toggle_tag(t)
+        self._tribes.clear(); self._refresh_tribe_chips()
+        for w in self._tribe_results.winfo_children(): w.destroy()
         self.focus_box.delete("1.0", "end")
         self.output_entry.delete(0, "end")
         self.skip_queries_var.set(False)
@@ -1634,9 +1710,6 @@ class ScaffoldApp(ctk.CTk):
         if self._last_deck_dir:
             _open_folder(self._last_deck_dir)
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # BROWSE
-    # ═══════════════════════════════════════════════════════════════════════
     def _browse_output(self):
         d = filedialog.askdirectory(title="Output directory")
         if d:
@@ -1667,17 +1740,10 @@ class ScaffoldApp(ctk.CTk):
             self.syn_out.delete(0, "end")
             self.syn_out.insert(0, f)
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # PROCESS LIFECYCLE
-    # ═══════════════════════════════════════════════════════════════════════
     def _guard(self, btn):
-        if not self._running:
-            return False
-        if self._active_btn is btn:
-            self._cancel()
-            return True
-        self._sm("Already running.", WARNING)
-        return True
+        if not self._running: return False
+        if self._active_btn is btn: self._cancel(); return True
+        self._sm("Already running.", WARNING); return True
 
     def _start(self, btn, label):
         self._running = True
@@ -1690,8 +1756,7 @@ class ScaffoldApp(ctk.CTk):
         self._log_clear()
 
     def _finish(self):
-        if not self._running:
-            return
+        if not self._running: return
         if self._active_btn:
             self._active_btn.configure(
                 state="normal", text=self._active_btn_text,
@@ -1703,10 +1768,8 @@ class ScaffoldApp(ctk.CTk):
         self._was_cancelled = True
         if self._active_proc and self._active_proc.poll() is None:
             self._active_proc.terminate()
-            try:
-                self._active_proc.wait(timeout=5)
-            except Exception:
-                self._active_proc.kill()
+            try: self._active_proc.wait(timeout=5)
+            except Exception: self._active_proc.kill()
         self._finish()
         self._sm("Cancelled.", WARNING)
         self._log("Cancelled.", WARNING)
@@ -1716,14 +1779,9 @@ class ScaffoldApp(ctk.CTk):
         e["PYTHONIOENCODING"] = "utf-8"
         return e
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # COMMANDS
-    # ═══════════════════════════════════════════════════════════════════════
     def _on_generate(self):
-        if self._guard(self.run_btn):
-            return
-        if not self._validate_live():
-            return
+        if self._guard(self.run_btn): return
+        if not self._validate_live(): return
         name = self.name_entry.get().strip()
         colors = normalize_colors("".join(self.selected_colors))
         cmd = [sys.executable,
@@ -1757,30 +1815,24 @@ class ScaffoldApp(ctk.CTk):
             daemon=True).start()
 
     def _on_run_queries(self):
-        if self._guard(self.rq_btn):
-            return
+        if self._guard(self.rq_btn): return
         p = self.rq_entry.get().strip()
         if not p:
-            self._sm("Select session.md.", ERROR)
-            return
+            self._sm("Select session.md.", ERROR); return
         cmd = [sys.executable,
                str(_scripts_dir / "run_session_queries.py"), p]
-        if self.rq_force.get():
-            cmd.append("--force")
-        if self.rq_dryrun.get():
-            cmd.append("--dry-run")
+        if self.rq_force.get(): cmd.append("--force")
+        if self.rq_dryrun.get(): cmd.append("--dry-run")
         self._start(self.rq_btn, "Run Queries")
         threading.Thread(
             target=self._bg_generic, args=(cmd, "queries"),
             daemon=True).start()
 
     def _on_synergy(self):
-        if self._guard(self.syn_btn):
-            return
+        if self._guard(self.syn_btn): return
         inp = self.syn_in.get().strip()
         if not inp:
-            self._sm("Select input.", ERROR)
-            return
+            self._sm("Select input.", ERROR); return
         cmd = [sys.executable,
                str(_scripts_dir / "synergy_analysis.py"), inp]
         t = self.syn_thresh.get().strip()
@@ -1797,9 +1849,6 @@ class ScaffoldApp(ctk.CTk):
             target=self._bg_generic, args=(cmd, "synergy"),
             daemon=True).start()
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # BACKGROUND THREADS
-    # ═══════════════════════════════════════════════════════════════════════
     def _stream(self, cmd):
         self.after(0, self._log, "$ " + " ".join(cmd), TEXT_MUTED)
         proc = subprocess.Popen(
@@ -1832,12 +1881,7 @@ class ScaffoldApp(ctk.CTk):
             ok, out = self._stream(cmd)
         except Exception as e:
             ok, out = False, str(e)
-
-        deck_dir = None
-        syn = None
-        ab_msg = None
-        focus_log = []
-
+        deck_dir = None; syn = None; ab_msg = None; focus_log = []
         try:
             deck_dir = _extract_deck_dir(out) if ok else None
             if deck_dir:
@@ -1845,7 +1889,6 @@ class ScaffoldApp(ctk.CTk):
                 if not dp.is_absolute():
                     dp = self._repo.root / dp
                 deck_dir = str(dp)
-
             if ok and run_syn and deck_dir:
                 try:
                     syn = self._bg_synergy(deck_dir)
@@ -1853,14 +1896,12 @@ class ScaffoldApp(ctk.CTk):
                     self.after(0, self._log,
                                "Synergy crashed: %s" % e, ERROR)
                     self.after(0, self._log, traceback.format_exc(), ERROR)
-
             if ok and deck_dir:
                 try:
                     self._bg_sort(deck_dir)
                 except Exception as e:
                     self.after(0, self._log,
                                "Sort crashed: %s" % e, ERROR)
-
             if ok and auto_build and deck_dir:
                 try:
                     ab_ok, ab_msg, focus_log = auto_build_decklist(
@@ -1884,12 +1925,10 @@ class ScaffoldApp(ctk.CTk):
                                "AUTO-BUILD CRASHED: %s" % e, ERROR)
                     self.after(0, self._log, traceback.format_exc(), ERROR)
                     ab_msg = None
-
         except Exception as e:
             self.after(0, self._log,
                        "Post-scaffold error: %s" % e, ERROR)
             self.after(0, self._log, traceback.format_exc(), ERROR)
-
         files = _verify_files(deck_dir) if deck_dir else []
         self.after(0, self._done,
                    RunResult(ok, out, syn, "scaffold", deck_dir, files,
@@ -1928,9 +1967,6 @@ class ScaffoldApp(ctk.CTk):
                        "  Merged scores into candidate_pool.csv (%d cards)"
                        % pn, SUCCESS)
 
-    # ═══════════════════════════════════════════════════════════════════════
-    # COMPLETION
-    # ═══════════════════════════════════════════════════════════════════════
     def _done(self, r):
         was = self._was_cancelled
         self._was_cancelled = False
