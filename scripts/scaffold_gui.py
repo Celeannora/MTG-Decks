@@ -116,6 +116,11 @@ SUBTYPE_COLOR = {"Plains": "W", "Island": "U", "Swamp": "B",
 
 SETTINGS_EXT = ".scaffold.json"
 
+# Tap states returned by _enters_tapped()
+TAP_ALWAYS      = "always"      # always enters tapped, no way around it
+TAP_CONDITIONAL = "conditional"  # CAN enter untapped (shocks, checks, fasts)
+TAP_NEVER       = "never"        # always untapped
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Data
@@ -222,20 +227,14 @@ def _resolve_card_name(query, by_name):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Land color detection (NO oracle parsing)
+# Land analysis: color detection + tap state
 # ─────────────────────────────────────────────────────────────────────────────
 def _detect_land_colors(row: dict) -> set[str]:
     """Which WUBRG colors can this land produce?
-
-    ONLY trusts:
-      1. Scryfall produced_mana field
-      2. Land subtypes (Plains=W, Island=U, Swamp=B, Mountain=R, Forest=G)
-
-    NO oracle text parsing. Returns empty set for colorless-only.
-    """
+    ONLY trusts produced_mana field and land subtypes.
+    Returns empty set for colorless-only."""
     colors = set()
 
-    # 1) Scryfall produced_mana (authoritative)
     pm = str(row.get("produced_mana", "") or "").upper()
     if pm:
         for c in "WUBRG":
@@ -245,7 +244,6 @@ def _detect_land_colors(row: dict) -> set[str]:
             return set()
         return colors
 
-    # 2) Land subtypes only
     tl = row.get("type_line", "")
     if "\u2014" in tl:
         subtypes = tl.split("\u2014", 1)[1]
@@ -261,22 +259,77 @@ def _detect_land_colors(row: dict) -> set[str]:
     return colors
 
 
-def _land_is_on_identity(produced: set[str], active_set: set[str]) -> bool:
-    """Check if a land is worth including in a deck with the given colors.
+def _enters_tapped(row: dict) -> str:
+    """Determine if a land enters the battlefield tapped.
 
-    Rules:
-      - Must produce at least 1 active color
-      - If it produces ANY off-identity colors, it must cover 2+ active
-        colors to be worth the slot (otherwise a basic is strictly better)
-      - Colorless-only -> always False
+    Returns:
+        TAP_NEVER       - always enters untapped (basics, shocks paying life,
+                          fetches, fast lands within 2-land window, painlands)
+        TAP_CONDITIONAL - CAN enter untapped if you meet a condition
+                          (shocklands, checklands, fast lands, reveal lands)
+        TAP_ALWAYS      - always enters tapped, no exceptions
+                          (guildgates, gainlands, taplands, most budget duals)
+    """
+    oracle = row.get("oracle_text", "").lower()
+    tl = row.get("type_line", "").lower()
 
-    Examples for a BG deck (active_set = {B, G}):
-      Overgrown Tomb  {B, G}    -> 2 active, 0 off -> True
-      Blood Crypt     {B, R}    -> 1 active, 1 off -> False (basic Swamp better)
-      Command Tower   {W,U,B,R,G} -> 2 active, 3 off -> True (covers both)
-      Blooming Marsh  {B, G}    -> 2 active, 0 off -> True
-      Llanowar Wastes {B, G}    -> 2 active, 0 off -> True
-      Stomping Ground {R, G}    -> 1 active, 1 off -> False (basic Forest better)
+    # No oracle text = probably basic or simple land = untapped
+    if not oracle.strip():
+        return TAP_NEVER
+
+    # Check for "enters the battlefield tapped" or "enters tapped"
+    has_etb_tapped = ("enters the battlefield tapped" in oracle
+                      or "enters tapped" in oracle)
+
+    if not has_etb_tapped:
+        return TAP_NEVER
+
+    # It mentions entering tapped. But is there a condition that lets
+    # it enter UNtapped?
+    # Shocklands: "you may pay 2 life. If you don't, it enters tapped"
+    # Checklands: "unless you control a Swamp or a Forest"
+    # Fast lands: "if you control two or fewer other lands"
+    # Reveal lands: "you may reveal ... if you don't, it enters tapped"
+    # Pathway/modal: these don't say "enters tapped" so already handled
+    conditional_patterns = [
+        "unless you control",
+        "unless you pay",
+        "you may pay",
+        "you may reveal",
+        "if you control two or fewer",
+        "if you control fewer",
+        "if you control a ",
+        "if an opponent controls",
+        "you may sacrifice",
+        "if you don't, it enters",
+        "if you don't, ~ enters",
+    ]
+
+    for pat in conditional_patterns:
+        if pat in oracle:
+            return TAP_CONDITIONAL
+
+    # No bypass condition found = always tapped
+    return TAP_ALWAYS
+
+
+def _land_is_acceptable(produced: set[str], active_set: set[str],
+                         tap_state: str) -> bool:
+    """Decide if a nonbasic land is worth including.
+
+    Rejection rules (a basic is ALWAYS better in these cases):
+      1. Produces zero active colors -> REJECT
+      2. Off-identity colors + only 1 active color -> REJECT
+         (basic same color, untapped, no downside)
+      3. ALWAYS tapped + only 1 active color -> REJECT
+         (basic same color, untapped, no downside)
+      4. ALWAYS tapped + off-identity + any count -> REJECT
+
+    Accept rules:
+      - Untapped/conditional + 2+ active colors + no off-identity = BEST
+      - Untapped/conditional + 2+ active colors + some off-identity = OK
+      - Untapped/conditional + 1 active + 0 off-identity = OK (painlands etc)
+      - Always tapped + 2+ active + 0 off-identity = LAST RESORT
     """
     if not produced:
         return False
@@ -286,9 +339,17 @@ def _land_is_on_identity(produced: set[str], active_set: set[str]) -> bool:
         return False
 
     off_colors = produced - active_set
+
+    # Off-identity + only 1 active = basic is better
     if off_colors and len(relevant) < 2:
-        # Produces off-identity colors but only covers 1 active color.
-        # A basic land does the same job with zero downside.
+        return False
+
+    # Always tapped + only 1 active = basic is better (untapped + same color)
+    if tap_state == TAP_ALWAYS and len(relevant) < 2:
+        return False
+
+    # Always tapped + off-identity colors = garbage
+    if tap_state == TAP_ALWAYS and off_colors:
         return False
 
     return True
@@ -383,17 +444,17 @@ def auto_build_decklist(
     colors: str,
     focus_cards: list[str] | None = None,
 ) -> tuple[bool, str, list[tuple[str, str]]]:
-    """Build a playable 60+15 from scored candidate_pool.csv.
+    """Build 60+15 from scored candidate_pool.csv.
 
-    Strict mana base:
-      - Colorless-only lands NEVER included
-      - Off-identity duals covering only 1 active color NEVER included
-        (a basic is strictly better: same color, no downside)
-      - Only trusts produced_mana + land subtypes for detection
-      - Max half land slots = nonbasic, rest = basics
-      - Basics distributed by Karsten gap then pip ratio
+    Land rules:
+      - ONLY on-identity colors. No off-color garbage.
+      - UNTAPPED lands prioritized. Always-tapped lands heavily penalized.
+      - Tapped + only 1 active color = REJECTED (basic is better).
+      - Tapped + off-identity = REJECTED.
+      - Untapped on-identity duals = top picks.
+      - Max half land slots nonbasic, rest basics.
     """
-    focus_log: list[tuple[str, str]] = []
+    focus_log = []
     pool_path = Path(deck_dir) / "candidate_pool.csv"
 
     if not pool_path.exists():
@@ -423,7 +484,6 @@ def auto_build_decklist(
     if not nonlands:
         return False, "No nonland cards", focus_log
 
-    # Adaptive land count
     sample = nonlands[:min(30, len(nonlands))]
     avg_cmc = (sum(_safe_float(r.get("cmc", "0")) for r in sample)
                / max(1, len(sample)))
@@ -551,24 +611,32 @@ def auto_build_decklist(
             min_sources[c] = 10
 
     # ══════════════════════════════════════════════════════════════════
-    # PHASE 4: Mana base (ultra-strict, identity-aware)
+    # PHASE 4: Mana base
     #
-    #   1. Colorless-only -> REJECTED
-    #   2. Off-identity dual covering only 1 active color -> REJECTED
-    #      (basic is strictly better: same coverage, no downside)
-    #   3. On-identity dual covering 2+ active colors -> KEEP
-    #   4. On-identity mono covering 1 active, 0 off -> KEEP
-    #   5. Max half land slots = nonbasic, rest = basics
+    #   HARD RULES:
+    #     - Colorless only            -> REJECT
+    #     - Off-identity + <2 active  -> REJECT (basic is better)
+    #     - Always tapped + <2 active -> REJECT (basic is better)
+    #     - Always tapped + off-identity -> REJECT
+    #
+    #   PRIORITY (highest first):
+    #     1. Untapped, 2+ active colors, 0 off-identity  (shocks, pains)
+    #     2. Conditional, 2+ active, 0 off             (checks, fasts)
+    #     3. Untapped, 1 active, 0 off                 (on-color utility)
+    #     4. Conditional, 1 active, 0 off
+    #     5. Always tapped, 2+ active, 0 off           (LAST RESORT)
+    #     6. Everything else -> BASIC
     # ══════════════════════════════════════════════════════════════════
     csrc = {c: 0 for c in "WUBRG"}
     land_picks = []
     land_used = set()
     land_slots = 0
 
-    # Pre-filter with identity check
-    on_color = []
-    rejected = []
-    rejected_off = []
+    # Analyse every pool land
+    candidates = []     # (row, relevant_colors, tap_state)
+    rej_colorless = []
+    rej_offid = []
+    rej_tapped = []
 
     for r in pool_lands:
         name = r.get("name", "").strip()
@@ -577,44 +645,52 @@ def auto_build_decklist(
             continue
 
         produced = _detect_land_colors(r)
+        tap = _enters_tapped(r)
 
-        # Double check produced_mana if available
+        # Double-check produced_mana for colorless
         pm = str(r.get("produced_mana", "") or "").upper()
         if pm and not any(c in pm for c in "WUBRG"):
-            rejected.append(name)
+            rej_colorless.append(name)
             continue
 
-        if not _land_is_on_identity(produced, active_set):
+        if not _land_is_acceptable(produced, active_set, tap):
             relevant = produced & active_set
             off = produced - active_set
             if not produced or not relevant:
-                rejected.append(name)
+                rej_colorless.append(name)
+            elif tap == TAP_ALWAYS:
+                rej_tapped.append("%s [%s, tapped]" % (
+                    name, "+".join(sorted(relevant))))
             else:
-                # Has active color but also off-identity with <2 active
-                rejected_off.append(
-                    "%s (%s, off: %s)" % (name,
-                                          "+".join(sorted(relevant)),
-                                          "+".join(sorted(off))))
+                rej_offid.append("%s [%s, off:%s]" % (
+                    name, "+".join(sorted(relevant)),
+                    "+".join(sorted(off))))
             continue
 
         relevant = produced & active_set
-        on_color.append((r, relevant))
+        candidates.append((r, relevant, tap))
 
-    if rejected:
+    # Log rejections
+    if rej_colorless:
         focus_log.append(
-            ("  Rejected %d colorless lands: %s%s"
-             % (len(rejected), ", ".join(rejected[:5]),
-                "..." if len(rejected) > 5 else ""),
+            ("  Rejected %d colorless: %s%s"
+             % (len(rej_colorless), ", ".join(rej_colorless[:4]),
+                "..." if len(rej_colorless) > 4 else ""),
+             TEXT_DIM))
+    if rej_offid:
+        focus_log.append(
+            ("  Rejected %d off-identity: %s%s"
+             % (len(rej_offid), ", ".join(rej_offid[:3]),
+                "..." if len(rej_offid) > 3 else ""),
+             TEXT_DIM))
+    if rej_tapped:
+        focus_log.append(
+            ("  Rejected %d tapped mono: %s%s"
+             % (len(rej_tapped), ", ".join(rej_tapped[:3]),
+                "..." if len(rej_tapped) > 3 else ""),
              TEXT_DIM))
 
-    if rejected_off:
-        focus_log.append(
-            ("  Rejected %d off-identity duals: %s%s"
-             % (len(rejected_off), ", ".join(rejected_off[:4]),
-                "..." if len(rejected_off) > 4 else ""),
-             TEXT_DIM))
-
-    # 4a) Focus lands (identity-checked)
+    # 4a) Focus lands (must pass same checks)
     for fname in focus_land_names:
         if land_slots >= n_lands:
             break
@@ -622,13 +698,15 @@ def auto_build_decklist(
         if not row or fname.lower() in land_used:
             continue
         produced = _detect_land_colors(row)
-        if not _land_is_on_identity(produced, active_set):
+        tap = _enters_tapped(row)
+        if not _land_is_acceptable(produced, active_set, tap):
             off = produced - active_set
             focus_log.append(
-                ("  \u26a0 %s REJECTED (off-identity: makes %s, "
-                 "deck is %s)"
-                 % (fname, "+".join(sorted(produced)) or "colorless",
-                    "+".join(sorted(active_colors))),
+                ("  \u26a0 %s REJECTED (makes %s, deck is %s, tap=%s)"
+                 % (fname,
+                    "+".join(sorted(produced)) or "colorless",
+                    "+".join(sorted(active_colors)),
+                    tap),
                  ERROR))
             continue
         relevant = produced & active_set
@@ -641,42 +719,62 @@ def auto_build_decklist(
         for c in relevant:
             csrc[c] += copies
 
-    # 4b) Score on-color nonbasics by Karsten gap
-    def _lp(info):
-        r, rel = info
+    # 4b) Score and sort candidates
+    #     Untapped >> conditional >> tapped
+    #     More active colors >> fewer
+    #     Karsten gap coverage >> already-met colors
+    def _land_score(info):
+        r, rel, tap = info
         s = 0.0
+
+        # Tap state: massive factor
+        if tap == TAP_NEVER:
+            s += 100.0
+        elif tap == TAP_CONDITIONAL:
+            s += 60.0
+        else:  # TAP_ALWAYS
+            s += 5.0
+
+        # Active color coverage
+        s += len(rel) * 20.0
+
+        # Karsten gap coverage
         for c in rel:
             gap = max(0, min_sources.get(c, 0) - csrc.get(c, 0))
             if gap > 0:
-                s += gap * (min_sources.get(c, 10) / 8.0)
-        # True duals (2+ active) get big bonus
-        if len(rel) >= 2:
-            s += len(rel) * 5.0
+                s += gap * 3.0
+
+        # Minor synergy tiebreak
         s += _safe_float(r.get("weighted_score", "0")) * 0.001
+
         return s
 
-    on_color.sort(key=_lp, reverse=True)
+    candidates.sort(key=_land_score, reverse=True)
 
-    # 4c) Pick nonbasics - max HALF of land slots
+    # 4c) Pick nonbasics, max half of land slots
     max_nb = n_lands // 2
 
-    for r, relevant in on_color:
+    for r, relevant, tap in candidates:
         if land_slots >= max_nb:
             break
         name = r.get("name", "").strip()
         if not name or name.lower() in land_used:
             continue
+
+        # Must cover a gap OR be a true dual
         has_gap = any(csrc.get(c, 0) < min_sources.get(c, 0)
                       for c in relevant)
         if not has_gap and len(relevant) < 2:
             continue
+
         copies = min(4, max_nb - land_slots)
         if copies <= 0:
             break
 
-        # Final paranoia: re-check identity
+        # Final paranoia
         produced = _detect_land_colors(r)
-        if not _land_is_on_identity(produced, active_set):
+        tap2 = _enters_tapped(r)
+        if not _land_is_acceptable(produced, active_set, tap2):
             continue
 
         land_picks.append((copies, name, relevant))
@@ -685,7 +783,7 @@ def auto_build_decklist(
         for c in relevant:
             csrc[c] += copies
 
-    # 4d) ALL remaining = basics by Karsten gap then pip ratio
+    # 4d) ALL remaining = basics
     remaining = n_lands - land_slots
     basic_alloc = []
 
@@ -802,6 +900,19 @@ def auto_build_decklist(
                       % (MANA_NAMES.get(c, c), c, have, need, tag))
     if all_ok:
         lines.append("//   ALL COLORS OK")
+
+    # Log nonbasic land picks with tap state
+    lines.append("//")
+    lines.append("// Land picks:")
+    for copies, name, rel in land_picks:
+        row = by_name.get(name.lower(), {})
+        tap = _enters_tapped(row)
+        tap_tag = "" if tap == TAP_NEVER else " [COND]" if tap == TAP_CONDITIONAL else " [TAPPED]"
+        lines.append("//   %dx %s (%s)%s" % (
+            copies, name, "+".join(sorted(rel)), tap_tag))
+    for copies, name in basic_alloc:
+        lines.append("//   %dx %s (basic)" % (copies, name))
+
     lines.extend(["// Review before tournament use", "", "Deck"])
 
     for grp in TYPE_ORDER:
@@ -1687,7 +1798,7 @@ class ScaffoldApp(ctk.CTk):
             daemon=True).start()
 
     # ═══════════════════════════════════════════════════════════════════════
-    # BACKGROUND THREADS (crash-protected)
+    # BACKGROUND THREADS
     # ═══════════════════════════════════════════════════════════════════════
     def _stream(self, cmd):
         self.after(0, self._log, "$ " + " ".join(cmd), TEXT_MUTED)
