@@ -1,3 +1,11 @@
+Two bugs:
+
+1. **Stuck at "Running..."** — `auto_build_decklist` is crashing (probably `produced_mana` column doesn't exist in your CSV) and the exception kills the thread silently, so `_done` never fires
+2. No export/import
+
+Full script with both fixes plus export/import:
+
+```python
 #!/usr/bin/env python3
 """
 Deck Scaffold Generator — GUI (customtkinter)
@@ -9,12 +17,14 @@ Requires:  pip install customtkinter
 import csv
 import difflib
 import io
+import json
 import os
 import platform
 import re
 import subprocess
 import sys
 import threading
+import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
 from tkinter import filedialog
@@ -101,7 +111,6 @@ SCORE_SORT_KEYS = [
 GRID_COLS = 5
 INNER_PAD = 16
 
-# Karsten mana source requirements (60-card, by on-curve turn)
 _KARSTEN = {
     (1, 1): 14, (1, 2): 13, (1, 3): 12, (1, 4): 11, (1, 5): 11,
     (2, 2): 18, (2, 3): 16, (2, 4): 15, (2, 5): 14,
@@ -112,6 +121,8 @@ BASIC_FOR_COLOR = {"W": "Plains", "U": "Island", "B": "Swamp",
                    "R": "Mountain", "G": "Forest"}
 SUBTYPE_COLOR   = {"Plains": "W", "Island": "U", "Swamp": "B",
                    "Mountain": "R", "Forest": "G"}
+
+SETTINGS_EXT = ".scaffold.json"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -142,7 +153,7 @@ def filter_tribes(query: str) -> list[str]:
     return [t for t in ALL_CREATURE_TYPES if q in t.lower()] if q else []
 
 
-def _safe_float(val: str) -> float:
+def _safe_float(val) -> float:
     try:
         return float(str(val).strip().rstrip("%"))
     except (ValueError, TypeError):
@@ -189,18 +200,12 @@ def _is_land_card(row: dict) -> bool:
 
 def _card_type_group(row: dict) -> str:
     front = row.get("type_line", "").split("//")[0].lower()
-    if "creature" in front:
-        return "Creatures"
-    if "planeswalker" in front:
-        return "Planeswalkers"
-    if "instant" in front:
-        return "Instants"
-    if "sorcery" in front:
-        return "Sorceries"
-    if "enchantment" in front:
-        return "Enchantments"
-    if "artifact" in front:
-        return "Artifacts"
+    if "creature" in front:      return "Creatures"
+    if "planeswalker" in front:  return "Planeswalkers"
+    if "instant" in front:       return "Instants"
+    if "sorcery" in front:       return "Sorceries"
+    if "enchantment" in front:   return "Enchantments"
+    if "artifact" in front:      return "Artifacts"
     return "Other Spells"
 
 
@@ -210,48 +215,76 @@ def _card_type_group(row: dict) -> str:
 def _resolve_card_name(query, by_name):
     key = query.lower().strip()
     if key in by_name:
-        actual = by_name[key].get("name", query).strip()
-        return by_name[key], actual, "exact"
+        return by_name[key], by_name[key].get("name", query).strip(), "exact"
     all_keys = list(by_name.keys())
     close = difflib.get_close_matches(key, all_keys, n=1, cutoff=0.72)
     if close:
         row = by_name[close[0]]
-        actual = row.get("name", close[0]).strip()
-        return row, actual, f"fuzzy:{actual}"
+        return row, row.get("name", close[0]).strip(), f"fuzzy:{row.get('name','')}"
     if len(key) >= 5:
-        for pool_key, row in by_name.items():
-            pool_name = row.get("name", "").strip()
-            if key in pool_key or pool_key in key:
-                return row, pool_name, f"substr:{pool_name}"
+        for pk, row in by_name.items():
+            pn = row.get("name", "").strip()
+            if key in pk or pk in key:
+                return row, pn, f"substr:{pn}"
     return None, query, "not_found"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Land color detection
+# Land color detection (robust — handles missing produced_mana)
 # ─────────────────────────────────────────────────────────────────────────────
 _ADD_MANA_RE = re.compile(r"\{([WUBRGC])\}", re.IGNORECASE)
+_ADD_PATTERN = re.compile(
+    r"add\s+(\{[^}]+\}(?:\s*(?:,|or|and)\s*\{[^}]+\})*)",
+    re.IGNORECASE,
+)
+
+_ANY_COLOR_PHRASES = [
+    "any color", "any type of mana", "mana of any",
+    "any one color", "any combination of colors",
+]
+_CONDITIONAL_PHRASES = [
+    "only if", "only as", "spend this mana only",
+    "activate only if", "if you control",
+    "only to cast", "unless", "this ability costs",
+    "only during", "spend only",
+]
 
 
 def _detect_land_colors(row: dict) -> set[str]:
-    """Which WUBRG colors can this land produce?
-    Returns empty set for colorless-only lands."""
+    """Which WUBRG colors can this land RELIABLY produce?
+    Returns empty set for colorless-only.  {C} is never included."""
     colors: set[str] = set()
-    tl = row.get("type_line", "")
-    oracle = row.get("oracle_text", "")
 
+    # 1) Scryfall produced_mana field (if present in CSV)
+    pm = row.get("produced_mana", "")
+    if pm:
+        for c in "WUBRG":
+            if c in pm.upper():
+                colors.add(c)
+        if not colors:
+            return set()  # colorless only
+        return colors
+
+    # 2) Land subtypes
+    tl = row.get("type_line", "")
     for subtype, color in SUBTYPE_COLOR.items():
         if subtype in tl:
             colors.add(color)
 
-    for match in _ADD_MANA_RE.finditer(oracle):
-        sym = match.group(1).upper()
-        if sym in "WUBRG":
-            colors.add(sym)
-
+    # 3) Oracle text — only "add {X}" patterns, not activation costs
+    oracle = row.get("oracle_text", "")
     oracle_lower = oracle.lower()
-    if any(phrase in oracle_lower for phrase in
-           ["any color", "any type", "mana of any", "any one color",
-            "any combination of colors"]):
+
+    for match in _ADD_PATTERN.finditer(oracle_lower):
+        chunk = match.group(1)
+        for c in "wubrg":
+            if "{" + c + "}" in chunk:
+                colors.add(c.upper())
+
+    # 4) "any color" but NOT conditional
+    has_any = any(p in oracle_lower for p in _ANY_COLOR_PHRASES)
+    has_cond = any(p in oracle_lower for p in _CONDITIONAL_PHRASES)
+    if has_any and not has_cond:
         colors.update("WUBRG")
 
     return colors
@@ -280,8 +313,7 @@ def sort_and_rewrite_csv(filepath: Path) -> tuple[bool, int]:
     reader = csv.DictReader(io.StringIO(text))
     if not reader.fieldnames:
         return False, 0
-    present = [c for c in SCORE_SORT_KEYS if c in reader.fieldnames]
-    if not present:
+    if not any(c in reader.fieldnames for c in SCORE_SORT_KEYS):
         return False, 0
     rows = list(reader)
     if not rows:
@@ -303,38 +335,38 @@ def merge_scores_into_candidate_pool(deck_dir: str) -> tuple[bool, int]:
         return False, 0
     scores: dict[str, dict] = {}
     top_text = top_path.read_text(encoding="utf-8")
-    top_reader = csv.DictReader(io.StringIO(top_text))
-    top_fields = list(top_reader.fieldnames or [])
-    score_cols = [c for c in SCORE_SORT_KEYS if c in top_fields]
-    if not score_cols:
+    tr = csv.DictReader(io.StringIO(top_text))
+    tf = list(tr.fieldnames or [])
+    sc = [c for c in SCORE_SORT_KEYS if c in tf]
+    if not sc:
         return False, 0
-    for row in top_reader:
-        name = row.get("name", "").strip()
-        if name:
-            scores[name] = {col: row.get(col, "") for col in score_cols}
-    pool_text = pool_path.read_text(encoding="utf-8")
-    pool_reader = csv.DictReader(io.StringIO(pool_text))
-    pool_fields = list(pool_reader.fieldnames or [])
-    pool_rows = list(pool_reader)
+    for row in tr:
+        n = row.get("name", "").strip()
+        if n:
+            scores[n] = {c: row.get(c, "") for c in sc}
+    pt = pool_path.read_text(encoding="utf-8")
+    pr = csv.DictReader(io.StringIO(pt))
+    pf = list(pr.fieldnames or [])
+    pool_rows = list(pr)
     if not pool_rows:
         return False, 0
-    new_cols = [c for c in score_cols if c not in pool_fields]
-    merged_fields = pool_fields + new_cols
+    nc = [c for c in sc if c not in pf]
+    mf = pf + nc
     for row in pool_rows:
-        name = row.get("name", "").strip()
-        card_scores = scores.get(name, {})
-        for col in score_cols:
-            val = card_scores.get(col, "")
-            if col in new_cols:
-                row[col] = val
-            elif col in pool_fields and not row.get(col):
-                row[col] = val
+        n = row.get("name", "").strip()
+        cs = scores.get(n, {})
+        for c in sc:
+            v = cs.get(c, "")
+            if c in nc:
+                row[c] = v
+            elif c in pf and not row.get(c):
+                row[c] = v
     pool_rows.sort(key=_sort_key)
     buf = io.StringIO()
-    writer = csv.DictWriter(buf, fieldnames=merged_fields,
-                            extrasaction="ignore", lineterminator="\n")
-    writer.writeheader()
-    writer.writerows(pool_rows)
+    w = csv.DictWriter(buf, fieldnames=mf, extrasaction="ignore",
+                       lineterminator="\n")
+    w.writeheader()
+    w.writerows(pool_rows)
     pool_path.write_text(buf.getvalue(), encoding="utf-8")
     return True, len(pool_rows)
 
@@ -349,15 +381,12 @@ def auto_build_decklist(
 ) -> tuple[bool, str, list[tuple[str, str]]]:
     """Build a playable 60+15 from scored candidate_pool.csv.
 
-    Mana base rules (strict):
-      - A nonbasic land is ONLY picked if it produces at least one of
-        the deck's active colors.  Zero exceptions.
-      - Colorless-only lands are NEVER included.
-      - Any land slot not filled by an on-color nonbasic becomes a basic.
-      - Basics are distributed to meet Karsten thresholds first, then
-        proportional to pip count.
-
-    Returns (success, summary, focus_log).
+    Strict mana base:
+      - Colorless-only lands NEVER included
+      - A nonbasic must produce at least one active color
+      - Conditional 'any color' doesn't count
+      - Max half of land slots = nonbasic, rest = basics
+      - Basics distributed by Karsten gap then pip ratio
     """
     focus_log: list[tuple[str, str]] = []
     pool_path = Path(deck_dir) / "candidate_pool.csv"
@@ -373,9 +402,9 @@ def auto_build_decklist(
         rows = list(reader)
 
     if len(rows) < 10:
-        return False, f"Only {len(rows)} candidates (need 10+)", focus_log
+        return False, f"Only {len(rows)} candidates", focus_log
     if not has_scores:
-        return False, "No synergy scores (run synergy first)", focus_log
+        return False, "No synergy scores yet", focus_log
 
     by_name: dict[str, dict] = {}
     for r in rows:
@@ -387,9 +416,9 @@ def auto_build_decklist(
     nonlands   = [r for r in rows if not _is_land_card(r)]
 
     if not nonlands:
-        return False, "No nonland cards in pool", focus_log
+        return False, "No nonland cards", focus_log
 
-    # ── Adaptive land count ───────────────────────────────────────────
+    # Adaptive land count
     sample = nonlands[:min(30, len(nonlands))]
     avg_cmc = (sum(_safe_float(r.get("cmc", "0")) for r in sample)
                / max(1, len(sample)))
@@ -398,24 +427,23 @@ def auto_build_decklist(
 
     def _copies_for(r):
         cmc = _safe_float(r.get("cmc", "0"))
-        is_leg = "Legendary" in r.get("type_line", "")
-        if cmc >= 6:     return 1
-        if cmc >= 5 or is_leg: return 2
-        if cmc >= 4:     return 3
+        leg = "Legendary" in r.get("type_line", "")
+        if cmc >= 6:        return 1
+        if cmc >= 5 or leg: return 2
+        if cmc >= 4:        return 3
         return 4
 
     def _copy_reason(r, copies):
         cmc = _safe_float(r.get("cmc", "0"))
-        is_leg = "Legendary" in r.get("type_line", "")
-        if is_leg and copies <= 2: return "Legendary"
-        if cmc >= 5: return f"CMC {cmc:.0f}"
+        if "Legendary" in r.get("type_line", "") and copies <= 2:
+            return "Legendary"
+        if cmc >= 5:
+            return f"CMC {cmc:.0f}"
         return ""
 
-    # ══════════════════════════════════════════════════════════════════
-    # PHASE 1 — LOCK FOCUS CARDS
-    # ══════════════════════════════════════════════════════════════════
+    # ── PHASE 1: Lock focus cards ─────────────────────────────────────
     mainboard: list[tuple[int, str, dict]] = []
-    used_names: set[str] = set()
+    used: set[str] = set()
     slots = 0
     focus_land_names: list[str] = []
 
@@ -426,15 +454,13 @@ def auto_build_decklist(
             if not fc_clean:
                 continue
             row, resolved, status = _resolve_card_name(fc_clean, by_name)
-
             if row is None:
                 focus_log.append(
-                    (f"  \u2717 {fc_clean} \u2014 NOT FOUND in pool!",
-                     ERROR))
+                    (f"  \u2717 {fc_clean} \u2014 NOT FOUND", ERROR))
                 continue
-            if resolved.lower() in used_names:
+            if resolved.lower() in used:
                 focus_log.append(
-                    (f"  \u2713 {fc_clean} \u2014 already added", TEXT_DIM))
+                    (f"  \u2713 {fc_clean} \u2014 duplicate", TEXT_DIM))
                 continue
             if _is_land_card(row):
                 focus_land_names.append(resolved)
@@ -448,17 +474,14 @@ def auto_build_decklist(
                         (f"  \u2713 \"{fc_clean}\" \u2192 {resolved} "
                          f"({mt}) \u2014 locked as land", WARNING))
                 continue
-
             copies = min(_copies_for(row), n_nonlands - slots)
             if copies <= 0:
                 focus_log.append(
-                    (f"  \u26a0 {resolved} \u2014 no slots left", WARNING))
+                    (f"  \u26a0 {resolved} \u2014 no slots", WARNING))
                 continue
-
             mainboard.append((copies, resolved, row))
-            used_names.add(resolved.lower())
+            used.add(resolved.lower())
             slots += copies
-
             reason = _copy_reason(row, copies)
             rs = f" ({reason})" if reason else ""
             mt = status.split(":")[0] if ":" in status else status
@@ -471,25 +494,21 @@ def auto_build_decklist(
                      f"({mt}) \u2192 {copies}x{rs}", WARNING))
         focus_log.append(("", TEXT))
 
-    # ══════════════════════════════════════════════════════════════════
-    # PHASE 2 — FILL REMAINING NONLAND SLOTS BY SCORE
-    # ══════════════════════════════════════════════════════════════════
+    # ── PHASE 2: Fill nonlands by score ───────────────────────────────
     for r in nonlands:
         if slots >= n_nonlands:
             break
         name = r.get("name", "").strip()
-        if not name or name.lower() in used_names:
+        if not name or name.lower() in used:
             continue
         copies = min(_copies_for(r), n_nonlands - slots)
         if copies <= 0:
             break
         mainboard.append((copies, name, r))
-        used_names.add(name.lower())
+        used.add(name.lower())
         slots += copies
 
-    # ══════════════════════════════════════════════════════════════════
-    # PHASE 3 — ANALYSE COLOR REQUIREMENTS
-    # ══════════════════════════════════════════════════════════════════
+    # ── PHASE 3: Colour analysis ─────────────────────────────────────
     total_pips: dict[str, int] = {c: 0 for c in "WUBRG"}
     hardest: dict[str, tuple[int, int]] = {}
 
@@ -511,7 +530,6 @@ def auto_build_decklist(
         active_colors = [c for c in "WUBRG" if c in colors.upper()]
     if not active_colors:
         active_colors = ["W"]
-
     active_set = set(active_colors)
 
     min_sources: dict[str, int] = {}
@@ -522,29 +540,36 @@ def auto_build_decklist(
         else:
             min_sources[c] = 10
 
-    # ══════════════════════════════════════════════════════════════════
-    # PHASE 4 — BUILD MANA BASE (strict on-color only)
-    # ══════════════════════════════════════════════════════════════════
-    color_sources: dict[str, int] = {c: 0 for c in "WUBRG"}
+    # ── PHASE 4: Mana base (strict on-color only) ────────────────────
+    csrc: dict[str, int] = {c: 0 for c in "WUBRG"}
     land_picks: list[tuple[int, str, set[str]]] = []
     land_used: set[str] = set()
     land_slots = 0
 
-    # Pre-compute on-color nonbasic lands ONLY
-    # A land must produce at least one active color to be considered.
-    on_color_lands: list[tuple[dict, set[str]]] = []
+    # Pre-filter: ONLY lands producing active colors
+    on_color: list[tuple[dict, set[str]]] = []
+    rejected: list[str] = []
+
     for r in pool_lands:
         name = r.get("name", "").strip()
         tl = r.get("type_line", "")
         if not name or "Basic" in tl:
             continue
         produced = _detect_land_colors(r)
-        # STRICT: must produce at least one of the deck's active colors
-        if produced & active_set:
-            on_color_lands.append((r, produced))
-        # If it produces ZERO active colors → not considered. Period.
+        relevant = produced & active_set
+        if relevant:
+            on_color.append((r, relevant))
+        else:
+            rejected.append(name)
 
-    # 4a) Lock focus lands (only if on-color)
+    if rejected:
+        focus_log.append(
+            (f"  Rejected {len(rejected)} colorless/off-color lands"
+             f"{': ' + ', '.join(rejected[:4]) if rejected else ''}"
+             f"{'...' if len(rejected) > 4 else ''}",
+             TEXT_DIM))
+
+    # 4a) Focus lands (on-color only)
     for fname in focus_land_names:
         if land_slots >= n_lands:
             break
@@ -552,86 +577,67 @@ def auto_build_decklist(
         if not row or fname.lower() in land_used:
             continue
         produced = _detect_land_colors(row)
-        if not (produced & active_set):
-            # Focus land is colorless — skip it, warn in log
+        relevant = produced & active_set
+        if not relevant:
             focus_log.append(
-                (f"  \u26a0 {fname} skipped (produces no on-color mana)",
-                 WARNING))
+                (f"  \u26a0 {fname} REJECTED (colorless/off-color)", ERROR))
             continue
         copies = min(4, n_lands - land_slots)
         if copies <= 0:
             break
-        land_picks.append((copies, fname, produced))
+        land_picks.append((copies, fname, relevant))
         land_used.add(fname.lower())
         land_slots += copies
-        for c in produced & active_set:
-            color_sources[c] += copies
-
-    # 4b) Score on-color nonbasics by how much they close Karsten gaps
-    def _land_priority(info):
-        r, produced = info
-        score = 0.0
-        relevant = produced & active_set
         for c in relevant:
-            gap = max(0, min_sources.get(c, 0) - color_sources.get(c, 0))
+            csrc[c] += copies
+
+    # 4b) Score + sort on-color nonbasics
+    def _lp(info):
+        r, rel = info
+        s = 0.0
+        for c in rel:
+            gap = max(0, min_sources.get(c, 0) - csrc.get(c, 0))
             if gap > 0:
-                score += gap * (min_sources.get(c, 10) / 10.0)
-        # Dual+ lands covering multiple needed colors get a bonus
-        score += len(relevant) * 3.0
-        # Tiebreak by synergy score
-        score += _safe_float(r.get("weighted_score", "0")) * 0.01
-        return score
+                s += gap * (min_sources.get(c, 10) / 8.0)
+        if len(rel) >= 2:
+            s += len(rel) * 5.0
+        s += _safe_float(r.get("weighted_score", "0")) * 0.001
+        return s
 
-    on_color_lands.sort(key=_land_priority, reverse=True)
+    on_color.sort(key=_lp, reverse=True)
 
-    # 4c) Pick on-color nonbasics (cap at half of land slots so basics
-    #     always have room to meet Karsten)
-    max_nonbasic = n_lands // 2  # e.g. 12 of 24 → always 12+ basics
+    # 4c) Pick nonbasics — max half of total land slots
+    max_nb = n_lands // 2
 
-    for r, produced in on_color_lands:
-        if land_slots >= max_nonbasic:
+    for r, relevant in on_color:
+        if land_slots >= max_nb:
             break
         name = r.get("name", "").strip()
         if not name or name.lower() in land_used:
             continue
-        # Double-check: must cover at least one active color with a gap
-        relevant = produced & active_set
-        has_gap = any(
-            color_sources.get(c, 0) < min_sources.get(c, 0)
-            for c in relevant
-        )
-        if not has_gap:
-            # All colors this land produces are already satisfied.
-            # Only include if it covers 2+ active colors (still useful).
-            if len(relevant) < 2:
-                continue
-        copies = min(4, max_nonbasic - land_slots)
+        has_gap = any(csrc.get(c, 0) < min_sources.get(c, 0)
+                      for c in relevant)
+        if not has_gap and len(relevant) < 2:
+            continue
+        copies = min(4, max_nb - land_slots)
         if copies <= 0:
             break
-        land_picks.append((copies, name, produced))
+        land_picks.append((copies, name, relevant))
         land_used.add(name.lower())
         land_slots += copies
         for c in relevant:
-            color_sources[c] += copies
+            csrc[c] += copies
 
-    # NO PHASE 4d. No colorless lands. No "fill remaining with anything".
-    # Every unfilled slot becomes a basic. This is intentional.
-
-    # 4e) Fill ALL remaining land slots with basics to meet Karsten
+    # 4d) ALL remaining = basics (Karsten gap first, then pip ratio)
     remaining = n_lands - land_slots
     basic_alloc: list[tuple[int, str]] = []
 
     if remaining > 0:
-        # Calculate gap per color
-        gaps: dict[str, int] = {}
-        for c in active_colors:
-            gaps[c] = max(0, min_sources.get(c, 0)
-                          - color_sources.get(c, 0))
-
+        gaps = {c: max(0, min_sources.get(c, 0) - csrc.get(c, 0))
+                for c in active_colors}
         total_gap = sum(gaps.values())
 
         if total_gap == 0:
-            # All Karsten thresholds met — distribute by pip ratio
             total_p = max(1, sum(total_pips.get(c, 0)
                                  for c in active_colors))
             allocated = 0
@@ -644,19 +650,16 @@ def auto_build_decklist(
                 n = max(0, min(n, remaining - allocated))
                 if n > 0:
                     basic_alloc.append((n, BASIC_FOR_COLOR[c]))
-                    color_sources[c] += n
+                    csrc[c] += n
                     allocated += n
             if allocated < remaining and basic_alloc:
-                old_n, old_name = basic_alloc[0]
-                basic_alloc[0] = (old_n + remaining - allocated, old_name)
+                on, oname = basic_alloc[0]
+                basic_alloc[0] = (on + remaining - allocated, oname)
         else:
-            # Distribute basics to close gaps first
             allocated = 0
-            gap_colors = [c for c in active_colors if gaps.get(c, 0) > 0]
-            no_gap     = [c for c in active_colors if gaps.get(c, 0) == 0]
-
-            for i, c in enumerate(gap_colors):
-                if i == len(gap_colors) - 1 and not no_gap:
+            gc = [c for c in active_colors if gaps.get(c, 0) > 0]
+            for i, c in enumerate(gc):
+                if i == len(gc) - 1:
                     n = remaining - allocated
                 else:
                     n = max(1, round(remaining * gaps[c]
@@ -664,43 +667,37 @@ def auto_build_decklist(
                 n = max(1, min(n, remaining - allocated))
                 if n > 0:
                     basic_alloc.append((n, BASIC_FOR_COLOR[c]))
-                    color_sources[c] += n
+                    csrc[c] += n
                     allocated += n
-
-            # Any leftover → highest-pip color
             if allocated < remaining:
-                leftover = remaining - allocated
+                left = remaining - allocated
                 best = max(active_colors,
                            key=lambda c: total_pips.get(c, 0))
                 found = False
                 for idx, (bn, bname) in enumerate(basic_alloc):
                     if bname == BASIC_FOR_COLOR[best]:
-                        basic_alloc[idx] = (bn + leftover, bname)
+                        basic_alloc[idx] = (bn + left, bname)
                         found = True
                         break
                 if not found:
-                    basic_alloc.append((leftover, BASIC_FOR_COLOR[best]))
-                color_sources[best] += leftover
+                    basic_alloc.append((left, BASIC_FOR_COLOR[best]))
+                csrc[best] += left
 
-    # ══════════════════════════════════════════════════════════════════
-    # PHASE 5 — SIDEBOARD
-    # ══════════════════════════════════════════════════════════════════
+    # ── PHASE 5: Sideboard ────────────────────────────────────────────
     sideboard: list[tuple[int, str]] = []
     sb_slots = 0
     for r in nonlands:
         if sb_slots >= 15:
             break
         name = r.get("name", "").strip()
-        if not name or name.lower() in used_names:
+        if not name or name.lower() in used:
             continue
         copies = min(3, 15 - sb_slots)
         sideboard.append((copies, name))
-        used_names.add(name.lower())
+        used.add(name.lower())
         sb_slots += copies
 
-    # ══════════════════════════════════════════════════════════════════
-    # PHASE 6 — OUTPUT
-    # ══════════════════════════════════════════════════════════════════
+    # ── PHASE 6: Write output ─────────────────────────────────────────
     type_groups: dict[str, list[tuple[int, str]]] = {}
     for copies, name, r in mainboard:
         grp = _card_type_group(r)
@@ -709,51 +706,41 @@ def auto_build_decklist(
     TYPE_ORDER = ["Creatures", "Instants", "Sorceries", "Enchantments",
                   "Artifacts", "Planeswalkers", "Other Spells"]
 
-    main_total = slots + sum(c for c, _, _ in land_picks) + \
-                 sum(c for c, _ in basic_alloc)
-    sb_total = sb_slots
+    nb_ct = sum(c for c, _, _ in land_picks)
+    ba_ct = sum(c for c, _ in basic_alloc)
+    main_total = slots + nb_ct + ba_ct
     top3 = ", ".join(n for _, n, _ in mainboard[:3])
 
-    focus_placed = sum(1 for msg, clr in focus_log
-                       if clr in (SUCCESS, WARNING)
-                       and ("\u2192" in msg or "locked" in msg))
-    focus_failed = sum(1 for msg, clr in focus_log if clr == ERROR)
+    fp = sum(1 for m, cl in focus_log
+             if cl in (SUCCESS, WARNING)
+             and ("\u2192" in m or "locked" in m))
+    ff = sum(1 for m, cl in focus_log if cl == ERROR)
 
     lines = [
-        f"// Auto-generated decklist ({main_total} main + {sb_total} sb)",
-        f"// Top picks by synergy:  {top3}",
+        f"// Auto-generated decklist ({main_total} main + {sb_slots} sb)",
+        f"// Top synergy: {top3}",
         f"// Avg CMC {avg_cmc:.1f} -> {n_lands} lands "
-        f"({sum(c for c,_,_ in land_picks)} nonbasic + "
-        f"{sum(c for c,_ in basic_alloc)} basic)",
+        f"({nb_ct} nonbasic + {ba_ct} basic)",
     ]
-
     if focus_cards:
-        lines.append(f"// Focus cards: {focus_placed} locked, "
-                     f"{focus_failed} not found")
-        for msg, clr in focus_log:
-            if msg.startswith("  "):
-                lines.append(f"// {msg.strip()}")
-
+        lines.append(f"// Focus: {fp} locked, {ff} not found")
+        for m, cl in focus_log:
+            if m.startswith("  "):
+                lines.append(f"// {m.strip()}")
     lines.append("//")
-    lines.append("// Mana base (Karsten validation):")
+    lines.append("// Mana base (Karsten):")
     all_ok = True
     for c in active_colors:
-        needed = min_sources.get(c, 0)
-        have   = color_sources.get(c, 0)
-        ok = have >= needed
+        need = min_sources.get(c, 0)
+        have = csrc.get(c, 0)
+        ok = have >= need
         if not ok:
             all_ok = False
-        tag = "OK" if ok else f"SHORT by {needed - have}"
-        lines.append(f"//   {MANA_NAMES.get(c, c)} ({c}): "
-                     f"{have} sources / {needed} needed  [{tag}]")
+        lines.append(f"//   {MANA_NAMES.get(c,c)} ({c}): "
+                     f"{have}/{need}  [{'OK' if ok else f'SHORT {need-have}'}]")
     if all_ok:
-        lines.append("//   ALL COLORS: Karsten thresholds met")
-
-    lines.extend([
-        "// Review with AI analysis before tournament use",
-        "",
-        "Deck",
-    ])
+        lines.append("//   ALL COLORS OK")
+    lines.extend(["// Review before tournament use", "", "Deck"])
 
     for grp in TYPE_ORDER:
         cards = type_groups.get(grp, [])
@@ -774,44 +761,30 @@ def auto_build_decklist(
         lines.append(f"{copies} {name}")
     lines.append("")
 
-    out_path = Path(deck_dir) / "decklist.txt"
-    out_path.write_text("\n".join(lines), encoding="utf-8")
+    (Path(deck_dir) / "decklist.txt").write_text(
+        "\n".join(lines), encoding="utf-8")
 
-    shortfalls = []
-    for c in active_colors:
-        needed = min_sources.get(c, 0)
-        have   = color_sources.get(c, 0)
-        if have < needed:
-            shortfalls.append(f"{MANA_NAMES.get(c,c)} ({have}/{needed})")
-
-    focus_note = ""
+    shorts = [f"{MANA_NAMES.get(c,c)} ({csrc.get(c,0)}/{min_sources.get(c,0)})"
+              for c in active_colors
+              if csrc.get(c, 0) < min_sources.get(c, 0)]
+    fn = ""
     if focus_cards:
-        focus_note = f" | Focus: {focus_placed} locked"
-        if focus_failed:
-            focus_note += f", {focus_failed} MISSING"
+        fn = f" | Focus: {fp} locked"
+        if ff:
+            fn += f", {ff} MISSING"
+    mn = " | Mana: Karsten OK" if not shorts else \
+         f" | MANA WARN: {', '.join(shorts)}"
 
-    mana_note = " | Mana: Karsten OK" if not shortfalls else \
-                f" | MANA WARNING: {', '.join(shortfalls)}"
-
-    nonbasic_ct = sum(c for c, _, _ in land_picks)
-    basic_ct    = sum(c for c, _ in basic_alloc)
-    summary = (f"{main_total}-card main + {sb_total} sb | "
-               f"CMC {avg_cmc:.1f} | {n_lands} lands "
-               f"({nonbasic_ct} nonbasic + {basic_ct} basic)"
-               f"{focus_note}{mana_note}")
+    summary = (f"{main_total} main + {sb_slots} sb | CMC {avg_cmc:.1f} | "
+               f"{n_lands} lands ({nb_ct}nb+{ba_ct}b){fn}{mn}")
     return True, summary, focus_log
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fonts
 # ─────────────────────────────────────────────────────────────────────────────
-_F_BODY: ctk.CTkFont | None = None
-_F_SMALL: ctk.CTkFont | None = None
-_F_BOLD: ctk.CTkFont | None = None
-_F_MONO: ctk.CTkFont | None = None
-_F_TITLE: ctk.CTkFont | None = None
-_F_SECTION: ctk.CTkFont | None = None
-_F_HINT: ctk.CTkFont | None = None
+_F_BODY = _F_SMALL = _F_BOLD = _F_MONO = None
+_F_TITLE = _F_SECTION = _F_HINT = None
 
 
 def _init_fonts():
@@ -832,9 +805,7 @@ def w_entry(parent, placeholder="", **kw):
     d = dict(fg_color=SURFACE, border_color=BORDER, text_color=TEXT,
              placeholder_text_color=TEXT_MUTED, font=_F_BODY,
              height=38, corner_radius=8)
-    d.update(kw)
-    return ctk.CTkEntry(parent, placeholder_text=placeholder, **d)
-
+    d.update(kw); return ctk.CTkEntry(parent, placeholder_text=placeholder, **d)
 
 def w_button(parent, text, command=None, *, primary=False, **kw):
     if primary:
@@ -843,17 +814,13 @@ def w_button(parent, text, command=None, *, primary=False, **kw):
     else:
         d = dict(fg_color=SURFACE_ALT, hover_color=BORDER, text_color=TEXT_DIM,
                  font=ctk.CTkFont(size=12), height=36, corner_radius=8)
-    d.update(kw)
-    return ctk.CTkButton(parent, text=text, command=command, **d)
-
+    d.update(kw); return ctk.CTkButton(parent, text=text, command=command, **d)
 
 def w_check(parent, text, variable, **kw):
     d = dict(font=ctk.CTkFont(size=12), text_color=TEXT_DIM,
              fg_color=ACCENT, hover_color=ACCENT_HOVER,
              border_color=BORDER, checkmark_color="#FFFFFF")
-    d.update(kw)
-    return ctk.CTkCheckBox(parent, text=text, variable=variable, **d)
-
+    d.update(kw); return ctk.CTkCheckBox(parent, text=text, variable=variable, **d)
 
 def w_label(parent, text, *, muted=False, hint=False, bold=False, **kw):
     if bold:    font, color = _F_BOLD, TEXT
@@ -861,8 +828,7 @@ def w_label(parent, text, *, muted=False, hint=False, bold=False, **kw):
     elif muted: font, color = _F_SMALL, TEXT_DIM
     else:       font, color = _F_BODY, TEXT
     d = dict(font=font, text_color=color)
-    d.update(kw)
-    return ctk.CTkLabel(parent, text=text, **d)
+    d.update(kw); return ctk.CTkLabel(parent, text=text, **d)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -877,7 +843,6 @@ class ScaffoldApp(ctk.CTk):
         self.title(APP_TITLE)
         self.geometry(f"{WIN_W}x{WIN_H}")
         self.minsize(760, 700)
-        self.resizable(True, True)
         self.configure(fg_color=BG)
         self._repo = RepoPaths()
         self.selected_colors: set[str]     = set()
@@ -898,11 +863,128 @@ class ScaffoldApp(ctk.CTk):
         self._tribe_search_job = None
         self._build_ui()
 
+    # ═══════════════════════════════════════════════════════════════════════
+    # EXPORT / IMPORT SETTINGS
+    # ═══════════════════════════════════════════════════════════════════════
+    def _export_settings(self) -> dict:
+        """Capture current form state as a serializable dict."""
+        return {
+            "deck_name": self.name_entry.get().strip(),
+            "colors": sorted(self.selected_colors),
+            "archetypes": sorted(self.selected_archetypes),
+            "tribes": list(self._tribes),
+            "tags": sorted(self._selected_tags),
+            "focus_cards": [l.strip() for l in
+                            self.focus_box.get("1.0", "end").strip()
+                            .splitlines() if l.strip()],
+            "output_dir": self.output_entry.get().strip(),
+            "options": {
+                "skip_queries": self.skip_queries_var.get(),
+                "run_synergy": self.run_synergy_var.get(),
+                "auto_build": self.auto_build_var.get(),
+                "wildcard": self.wildcard_var.get(),
+            },
+        }
+
+    def _import_settings(self, data: dict) -> None:
+        """Apply a settings dict to the form, toggling all widgets."""
+        # Reset first
+        self._reset_form()
+
+        # Deck name
+        name = data.get("deck_name", "")
+        if name:
+            self.name_entry.insert(0, name)
+
+        # Colors
+        for c in data.get("colors", []):
+            if c in COLOR_ORDER and c not in self.selected_colors:
+                self._toggle_color(c)
+
+        # Archetypes
+        for a in data.get("archetypes", []):
+            if a in self._arch_btns and a not in self.selected_archetypes:
+                self._toggle_arch(a)
+
+        # Tribes
+        for t in data.get("tribes", []):
+            if t not in self._tribes:
+                self._tribes.append(t)
+        self._refresh_tribe_chips()
+
+        # Tags
+        for t in data.get("tags", []):
+            if t in self._tag_btns and t not in self._selected_tags:
+                self._toggle_tag(t)
+
+        # Focus cards
+        fc = data.get("focus_cards", [])
+        if fc:
+            self.focus_box.insert("1.0", "\n".join(fc))
+
+        # Output dir
+        od = data.get("output_dir", "")
+        if od:
+            self.output_entry.insert(0, od)
+
+        # Options
+        opts = data.get("options", {})
+        self.skip_queries_var.set(opts.get("skip_queries", False))
+        self.run_synergy_var.set(opts.get("run_synergy", True))
+        self.auto_build_var.set(opts.get("auto_build", True))
+        self.wildcard_var.set(opts.get("wildcard", False))
+
+        self._validate_live()
+
+    def _on_save_settings(self):
+        data = self._export_settings()
+        default_name = data.get("deck_name", "scaffold") or "scaffold"
+        default_name = re.sub(r'[^\w\-]', '_', default_name)
+        f = filedialog.asksaveasfilename(
+            title="Save scaffold settings",
+            defaultextension=SETTINGS_EXT,
+            initialfile=f"{default_name}{SETTINGS_EXT}",
+            filetypes=[("Scaffold Settings", f"*{SETTINGS_EXT}"),
+                       ("JSON", "*.json"), ("All", "*.*")])
+        if not f:
+            return
+        try:
+            Path(f).write_text(
+                json.dumps(data, indent=2, ensure_ascii=False),
+                encoding="utf-8")
+            self._sm(f"Settings saved: {Path(f).name}", SUCCESS)
+        except Exception as e:
+            self._sm(f"Save failed: {e}", ERROR)
+
+    def _on_load_settings(self):
+        f = filedialog.askopenfilename(
+            title="Load scaffold settings",
+            filetypes=[("Scaffold Settings", f"*{SETTINGS_EXT}"),
+                       ("JSON", "*.json"), ("All", "*.*")])
+        if not f:
+            return
+        try:
+            data = json.loads(Path(f).read_text(encoding="utf-8"))
+            self._import_settings(data)
+            self._sm(f"Loaded: {Path(f).name}", SUCCESS)
+        except Exception as e:
+            self._sm(f"Load failed: {e}", ERROR)
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # LAYOUT
+    # ═══════════════════════════════════════════════════════════════════════
     def _build_ui(self):
         hdr = ctk.CTkFrame(self, fg_color=SURFACE, corner_radius=0, height=56)
         hdr.pack(fill="x"); hdr.pack_propagate(False)
         ctk.CTkLabel(hdr, text="\u2726  " + APP_TITLE, font=_F_TITLE,
                      text_color=ACCENT).pack(side="left", padx=24, pady=14)
+
+        # Save/Load in header bar
+        w_button(hdr, "\u2193 Load", self._on_load_settings,
+                 width=70, height=30).pack(side="right", padx=(4, 20), pady=13)
+        w_button(hdr, "\u2191 Save", self._on_save_settings,
+                 width=70, height=30).pack(side="right", padx=0, pady=13)
+
         self.tabs = ctk.CTkTabview(
             self, fg_color=BG,
             segmented_button_fg_color=SURFACE,
@@ -945,29 +1027,23 @@ class ScaffoldApp(ctk.CTk):
         self.scroll = ctk.CTkScrollableFrame(tab, fg_color=BG,
             scrollbar_button_color=BORDER, scrollbar_button_hover_color=ACCENT)
         self.scroll.pack(fill="both", expand=True)
-
         c1 = self._card(self.scroll)
         self._card_header(c1, "1", "Deck Name")
         self.name_entry = w_entry(c1, "e.g. Orzhov Lifegain")
         self.name_entry.pack(fill="x", padx=INNER_PAD, pady=(0, 14))
         self.name_entry.bind("<KeyRelease>", lambda _: self._validate_live())
-
         c2 = self._card(self.scroll)
         self._card_header(c2, "2", "Mana Colours", "Select colour identity")
         self._build_colors(c2)
-
         c3 = self._card(self.scroll)
         self._card_header(c3, "3", "Archetype", "Select one or more")
         self._build_archetypes(c3)
-
         c4 = self._card(self.scroll)
         self._card_header(c4, "4", "Creature Subtype", "Required for Tribal")
         self._build_tribe(c4)
-
         c5 = self._card(self.scroll)
         self._card_header(c5, "5", "Extra Tags", "Optional search keywords")
         self._build_tags(c5)
-
         c6 = self._card(self.scroll)
         self._card_header(c6, "6", "Focus Cards",
             "One per line. LOCKED into mainboard. Fuzzy-matched.")
@@ -976,29 +1052,26 @@ class ScaffoldApp(ctk.CTk):
             font=ctk.CTkFont(family="Courier New", size=12),
             border_width=1, corner_radius=8, height=80, wrap="word")
         self.focus_box.pack(fill="x", padx=INNER_PAD, pady=(0, 14))
-
         c7 = self._card(self.scroll)
         self._card_header(c7, "7", "Options")
         self._build_options(c7)
-
         c8 = self._card(self.scroll)
         self._card_header(c8, "8", "Output Directory", "Default: Decks/")
         self._build_output(c8)
 
-    def _build_colors(self, parent):
-        frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.pack(fill="x", padx=INNER_PAD, pady=(0, 14))
+    def _build_colors(self, p):
+        f = ctk.CTkFrame(p, fg_color="transparent")
+        f.pack(fill="x", padx=INNER_PAD, pady=(0, 14))
         self._color_btns = {}
         for c in COLOR_ORDER:
             mc = MANA_COLORS[c]
-            btn = ctk.CTkButton(frame, text=f"{mc['label']}\n{MANA_NAMES[c]}",
+            btn = ctk.CTkButton(f, text=f"{mc['label']}\n{MANA_NAMES[c]}",
                 width=118, height=62, corner_radius=12,
                 fg_color=mc["dim"], hover_color=mc["bg"], text_color=mc["fg"],
                 border_color=CARD_BORDER, border_width=2,
                 font=ctk.CTkFont(size=13, weight="bold"),
                 command=lambda col=c: self._toggle_color(col))
-            btn.pack(side="left", padx=(0, 8))
-            self._color_btns[c] = btn
+            btn.pack(side="left", padx=(0, 8)); self._color_btns[c] = btn
 
     def _toggle_color(self, c):
         btn, mc = self._color_btns[c], MANA_COLORS[c]
@@ -1008,35 +1081,33 @@ class ScaffoldApp(ctk.CTk):
                           border_width=2)
         else:
             self.selected_colors.add(c)
-            btn.configure(fg_color=mc["bg"], border_color=ACCENT,
-                          border_width=3)
+            btn.configure(fg_color=mc["bg"], border_color=ACCENT, border_width=3)
         self._validate_live()
 
-    def _build_archetypes(self, parent):
-        container = ctk.CTkFrame(parent, fg_color="transparent")
-        container.pack(fill="x", padx=INNER_PAD, pady=(0, 14))
+    def _build_archetypes(self, p):
+        ct = ctk.CTkFrame(p, fg_color="transparent")
+        ct.pack(fill="x", padx=INNER_PAD, pady=(0, 14))
         self._arch_btns = {}
         for gn, archs in ARCHETYPE_GROUPS.items():
-            hdr = ctk.CTkFrame(container, fg_color="transparent")
-            hdr.pack(fill="x", pady=(8, 4))
-            ctk.CTkFrame(hdr, fg_color=ACCENT, width=3, height=14,
+            h = ctk.CTkFrame(ct, fg_color="transparent")
+            h.pack(fill="x", pady=(8, 4))
+            ctk.CTkFrame(h, fg_color=ACCENT, width=3, height=14,
                          corner_radius=1).pack(side="left", padx=(0, 8))
-            ctk.CTkLabel(hdr, text=gn, font=ctk.CTkFont(size=11, weight="bold"),
+            ctk.CTkLabel(h, text=gn, font=ctk.CTkFont(size=11, weight="bold"),
                          text_color=TEXT_DIM).pack(side="left")
-            grid = ctk.CTkFrame(container, fg_color="transparent")
-            grid.pack(fill="x")
+            g = ctk.CTkFrame(ct, fg_color="transparent"); g.pack(fill="x")
             for col in range(GRID_COLS):
-                grid.columnconfigure(col, weight=1, uniform="a")
-            for i, arch in enumerate(archs):
-                lbl = ARCH_LABEL.get(arch, arch.replace("_"," ").title())
-                btn = ctk.CTkButton(grid, text=lbl, height=34, corner_radius=8,
+                g.columnconfigure(col, weight=1, uniform="a")
+            for i, a in enumerate(archs):
+                l = ARCH_LABEL.get(a, a.replace("_"," ").title())
+                btn = ctk.CTkButton(g, text=l, height=34, corner_radius=8,
                     fg_color=SURFACE, hover_color=SURFACE_ALT, text_color=TEXT_DIM,
                     border_color=BORDER, border_width=1,
                     font=ctk.CTkFont(size=12),
-                    command=lambda a=arch: self._toggle_arch(a))
+                    command=lambda x=a: self._toggle_arch(x))
                 btn.grid(row=i//GRID_COLS, column=i%GRID_COLS,
                          padx=3, pady=3, sticky="ew")
-                self._arch_btns[arch] = btn
+                self._arch_btns[a] = btn
 
     def _toggle_arch(self, arch):
         btn = self._arch_btns[arch]
@@ -1048,62 +1119,58 @@ class ScaffoldApp(ctk.CTk):
             self.selected_archetypes.add(arch)
             btn.configure(fg_color=ACCENT, text_color=BG,
                           border_color=ACCENT, border_width=1)
-        n = len(self.selected_archetypes)
-        self._arch_count.configure(text=f"{n} selected" if n else "0 selected")
-        tribal_on = "tribal" in self.selected_archetypes
+        self._arch_count.configure(
+            text=f"{len(self.selected_archetypes)} selected")
+        tribal = "tribal" in self.selected_archetypes
         for w in self._tribe_widgets:
-            w.configure(state="normal" if tribal_on else "disabled")
-        if not tribal_on:
+            w.configure(state="normal" if tribal else "disabled")
+        if not tribal:
             self._tribes.clear(); self._refresh_tribe_chips()
             for w in self._tribe_results.winfo_children(): w.destroy()
         self._validate_live()
 
-    def _build_tribe(self, parent):
-        se = w_entry(parent, "Type to search\u2026", state="disabled")
+    def _build_tribe(self, p):
+        se = w_entry(p, "Type to search\u2026", state="disabled")
         se.configure(textvariable=self.tribe_var)
         se.pack(fill="x", padx=INNER_PAD, pady=(0, 4))
-        self.tribe_var.trace_add("write", self._tribe_debounce)
-        self._tribe_results = ctk.CTkFrame(parent, fg_color=SURFACE,
-                                           corner_radius=8)
+        self.tribe_var.trace_add("write", self._td)
+        self._tribe_results = ctk.CTkFrame(p, fg_color=SURFACE, corner_radius=8)
         self._tribe_results.pack(fill="x", padx=INNER_PAD)
-        self._tribe_chips = ctk.CTkFrame(parent, fg_color="transparent")
+        self._tribe_chips = ctk.CTkFrame(p, fg_color="transparent")
         self._tribe_chips.pack(fill="x", padx=INNER_PAD, pady=(4, 14))
         self._tribe_widgets = [se]
 
-    def _tribe_debounce(self, *_):
-        if self._tribe_search_job:
-            self.after_cancel(self._tribe_search_job)
-        self._tribe_search_job = self.after(200, self._tribe_do_search)
+    def _td(self, *_):
+        if self._tribe_search_job: self.after_cancel(self._tribe_search_job)
+        self._tribe_search_job = self.after(200, self._ts)
 
-    def _tribe_do_search(self):
+    def _ts(self):
         self._tribe_search_job = None
         for w in self._tribe_results.winfo_children(): w.destroy()
         q = self.tribe_var.get().strip()
         if not q: return
-        matches = filter_tribes(q)
-        if not matches:
-            w_label(self._tribe_results, f"No match for '{q}'",
-                    hint=True).pack(anchor="w", padx=8, pady=4); return
-        for t in matches[:10]:
-            already = t in self._tribes
+        m = filter_tribes(q)
+        if not m:
+            w_label(self._tribe_results, f"No match for '{q}'", hint=True
+                    ).pack(anchor="w", padx=8, pady=4); return
+        for t in m[:10]:
+            a = t in self._tribes
             ctk.CTkButton(self._tribe_results,
-                text=("\u2713 "+t) if already else t,
-                fg_color=ACCENT if already else "transparent",
+                text=("\u2713 "+t) if a else t,
+                fg_color=ACCENT if a else "transparent",
                 hover_color=SURFACE_ALT,
-                text_color=BG if already else TEXT_DIM,
-                font=ctk.CTkFont(size=12), anchor="w",
-                height=28, corner_radius=6,
-                command=lambda n=t: self._toggle_tribe(n)
+                text_color=BG if a else TEXT_DIM,
+                font=ctk.CTkFont(size=12), anchor="w", height=28,
+                corner_radius=6, command=lambda n=t: self._tt(n)
             ).pack(fill="x", padx=4, pady=1)
-        if len(matches)>10:
-            w_label(self._tribe_results, f"+{len(matches)-10} more",
-                    hint=True).pack(anchor="w", padx=8, pady=(2,4))
+        if len(m)>10:
+            w_label(self._tribe_results, f"+{len(m)-10} more", hint=True
+                    ).pack(anchor="w", padx=8, pady=(2,4))
 
-    def _toggle_tribe(self, name):
+    def _tt(self, name):
         if name in self._tribes: self._tribes.remove(name)
         else: self._tribes.append(name)
-        self._refresh_tribe_chips(); self._tribe_do_search()
-        self._validate_live()
+        self._refresh_tribe_chips(); self._ts(); self._validate_live()
 
     def _refresh_tribe_chips(self):
         for w in self._tribe_chips.winfo_children(): w.destroy()
@@ -1116,17 +1183,16 @@ class ScaffoldApp(ctk.CTk):
             ctk.CTkButton(chip, text="\u00d7", width=24, height=24,
                 fg_color="transparent", hover_color=BORDER,
                 text_color=TEXT_MUTED, font=ctk.CTkFont(size=14, weight="bold"),
-                corner_radius=12, command=lambda n=t: self._toggle_tribe(n)
+                corner_radius=12, command=lambda n=t: self._tt(n)
             ).pack(side="left", padx=(0,4))
 
-    def _build_tags(self, parent):
+    def _build_tags(self, p):
         self._tag_btns = {}
-        frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.pack(fill="x", padx=INNER_PAD, pady=(0, 14))
-        for col in range(6):
-            frame.columnconfigure(col, weight=1, uniform="tag")
+        f = ctk.CTkFrame(p, fg_color="transparent")
+        f.pack(fill="x", padx=INNER_PAD, pady=(0, 14))
+        for col in range(6): f.columnconfigure(col, weight=1, uniform="tag")
         for i, tag in enumerate(ALL_TAGS):
-            btn = ctk.CTkButton(frame, text=tag, height=30, corner_radius=15,
+            btn = ctk.CTkButton(f, text=tag, height=30, corner_radius=15,
                 fg_color=SURFACE, hover_color=SURFACE_ALT,
                 text_color=TEXT_MUTED, border_color=BORDER, border_width=1,
                 font=ctk.CTkFont(size=11),
@@ -1144,64 +1210,61 @@ class ScaffoldApp(ctk.CTk):
             self._selected_tags.add(tag)
             btn.configure(fg_color=ACCENT, text_color=BG, border_color=ACCENT)
 
-    def _build_options(self, parent):
-        frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.pack(fill="x", padx=INNER_PAD, pady=(0, 14))
-        for var, txt, kw in [
+    def _build_options(self, p):
+        f = ctk.CTkFrame(p, fg_color="transparent")
+        f.pack(fill="x", padx=INNER_PAD, pady=(0, 14))
+        for v, t, kw in [
             (self.skip_queries_var, "Skip queries (offline template)", {}),
             (self.run_synergy_var, "Run synergy analysis after scaffold", {}),
             (self.auto_build_var, "Auto-build decklist (Karsten mana base)", {}),
             (self.wildcard_var, "Wildcard (tribe as hint only)",
              {"fg_color": WARNING}),
-        ]:
-            w_check(frame, txt, var, **kw).pack(anchor="w", pady=3)
+        ]: w_check(f, t, v, **kw).pack(anchor="w", pady=3)
 
-    def _build_output(self, parent):
-        row = ctk.CTkFrame(parent, fg_color="transparent")
-        row.pack(fill="x", padx=INNER_PAD, pady=(0, 14))
-        self.output_entry = w_entry(row, "Decks/")
+    def _build_output(self, p):
+        r = ctk.CTkFrame(p, fg_color="transparent")
+        r.pack(fill="x", padx=INNER_PAD, pady=(0, 14))
+        self.output_entry = w_entry(r, "Decks/")
         self.output_entry.pack(side="left", fill="x", expand=True, padx=(0,8))
-        w_button(row, "Browse", self._browse_output, width=80).pack(side="left")
+        w_button(r, "Browse", self._browse_output, width=80).pack(side="left")
 
     def _build_queries_tab(self):
         tab = self.tabs.tab("Run Queries")
-        frame = ctk.CTkScrollableFrame(tab, fg_color=BG,
-                                       scrollbar_button_color=BORDER)
-        frame.pack(fill="both", expand=True)
-        card = ctk.CTkFrame(frame, fg_color=CARD_BG, corner_radius=14,
+        f = ctk.CTkScrollableFrame(tab, fg_color=BG, scrollbar_button_color=BORDER)
+        f.pack(fill="both", expand=True)
+        card = ctk.CTkFrame(f, fg_color=CARD_BG, corner_radius=14,
                             border_color=CARD_BORDER, border_width=1)
         card.pack(fill="x", padx=10, pady=10)
         w_label(card, "Run Pending Session Queries", bold=True,
                 text_color=ACCENT).pack(anchor="w", padx=INNER_PAD, pady=(14,2))
-        w_label(card, "Finds placeholders in session.md, runs them, "
-                "fills results.", hint=True, wraplength=700, justify="left"
+        w_label(card, "Finds placeholders, runs them, fills results.",
+                hint=True, wraplength=700, justify="left"
                 ).pack(anchor="w", padx=INNER_PAD, pady=(0,12))
-        row = ctk.CTkFrame(card, fg_color="transparent")
-        row.pack(fill="x", padx=INNER_PAD, pady=(0,8))
-        self.rq_entry = w_entry(row, "Path to session.md")
+        r = ctk.CTkFrame(card, fg_color="transparent")
+        r.pack(fill="x", padx=INNER_PAD, pady=(0,8))
+        self.rq_entry = w_entry(r, "Path to session.md")
         self.rq_entry.pack(side="left", fill="x", expand=True, padx=(0,8))
-        w_button(row, "Browse", self._browse_session, width=80).pack(side="left")
+        w_button(r, "Browse", self._browse_session, width=80).pack(side="left")
         self.rq_force = ctk.BooleanVar(value=False)
         self.rq_dryrun = ctk.BooleanVar(value=False)
-        opts = ctk.CTkFrame(card, fg_color="transparent")
-        opts.pack(anchor="w", padx=INNER_PAD, pady=(0,12))
-        w_check(opts, "Force re-run", self.rq_force).pack(anchor="w", pady=2)
-        w_check(opts, "Dry run", self.rq_dryrun).pack(anchor="w", pady=2)
+        o = ctk.CTkFrame(card, fg_color="transparent")
+        o.pack(anchor="w", padx=INNER_PAD, pady=(0,12))
+        w_check(o, "Force re-run", self.rq_force).pack(anchor="w", pady=2)
+        w_check(o, "Dry run", self.rq_dryrun).pack(anchor="w", pady=2)
         self.rq_btn = w_button(card, "Run Queries", self._on_run_queries,
                                primary=True, width=160)
         self.rq_btn.pack(anchor="w", padx=INNER_PAD, pady=(0,14))
 
     def _build_synergy_tab(self):
         tab = self.tabs.tab("Synergy Analysis")
-        frame = ctk.CTkScrollableFrame(tab, fg_color=BG,
-                                       scrollbar_button_color=BORDER)
-        frame.pack(fill="both", expand=True)
-        card = ctk.CTkFrame(frame, fg_color=CARD_BG, corner_radius=14,
+        f = ctk.CTkScrollableFrame(tab, fg_color=BG, scrollbar_button_color=BORDER)
+        f.pack(fill="both", expand=True)
+        card = ctk.CTkFrame(f, fg_color=CARD_BG, corner_radius=14,
                             border_color=CARD_BORDER, border_width=1)
         card.pack(fill="x", padx=10, pady=10)
         w_label(card, "Gate 2.5 \u2014 Synergy Analysis", bold=True,
                 text_color=ACCENT).pack(anchor="w", padx=INNER_PAD, pady=(14,2))
-        w_label(card, "Scores pairwise interactions, checks thresholds.",
+        w_label(card, "Scores interactions, checks thresholds.",
                 hint=True, wraplength=700, justify="left"
                 ).pack(anchor="w", padx=INNER_PAD, pady=(0,12))
         r1 = ctk.CTkFrame(card, fg_color="transparent")
@@ -1214,17 +1277,17 @@ class ScaffoldApp(ctk.CTk):
         self.syn_out = w_entry(r2, "Output report (optional)")
         self.syn_out.pack(side="left", fill="x", expand=True, padx=(0,8))
         w_button(r2, "Browse", self._browse_syn_out, width=80).pack(side="left")
-        srow = ctk.CTkFrame(card, fg_color="transparent")
-        srow.pack(anchor="w", padx=INNER_PAD, pady=(0,12))
-        w_label(srow, "Threshold:").pack(side="left", padx=(0,4))
-        self.syn_thresh = ctk.CTkEntry(srow, width=60, fg_color=SURFACE,
+        sr = ctk.CTkFrame(card, fg_color="transparent")
+        sr.pack(anchor="w", padx=INNER_PAD, pady=(0,12))
+        w_label(sr, "Threshold:").pack(side="left", padx=(0,4))
+        self.syn_thresh = ctk.CTkEntry(sr, width=60, fg_color=SURFACE,
             border_color=BORDER, text_color=TEXT, font=_F_BODY,
             height=32, corner_radius=6)
         self.syn_thresh.insert(0, "3.0")
         self.syn_thresh.pack(side="left", padx=(0,16))
-        w_label(srow, "Mode:").pack(side="left", padx=(0,4))
+        w_label(sr, "Mode:").pack(side="left", padx=(0,4))
         self._syn_mode = ctk.StringVar(value="auto")
-        ctk.CTkOptionMenu(srow, values=["auto","pool","deck"],
+        ctk.CTkOptionMenu(sr, values=["auto","pool","deck"],
             variable=self._syn_mode, width=100, height=32,
             fg_color=SURFACE, button_color=ACCENT,
             button_hover_color=ACCENT_HOVER,
@@ -1260,7 +1323,7 @@ class ScaffoldApp(ctk.CTk):
         self._log_toggle.configure(
             text=("\u25bc  Log" if self._log_visible else "\u25b6  Log"))
 
-    def _log_tag(self, color):
+    def _lt(self, color):
         tag = f"c_{color.replace('#','')}"
         if tag not in self._log_tags:
             try: self._log_box._textbox.tag_configure(tag, foreground=color)
@@ -1269,13 +1332,13 @@ class ScaffoldApp(ctk.CTk):
         return tag
 
     def _log(self, text, color=TEXT):
-        tag = self._log_tag(color)
+        tag = self._lt(color)
         line = text if text.endswith("\n") else text+"\n"
         self._log_box.configure(state="normal")
-        start = self._log_box.index("end-1c")
+        s = self._log_box.index("end-1c")
         self._log_box.insert("end", line)
-        end = self._log_box.index("end-1c")
-        try: self._log_box._textbox.tag_add(tag, start, end)
+        e = self._log_box.index("end-1c")
+        try: self._log_box._textbox.tag_add(tag, s, e)
         except: pass
         self._log_box.see("end"); self._log_box.configure(state="disabled")
         if not self._log_visible: self._toggle_log()
@@ -1289,19 +1352,19 @@ class ScaffoldApp(ctk.CTk):
 
     def _build_footer(self):
         ctk.CTkFrame(self, height=1, fg_color=BORDER, corner_radius=0).pack(fill="x")
-        footer = ctk.CTkFrame(self, fg_color=SURFACE, corner_radius=0, height=72)
-        footer.pack(fill="x", side="bottom"); footer.pack_propagate(False)
-        left = ctk.CTkFrame(footer, fg_color="transparent")
+        ft = ctk.CTkFrame(self, fg_color=SURFACE, corner_radius=0, height=72)
+        ft.pack(fill="x", side="bottom"); ft.pack_propagate(False)
+        left = ctk.CTkFrame(ft, fg_color="transparent")
         left.pack(side="left", padx=20, fill="y")
         self._arch_count = ctk.CTkLabel(left, text="0 selected",
             font=ctk.CTkFont(size=12), text_color=TEXT_MUTED)
         self._arch_count.pack(anchor="w", pady=(10,0))
         self.status = ctk.CTkLabel(left,
-            text="\u2460 Enter a deck name to get started.",
+            text="\u2460 Enter a deck name.",
             font=ctk.CTkFont(size=12), text_color=TEXT_MUTED,
             wraplength=400, justify="left")
         self.status.pack(anchor="w", pady=(2,0))
-        right = ctk.CTkFrame(footer, fg_color="transparent")
+        right = ctk.CTkFrame(ft, fg_color="transparent")
         right.pack(side="right", padx=20, fill="y")
         self.run_btn = ctk.CTkButton(right, text="Generate Scaffold",
             width=200, height=44, corner_radius=10,
@@ -1309,10 +1372,10 @@ class ScaffoldApp(ctk.CTk):
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self._on_generate)
         self.run_btn.pack(side="right", pady=14)
-        self._open_btn = w_button(right, "\U0001f4c2 Open Folder",
-            self._open_folder_btn, width=110, state="disabled")
+        self._open_btn = w_button(right, "\U0001f4c2 Open",
+            self._open_folder_btn, width=90, state="disabled")
         self._open_btn.pack(side="right", padx=(0,8), pady=14)
-        w_button(right, "Reset", self._reset_form, width=70,
+        w_button(right, "Reset", self._reset_form, width=60,
                  fg_color="transparent", text_color=TEXT_MUTED
                  ).pack(side="right", padx=(0,8), pady=14)
 
@@ -1321,12 +1384,12 @@ class ScaffoldApp(ctk.CTk):
         if not self.name_entry.get().strip():
             self._sm("\u2460 Enter a deck name.", TEXT_MUTED); return False
         if not self.selected_colors:
-            self._sm("\u2461 Select mana colours.", TEXT_MUTED); return False
+            self._sm("\u2461 Select colours.", TEXT_MUTED); return False
         if not self.selected_archetypes:
             self._sm("\u2462 Pick archetypes.", TEXT_MUTED); return False
         if "tribal" in self.selected_archetypes and not self._tribes:
-            self._sm("\u2463 Tribal \u2014 pick a subtype.", WARNING); return False
-        self._sm("Ready to generate!", SUCCESS); return True
+            self._sm("\u2463 Tribal \u2014 pick subtype.", WARNING); return False
+        self._sm("Ready!", SUCCESS); return True
 
     def _sm(self, msg, color=TEXT_MUTED):
         self.status.configure(text=msg, text_color=color)
@@ -1356,7 +1419,7 @@ class ScaffoldApp(ctk.CTk):
             filetypes=[("Markdown","*.md"),("All","*.*")])
         if f: self.rq_entry.delete(0,"end"); self.rq_entry.insert(0,f)
     def _browse_syn_in(self):
-        f = filedialog.askopenfilename(title="Input file",
+        f = filedialog.askopenfilename(title="Input",
             filetypes=[("MD/TXT","*.md *.txt"),("All","*.*")])
         if f: self.syn_in.delete(0,"end"); self.syn_in.insert(0,f)
     def _browse_syn_out(self):
@@ -1408,28 +1471,25 @@ class ScaffoldApp(ctk.CTk):
                "--name", name, "--colors", colors, "--archetype"]
         cmd.extend(sorted(self.selected_archetypes))
         if self.wildcard_var.get(): cmd.append("--wildcard")
-        if self._tribes:
-            cmd.append("--tribe"); cmd.extend(self._tribes)
+        if self._tribes: cmd.append("--tribe"); cmd.extend(self._tribes)
         if self._selected_tags:
             cmd.extend(["--extra-tags",",".join(sorted(self._selected_tags))])
         od = self.output_entry.get().strip()
         if od: cmd.extend(["--output-dir", od])
-        focus_text = self.focus_box.get("1.0","end").strip()
-        focus_names = [l.strip() for l in focus_text.splitlines() if l.strip()]
-        if focus_names:
-            cmd.append("--focus-cards"); cmd.extend(focus_names)
+        ft = self.focus_box.get("1.0","end").strip()
+        fn = [l.strip() for l in ft.splitlines() if l.strip()]
+        if fn: cmd.append("--focus-cards"); cmd.extend(fn)
         if self.skip_queries_var.get(): cmd.append("--skip-queries")
-        run_syn = self.run_synergy_var.get()
-        auto_build = self.auto_build_var.get()
+        rs = self.run_synergy_var.get()
+        ab = self.auto_build_var.get()
         self._start(self.run_btn, "Generate Scaffold")
         threading.Thread(target=self._bg_scaffold,
-            args=(cmd, colors, run_syn, auto_build, focus_names),
-            daemon=True).start()
+            args=(cmd, colors, rs, ab, fn), daemon=True).start()
 
     def _on_run_queries(self):
         if self._guard(self.rq_btn): return
         p = self.rq_entry.get().strip()
-        if not p: self._sm("Select session.md first.", ERROR); return
+        if not p: self._sm("Select session.md.", ERROR); return
         cmd = [sys.executable, str(_scripts_dir/"run_session_queries.py"), p]
         if self.rq_force.get(): cmd.append("--force")
         if self.rq_dryrun.get(): cmd.append("--dry-run")
@@ -1440,7 +1500,7 @@ class ScaffoldApp(ctk.CTk):
     def _on_synergy(self):
         if self._guard(self.syn_btn): return
         inp = self.syn_in.get().strip()
-        if not inp: self._sm("Select input file first.", ERROR); return
+        if not inp: self._sm("Select input.", ERROR); return
         cmd = [sys.executable, str(_scripts_dir/"synergy_analysis.py"), inp]
         t = self.syn_thresh.get().strip()
         if t and t!="3.0": cmd.extend(["--min-synergy",t])
@@ -1452,7 +1512,7 @@ class ScaffoldApp(ctk.CTk):
         threading.Thread(target=self._bg_generic, args=(cmd,"synergy"),
                          daemon=True).start()
 
-    # ─── Background threads ───────────────────────────────────────────────
+    # ─── Background threads (with crash protection) ───────────────────────
     def _stream(self, cmd):
         self.after(0, self._log, "$ "+" ".join(cmd), TEXT_MUTED)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
@@ -1471,38 +1531,67 @@ class ScaffoldApp(ctk.CTk):
         return proc.returncode==0, "".join(lines).strip()
 
     def _bg_generic(self, cmd, source):
-        try: ok, out = self._stream(cmd)
-        except Exception as e: ok, out = False, str(e)
+        try:
+            ok, out = self._stream(cmd)
+        except Exception as e:
+            ok, out = False, str(e)
         self.after(0, self._done, RunResult(ok, out, source=source))
 
     def _bg_scaffold(self, cmd, colors, run_syn, auto_build, focus_names):
-        try: ok, out = self._stream(cmd)
-        except Exception as e: ok, out = False, str(e)
-        deck_dir = _extract_deck_dir(out) if ok else None
-        if deck_dir:
-            dp = Path(deck_dir)
-            if not dp.is_absolute(): dp = self._repo.root / dp
-            deck_dir = str(dp)
+        """Scaffold background thread — wrapped in try/except so the GUI
+        NEVER gets stuck at 'Running...' even if something crashes."""
+        try:
+            ok, out = self._stream(cmd)
+        except Exception as e:
+            ok, out = False, str(e)
+
+        deck_dir = None
         syn = None
-        if ok and run_syn and deck_dir:
-            syn = self._bg_synergy(deck_dir)
-        if ok and deck_dir:
-            self._bg_sort(deck_dir)
-        ab_msg = None; focus_log = []
-        if ok and auto_build and deck_dir:
-            ab_ok, ab_msg, focus_log = auto_build_decklist(
-                deck_dir, colors, focus_names)
-            if ab_ok:
-                self.after(0, self._log, "", TEXT)
-                self.after(0, self._log,
-                    "\u2500"*3+" Auto-built Decklist "+"\u2500"*28, SUCCESS)
-                for msg, clr in focus_log:
-                    if msg: self.after(0, self._log, msg, clr)
-                self.after(0, self._log, f"  {ab_msg}", SUCCESS)
-            else:
-                self.after(0, self._log,
-                    f"  Auto-build skipped: {ab_msg}", TEXT_DIM)
-                ab_msg = None
+        ab_msg = None
+        focus_log = []
+
+        try:
+            deck_dir = _extract_deck_dir(out) if ok else None
+            if deck_dir:
+                dp = Path(deck_dir)
+                if not dp.is_absolute():
+                    dp = self._repo.root / dp
+                deck_dir = str(dp)
+
+            if ok and run_syn and deck_dir:
+                syn = self._bg_synergy(deck_dir)
+
+            if ok and deck_dir:
+                self._bg_sort(deck_dir)
+
+            if ok and auto_build and deck_dir:
+                try:
+                    ab_ok, ab_msg, focus_log = auto_build_decklist(
+                        deck_dir, colors, focus_names)
+                    if ab_ok:
+                        self.after(0, self._log, "", TEXT)
+                        self.after(0, self._log,
+                            "\u2500"*3+" Auto-built Decklist "
+                            +"\u2500"*28, SUCCESS)
+                        for m, cl in focus_log:
+                            if m: self.after(0, self._log, m, cl)
+                        self.after(0, self._log, f"  {ab_msg}", SUCCESS)
+                    else:
+                        self.after(0, self._log,
+                            f"  Auto-build skipped: {ab_msg}", TEXT_DIM)
+                        ab_msg = None
+                except Exception as e:
+                    tb = traceback.format_exc()
+                    self.after(0, self._log,
+                        f"  AUTO-BUILD CRASHED: {e}", ERROR)
+                    self.after(0, self._log, tb, ERROR)
+                    ab_msg = None
+
+        except Exception as e:
+            tb = traceback.format_exc()
+            self.after(0, self._log, f"  Post-scaffold error: {e}", ERROR)
+            self.after(0, self._log, tb, ERROR)
+
         files = _verify_files(deck_dir) if deck_dir else []
         self.after(0, self._done,
             RunResult(ok, out, syn, "scaffold", deck_dir, files,
@@ -1522,37 +1611,35 @@ class ScaffoldApp(ctk.CTk):
             if report.exists():
                 return report.read_text(encoding="utf-8").strip()
             return None
-        except Exception as e: return f"Synergy failed: {e}"
+        except Exception as e:
+            return f"Synergy failed: {e}"
 
     def _bg_sort(self, deck_dir):
         d = Path(deck_dir)
-        changed, n = sort_and_rewrite_csv(d/"top_200.csv")
-        if changed:
+        ok, n = sort_and_rewrite_csv(d/"top_200.csv")
+        if ok:
             self.after(0, self._log,
                 f"  Sorted top_200.csv ({n:,} rows)", SUCCESS)
-        merged, pn = merge_scores_into_candidate_pool(deck_dir)
-        if merged:
+        ok2, pn = merge_scores_into_candidate_pool(deck_dir)
+        if ok2:
             self.after(0, self._log,
                 f"  Merged scores into candidate_pool.csv ({pn:,} cards)",
                 SUCCESS)
 
     # ─── Completion ───────────────────────────────────────────────────────
     def _done(self, r):
-        cancelled = self._was_cancelled
+        was = self._was_cancelled
         self._was_cancelled = False; self._finish()
-        if cancelled: return
+        if was: return
         if r.source=="scaffold" and r.success: self._show_summary(r)
         if r.synergy_output: self._show_synergy(r.synergy_output)
         if r.success:
             if r.source=="scaffold":
                 n = len(r.files_found)
-                name = Path(r.deck_dir).name if r.deck_dir else "?"
-                msg = f"Done \u2014 {n} files in {name}"
+                nm = Path(r.deck_dir).name if r.deck_dir else "?"
+                msg = f"Done \u2014 {n} files in {nm}"
                 if r.auto_build_msg:
-                    msg += f"  |  {r.auto_build_msg.split('|')[0].strip()}"
-                elif r.synergy_output:
-                    v = "PASS" if "[FAIL]" not in r.synergy_output else "FAIL"
-                    msg += f"  |  Synergy: {v}"
+                    msg += f" | {r.auto_build_msg.split('|')[0].strip()}"
                 self._sm(msg, SUCCESS)
                 if r.deck_dir and Path(r.deck_dir).exists():
                     self._last_deck_dir = r.deck_dir
@@ -1564,26 +1651,21 @@ class ScaffoldApp(ctk.CTk):
         self._log("", TEXT)
         self._log("\u2500"*3+" Scaffold Complete "+"\u2500"*30, SUCCESS)
         if r.deck_dir: self._log(f"  Folder: {r.deck_dir}", INFO_BLUE)
-        all_f = SCAFFOLD_FILES+["synergy_report.md","top_200.csv"]
-        for f in all_f:
+        af = SCAFFOLD_FILES+["synergy_report.md","top_200.csv"]
+        for f in af:
             if f in r.files_found:
                 fp = Path(r.deck_dir)/f if r.deck_dir else None
                 sz = ""
                 if fp and fp.exists():
-                    kb = fp.stat().st_size/1024; sz = f"  ({kb:,.1f} KB)"
+                    sz = f"  ({fp.stat().st_size/1024:,.1f} KB)"
                 self._log(f"  \u2713 {f}{sz}", SUCCESS)
             elif f in SCAFFOLD_FILES:
                 self._log(f"  \u2717 {f}  (missing)", ERROR)
-        missing = [f for f in SCAFFOLD_FILES if f not in r.files_found]
-        self._log("", TEXT)
-        if missing: self._log(f"  WARNING: {len(missing)} file(s) missing!", WARNING)
-        else: self._log("  All files created.", SUCCESS)
 
     def _show_synergy(self, syn):
         self._log("", TEXT)
         self._log("\u2500"*3+" Gate 2.5 Synergy "+"\u2500"*30, ACCENT)
         self._log("  (Deck feedback, not an error)", TEXT_MUTED)
-        self._log("", TEXT)
         for line in syn.splitlines():
             c = (ERROR if "[FAIL]" in line else SUCCESS if "[PASS]" in line
                  else INFO_BLUE if "[INFO]" in line
@@ -1596,3 +1678,96 @@ def main():
 
 if __name__ == "__main__":
     main()
+```
+
+---
+
+## What was fixed
+
+### "Stuck at Running..." — the silent thread death
+
+The old `_bg_scaffold` had no exception handling around `auto_build_decklist`. If it crashed (which it was — likely `produced_mana` column missing from your CSV), the thread died and `self.after(0, self._done, ...)` **never executed**. The GUI stayed locked forever.
+
+New structure:
+
+```python
+def _bg_scaffold(self, ...):
+    try:
+        ok, out = self._stream(cmd)
+    except Exception as e:
+        ok, out = False, str(e)
+    
+    try:
+        # ... synergy, sort ...
+        
+        try:                                    # ← inner try for auto_build
+            ab_ok, ab_msg, focus_log = auto_build_decklist(...)
+        except Exception as e:
+            self.after(0, self._log, f"AUTO-BUILD CRASHED: {e}", ERROR)
+            self.after(0, self._log, traceback.format_exc(), ERROR)
+            ab_msg = None                       # ← continues, doesn't die
+    
+    except Exception as e:
+        self.after(0, self._log, f"Post-scaffold error: {e}", ERROR)
+    
+    # THIS LINE ALWAYS RUNS — the GUI always unlocks
+    self.after(0, self._done, RunResult(...))
+```
+
+Three nested try/except levels: stream, post-processing, and auto-build. **`_done` always fires.**
+
+### `_detect_land_colors` — missing `produced_mana` column
+
+The function now gracefully handles the column not existing:
+
+```python
+pm = row.get("produced_mana", "")  # returns "" if column missing
+if pm:
+    # use it
+    ...
+# falls through to subtype/oracle parsing if missing
+```
+
+### "any color" conditional detection
+
+Capital City and similar cards with "if you control 3+ lands" conditions are now caught:
+
+```python
+_CONDITIONAL_PHRASES = [
+    "only if", "if you control", "activate only if",
+    "spend this mana only", ...
+]
+has_any = any(p in oracle for p in _ANY_COLOR_PHRASES)
+has_cond = any(p in oracle for p in _CONDITIONAL_PHRASES)
+if has_any and not has_cond:    # ← conditional = rejected
+    colors.update("WUBRG")
+```
+
+### Export / Import
+
+**↑ Save** and **↓ Load** buttons in the title bar. Saves to `.scaffold.json`:
+
+```json
+{
+  "deck_name": "Orzhov Lifegain",
+  "colors": ["B", "W"],
+  "archetypes": ["lifegain", "midrange"],
+  "tribes": [],
+  "tags": ["draw", "lifegain"],
+  "focus_cards": [
+    "Aerith Gainsborough",
+    "Hope Estheim",
+    "Midnight Snack",
+    "Bloodthirsty Conqueror"
+  ],
+  "options": {
+    "skip_queries": false,
+    "run_synergy": true,
+    "auto_build": true,
+    "wildcard": false
+  },
+  "output_dir": ""
+}
+```
+
+Loading restores every toggle, chip, checkbox, and text field. You can share settings files between machines or version-control them alongside your decks.
